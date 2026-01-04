@@ -37,6 +37,7 @@ import { getAsesoresSGA } from "../../../services/Users/getAsesoresSGA";
 import { getBeneficiarios } from "../../../services/Polizas/getBeneficiarios";
 import { getFinancieras } from "../../../services/Polizas/getFinancieras";
 import { getQuotesFinancieras } from "../../../services/Polizas/getQuotesFinancieras";
+import { getFasecoldaBrands, getFasecoldaClass } from "../../../utils/utils";
 
 export const Polizas = ({ setLoading, loading }) => {
   const navigate = useNavigate();
@@ -159,6 +160,24 @@ export const Polizas = ({ setLoading, loading }) => {
     clase: "",
   });
 
+  const [marcas, setMarcas] = useState([]);
+
+  const [clases, setClases] = useState([]);
+
+  useEffect(() => {
+    const fetchMarcasAndClases = async () => {
+      setLoading(true);
+      const marcas = await getFasecoldaBrands();
+      setMarcas(marcas);
+      const clases = await getFasecoldaClass();
+      setClases(clases);
+      setLoading(false);
+    };
+    if (INPUT_PLACA_ALLOW.includes(Number(cabezotePoliza.ramo))) {
+      fetchMarcasAndClases();
+    }
+  }, [cabezotePoliza.ramo]);
+
   const formatCOP = (n) =>
     Number(n || 0).toLocaleString("es-CO", {
       style: "currency",
@@ -167,10 +186,26 @@ export const Polizas = ({ setLoading, loading }) => {
       maximumFractionDigits: 0,
     });
 
+  const handleSelectVehiculoChange = (name, selectedOption) => {
+    const value = selectedOption ? selectedOption.value : "";
+    setVehiculo((prev) => ({
+      ...prev,
+      [name]: value,
+    }));
+
+    setBodyPoliza((prev) => ({
+      ...prev,
+      vehiculo: {
+        ...prev.vehiculo,
+        [name]: value,
+      },
+    }));
+  };
+
   const handleVehiculoChange = (e) => {
     const { name, value } = e.target;
 
-    console.log(name, value);
+    console.log(e);
 
     // Campo especial: valorFasecolda (máscara de moneda)
     if (name === "valorFasecolda") {
@@ -210,8 +245,6 @@ export const Polizas = ({ setLoading, loading }) => {
     }
   };
 
-  const seeBodySF = () => {};
-
   const handlerGetVehiculo = async () => {
     if (vehiculo.busqueda === "") {
       Swal.fire({
@@ -242,19 +275,20 @@ export const Polizas = ({ setLoading, loading }) => {
           ...vehiculo,
           placa: response.data.placa,
           fasecolda: response.data.fasecolda,
-          valorFasecolda: response.data.valorFasecolda,
+          // valorFasecolda: response.data.valorFasecolda,
           marca: response.data.marca,
           modelo: response.data.modelo,
           linea: response.data.linea,
           clase: response.data.clase,
         });
       }
+      console.log(vehiculo);
       setBodyPoliza((prev) => ({
         ...prev,
         vehiculo: {
           placa: response.data.placa,
           fasecolda: response.data.fasecolda,
-          valorFasecolda: response.data.valorFasecolda,
+          // valorFasecolda: response.data.valorFasecolda,
           marca: response.data.marca,
           modelo: response.data.modelo,
           linea: response.data.linea,
@@ -301,12 +335,14 @@ export const Polizas = ({ setLoading, loading }) => {
         ...prev,
         directorcomercial: "1007028818",
         asistente: "1107070475",
+        coordinadortecnico: "66830224",
       }));
     } else {
       setGestionComercial((prev) => ({
         ...prev,
         directorcomercial: "",
         asistente: "",
+        coordinadortecnico: "",
       }));
     }
   }, [gestionComercial.unidadnegocio]);
@@ -951,7 +987,7 @@ export const Polizas = ({ setLoading, loading }) => {
     }
 
     setCalledFrom(calledFrom);
-    console.log(calledFrom)
+    console.log(calledFrom);
 
     setLoading(true);
     setSelectedClientId(null);
@@ -966,7 +1002,7 @@ export const Polizas = ({ setLoading, loading }) => {
           setLoading(false);
           return;
         }
-        if(calledFrom === "Tomador"){
+        if (calledFrom === "Tomador") {
           setDatosUsuarios((prev) => ({
             ...prev,
             Tomador: {
@@ -976,7 +1012,7 @@ export const Polizas = ({ setLoading, loading }) => {
               nombre: `${response.data.nombres} ${response.data.apellidos}`,
             },
           }));
-        } else if(calledFrom === "Asegurado"){
+        } else if (calledFrom === "Asegurado") {
           setDatosUsuarios((prev) => ({
             ...prev,
             Asegurado: {
@@ -1118,8 +1154,7 @@ export const Polizas = ({ setLoading, loading }) => {
       userData: { id_usuario: userData.id_usuario },
     };
 
-    
-    console.log(polizaData)
+    console.log(polizaData);
     // Valida que todos los campos del cabezotePoliza que vengan llenos
     for (const field of Object.keys(cabezotePoliza)) {
       if (!cabezotePoliza[field]) {
@@ -1174,7 +1209,7 @@ export const Polizas = ({ setLoading, loading }) => {
           asesorganador: "Asesor Ganador",
         },
       };
-      console.log(fieldsToCheck)
+      console.log(fieldsToCheck);
       for (const field of Object.keys(
         fieldsToCheck[gestionComercial.unidadnegocio]
       )) {
@@ -1230,16 +1265,17 @@ export const Polizas = ({ setLoading, loading }) => {
         },
       };
 
-      let validFields = cabezotePoliza.ramo == "6" ? fieldsToCheck[6] : fieldsToCheck[valoresPoliza.formapago];
+      let validFields =
+        cabezotePoliza.ramo == "6"
+          ? fieldsToCheck[6]
+          : fieldsToCheck[valoresPoliza.formapago];
 
       for (const field of Object.keys(validFields)) {
         if (!valoresPoliza[field]) {
           Swal.fire({
             icon: "warning",
             title: "Campos incompletos",
-            text: `Por favor complete el campo: ${
-              validFields[field]
-            }.`,
+            text: `Por favor complete el campo: ${validFields[field]}.`,
           });
           return;
         }
@@ -1279,7 +1315,7 @@ export const Polizas = ({ setLoading, loading }) => {
     if (INPUT_PLACA_ALLOW.includes(parseInt(cabezotePoliza.ramo))) {
       for (const field of Object.keys(vehiculo)) {
         if (!vehiculo[field] && field !== "busqueda") {
-          console.log(field)
+          console.log(field);
           Swal.fire({
             icon: "warning",
             title: "Campos incompletos",
@@ -1702,21 +1738,18 @@ export const Polizas = ({ setLoading, loading }) => {
                 />
               </div>
 
-              {/* <div className="flex flex-col w-[130px]">
-                <label htmlFor="valorFasecolda">Valor Asegurado</label>
+              <div className="flex flex-col w-[60px]">
+                <label htmlFor="modelo">Modelo</label>
                 <input
-                  id="valorFasecolda"
+                  id="modelo"
                   type="text"
-                  name="valorFasecolda"
+                  name="modelo"
                   className="text-md border-[1px] border-gray-300 text-gray-900 focus:outline-none h-[30px] rounded-md p-2"
-                  // inputMode="numeric" // teclado numérico en móviles
-                  autoComplete="off"
-                  value={
-                    vehiculo.valorFasecolda
-                  }
-                  onChange={handleVehiculoChange}
+                  // placeholder="Número Certificado"
+                  value={vehiculo.modelo}
+                  onInput={handleVehiculoChange}
                 />
-              </div> */}
+              </div>
 
               <div className="flex flex-col w-[130px]">
                 <label htmlFor="valorFasecolda">Valor Asegurado</label>
@@ -1738,41 +1771,45 @@ export const Polizas = ({ setLoading, loading }) => {
                 />
               </div>
 
-              <div className="flex flex-col w-[60px]">
-                <label htmlFor="modelo">Modelo</label>
-                <input
-                  id="modelo"
-                  type="text"
-                  name="modelo"
-                  className="text-md border-[1px] border-gray-300 text-gray-900 focus:outline-none h-[30px] rounded-md p-2"
-                  // placeholder="Número Certificado"
-                  value={vehiculo.modelo}
-                  onInput={handleVehiculoChange}
-                />
-              </div>
-
-              <div className="flex flex-col w-full">
+              <div className="flex flex-col flex-1 min-w-[150px]">
                 <label htmlFor="clase">Clase</label>
-                <input
-                  id="clase"
-                  type="text"
+
+                <Select
+                  className="w-full"
+                  classNamePrefix="react-select"
                   name="clase"
-                  className="text-md border-[1px] border-gray-300 text-gray-900 focus:outline-none h-[30px] rounded-md p-2"
-                  // placeholder="Número Certificado"
-                  value={vehiculo.clase}
-                  onInput={handleVehiculoChange}
+                  id="clase"
+                  options={clases}
+                  styles={customStyles}
+                  placeholder=""
+                  value={
+                    clases.find((opt) => opt.value === vehiculo.clase) || null
+                  }
+                  onChange={(option) =>
+                    handleSelectVehiculoChange("clase", option)
+                  }
+                  isClearable
                 />
               </div>
 
-              <div className="flex flex-col w-full">
-                <label htmlFor="marca">Marca</label>
-                <input
-                  id="marca"
-                  type="text"
+              <div className="flex flex-col flex-1 min-w-[150px]">
+                <label htmlFor="clase">Marca</label>
+
+                <Select
+                  className="w-full"
+                  classNamePrefix="react-select"
                   name="marca"
-                  className="text-md border-[1px] border-gray-300 text-gray-900 focus:outline-none h-[30px] rounded-md p-2"
-                  value={vehiculo.marca}
-                  onInput={handleVehiculoChange}
+                  id="marca"
+                  options={marcas}
+                  styles={customStyles}
+                  placeholder=""
+                  value={
+                    marcas.find((opt) => opt.value === vehiculo.marca) || null
+                  }
+                  onChange={(option) =>
+                    handleSelectVehiculoChange("marca", option)
+                  }
+                  isClearable
                 />
               </div>
 
@@ -2010,12 +2047,12 @@ export const Polizas = ({ setLoading, loading }) => {
                       name="asesor10"
                       id="asesor10"
                       options={[
-                        { value: "", label: "" },
+                        // { value: "", label: "" },
                         { value: "133213123", label: "Carlos Perez" },
                         { value: "23213213", label: "Henry Arias" },
                       ]}
                       value={[
-                        { value: "", label: "" },
+                        // { value: "", label: "" },
                         { value: "133213123", label: "Carlos Perez" },
                         { value: "23213213", label: "Henry Arias" },
                       ].find((a) => a.value === gestionComercial.asesor10)}
@@ -2073,12 +2110,10 @@ export const Polizas = ({ setLoading, loading }) => {
                       name="asesorganador"
                       id="asesorganador"
                       options={[
-                        { value: "", label: "" },
                         { value: "12222111", label: "Armando Segura" },
                         { value: "22211122", label: "Patricia Poliza" },
                       ]}
                       value={[
-                        { value: "", label: "" },
                         { value: "12222111", label: "Armando Segura" },
                         { value: "22211122", label: "Patricia Poliza" },
                       ].find((a) => a.value === gestionComercial.asesorganador)}
@@ -2098,13 +2133,39 @@ export const Polizas = ({ setLoading, loading }) => {
                       isClearable
                     />
                   </div>
+                  <div className="flex flex-col w-[165px]">
+                    <label htmlFor="coordinadortecnico">
+                      Coordinador Técnico
+                    </label>
+                    <Select
+                      name="coordinadortecnico"
+                      id="coordinadortecnico"
+                      options={coordinadores}
+                      placeholder=""
+                      styles={customStyles}
+                      value={coordinadores.find(
+                        (opt) =>
+                          opt.value === gestionComercial.coordinadortecnico
+                      )}
+                      onChange={(selectedOption, meta) => {
+                        const value = selectedOption
+                          ? selectedOption.value
+                          : "";
+                        handleGestionComercialChange({
+                          target: { name: meta.name, value },
+                        });
+                      }}
+                      isClearable
+                    />
+                  </div>
                 </>
               ) : (
                 ""
               )}
             </div>
           </div>
-          {gestionComercial.unidadnegocio != "3" ? (
+          {gestionComercial.unidadnegocio != "3" &&
+          gestionComercial.unidadnegocio != "4" ? (
             <>
               <div className="flex flex-row gap-4 mt-2">
                 <div className="flex flex-col w-[165px]">

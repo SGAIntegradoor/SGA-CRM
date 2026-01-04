@@ -230,7 +230,7 @@ export const VerMovimientosModal = ({
                   </th>
                 </tr>
               </thead>
-              {console.log(movimientos)}
+              {/* {console.log(movimientos)} */}
               <tbody>
                 {movimientos.map((movimiento) => {
                   let reason = "";
@@ -268,9 +268,9 @@ export const VerMovimientosModal = ({
                         {movimiento.no_certificado}
                       </td>
                       <td className="px-4 py-2 border-t border-r">
-                        {new Date(
+                        {
                           movimiento.fecha_registro
-                        ).toLocaleDateString()}
+                        }
                       </td>
                       <td className="px-4 py-2 border-t border-r">{reason}</td>
                       <td className="px-4 py-2 border-t border-r">

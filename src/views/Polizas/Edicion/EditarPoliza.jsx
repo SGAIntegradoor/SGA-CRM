@@ -1135,7 +1135,7 @@ export const EditarPoliza = ({ setLoading, loading }) => {
       if (response.status === "Ok" && response.codeStatus !== 404) {
         // ✅ por defecto trae todo
         dataP = response.data || {};
-
+        console.log(dataP)
         // Si es unidad 1, oculta ciertos roles
         if (unidadNeg === "1") {
           delete dataP["Asesor 10"];
@@ -1157,8 +1157,9 @@ export const EditarPoliza = ({ setLoading, loading }) => {
     "Analista Comercial",
     "Director Comercial",
     "Asistente Comercial",
-    "Coordinador Tecnico",
     "Analista Tecnica", // ojo con tilde: tu objeto dice "Tecnica"
+    "Coordinador Tecnico",
+    "Asesor Comercial Interno",
   ];
 
   // Helper seguro
@@ -2752,6 +2753,8 @@ export const EditarPoliza = ({ setLoading, loading }) => {
                 <th className="border-[1.5px] px-4 py-2">Comision Asistente</th>
                 <th className="border-[1.5px] px-4 py-2">Comision Técnica</th>
                 <th className="border-[1.5px] px-4 py-2">Comision Coor. Técnico</th>
+                <th className="border-[1.5px] px-4 py-2">Comision Asesor Comercial Interno</th>
+                
               </tr>
             </thead>
             <tbody>
