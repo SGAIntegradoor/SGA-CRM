@@ -127,10 +127,10 @@ export const VerMovimientosModal = ({
   };
 
   const razonesCancelacion = [
-    { value: "1", label: "Falta de pago" },
-    { value: "2", label: "Venta de vehículo" },
-    { value: "3", label: "Decisión del cliente" },
-    { value: "4", label: "Cambio de intermediario" },
+    { value: "5", label: "Decisión del cliente" },
+    { value: "4", label: "Venta de vehículo" },
+    { value: "3", label: "Falta de pago" },
+    { value: "6", label: "Cambio de intermediario" },
   ];
 
   const razonesModificacion = [

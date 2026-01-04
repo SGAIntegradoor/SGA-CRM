@@ -12,7 +12,7 @@ export const CardUser = ({
   titulo,
   placeholderNombre,
   searchProspecto = null,
-  // cliente = null,
+  cliente = null,
   buttonSwitch,
   setButtonSwitch,
   valores = {},
@@ -25,13 +25,13 @@ export const CardUser = ({
   setNuevoBeneficiario,
 }) => {
   // Efecto para precargar los datos del cliente (solo Tomador)
-  // useEffect(() => {
-  //   if (cliente && Object.keys(cliente).length > 0 && titulo === "Tomador") {
-  //     onChange("tipoIdentificacion", cliente.tipoDocumento ?? "");
-  //     onChange("numeroIdentificacion", cliente.documento ?? "");
-  //     onChange("nombre", `${cliente.nombres} ${cliente.apellidos}` ?? "");
-  //   }
-  // }, [cliente]);
+  useEffect(() => {
+    if (cliente && Object.keys(cliente).length > 0 && titulo === "Tomador") {
+      onChange("tipoIdentificacion", cliente.tipoDocumento ?? "");
+      onChange("numeroIdentificacion", cliente.documento ?? "");
+      onChange("nombre", `${cliente.nombres} ${cliente.apellidos}` ?? "");
+    }
+  }, [cliente]);
 
   // Efecto para switches
   useEffect(() => {
@@ -50,11 +50,11 @@ export const CardUser = ({
           onChange("nombre", nombre.value);
         }
       }
-      // else {
-      //   onChange("tipoIdentificacion", "");
-      //   onChange("numeroIdentificacion", "");
-      //   onChange("nombre", "");
-      // }
+      else {
+        onChange("tipoIdentificacion", "");
+        onChange("numeroIdentificacion", "");
+        onChange("nombre", "");
+      }
     } else if (titulo === "Beneficiario") {
       if (buttonSwitch?.Beneficiario) {
         onChange("tipoIdentificacion", "2"); // NIT por defecto
@@ -144,7 +144,7 @@ export const CardUser = ({
   };
   return (
     <Box padding={3}>
-      <section className="shadow-lg rounded-3xl w-[355px] border-l border-r border-b border-gray-400">
+      <section className="shadow-lg rounded-3xl w-[356px] border-l border-r border-b border-gray-400">
         <div className="flex flex-row gap-5 items-center bg-lime-9000 p-3 rounded-t-3xl border-gray-400 border justify-between">
           <p className="text-[17px] pl-1 text-white font-semibold">{titulo}</p>
           {titulo !== "Tomador" && (

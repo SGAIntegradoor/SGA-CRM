@@ -847,7 +847,6 @@ export const Polizas = ({ setLoading, loading }) => {
       setAsesoresSGA([]);
     }
   }, [gestionComercial.unidadnegocio]);
-  console.log(gestionComercial)
 
   const handlerLoadTiposPoliza = async () => {
     // Function to load other concepts data
@@ -952,6 +951,7 @@ export const Polizas = ({ setLoading, loading }) => {
     }
 
     setCalledFrom(calledFrom);
+    console.log(calledFrom)
 
     setLoading(true);
     setSelectedClientId(null);
@@ -965,6 +965,27 @@ export const Polizas = ({ setLoading, loading }) => {
           setDocumentoTemp(datosUsuarios.Tomador.numeroIdentificacion);
           setLoading(false);
           return;
+        }
+        if(calledFrom === "Tomador"){
+          setDatosUsuarios((prev) => ({
+            ...prev,
+            Tomador: {
+              ...prev.Tomador,
+              tipoIdentificacion: response.data.tipoDocumento,
+              numeroIdentificacion: response.data.documento,
+              nombre: `${response.data.nombres} ${response.data.apellidos}`,
+            },
+          }));
+        } else if(calledFrom === "Asegurado"){
+          setDatosUsuarios((prev) => ({
+            ...prev,
+            Asegurado: {
+              ...prev.Asegurado,
+              tipoIdentificacion: response.data.tipoDocumento,
+              numeroIdentificacion: response.data.documento,
+              nombre: `${response.data.nombres} ${response.data.apellidos}`,
+            },
+          }));
         }
         setSelectedClientId(response.data.id_cliente);
         setCliente(response.data);
@@ -1382,7 +1403,7 @@ export const Polizas = ({ setLoading, loading }) => {
 
       {/* Seccion 2 Datos tomador/asegurado/beneficiario */}
 
-      <section className="w-full flex flex-row flex-wrap justify-center">
+      <section className="w-full flex flex-row flex-wrap justify-between">
         <CardUser
           titulo="Tomador"
           placeholderNombre="Nombre del Tomador"

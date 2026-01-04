@@ -20,6 +20,7 @@ import Swal from "sweetalert2";
 import { updateClient } from "../../services/Clientes/updateCliente";
 import { getClientById } from "../../services/Clientes/getClientById";
 import { getClientByIdIntegradoor } from "../../services/Clientes/getClientByIdIntegradoor";
+import { capitalizeWords } from "../../utils/utils";
 
 const ModalCliente = ({
   show,
@@ -1009,7 +1010,7 @@ const ModalCliente = ({
                   type="text"
                   id="nombre"
                   value={nombre}
-                  onChange={(e) => setNombre(e.target.value)}
+                  onChange={(e) => setNombre(capitalizeWords(e.target.value))}
                   placeholder="Nombre"
                   className="peer w-[300px] border-b-2 border-gray-300 text-gray-900 placeholder-gray-400 focus:outline-none focus:border-blue-500 mt-9 pl-2 pb-2"
                 />
@@ -1019,7 +1020,7 @@ const ModalCliente = ({
                   type="text"
                   id="apellido"
                   value={apellido}
-                  onChange={(e) => setApellido(e.target.value)}
+                  onChange={(e) => setApellido(capitalizeWords(e.target.value))}
                   placeholder="Apellido"
                   className="peer w-[315px] border-b-2 border-gray-300 text-gray-900 placeholder-gray-400 focus:outline-none focus:border-blue-500 mt-9 pl-2 pb-2"
                 />
@@ -1031,7 +1032,7 @@ const ModalCliente = ({
                 type="text"
                 id="razonSocial"
                 value={razonSocial} // <-- ANTES era `${nombre} ${apellido}`.trim()
-                onChange={(e) => setRazonSocial(e.target.value)} // <-- ANTES dividíamos aquí
+                onChange={(e) => setRazonSocial(capitalizeWords(e.target.value))}
                 placeholder="Razón Social"
                 className="peer w-[315px] border-b-2 placeholder-gray-400 border-gray-300 text-gray-900 focus:outline-none focus:border-blue-500 mt-9 pl-2 pb-2"
               />
