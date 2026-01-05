@@ -146,7 +146,7 @@ export const TableDirectos = ({
             value={rows[rowIndex].porcentaje_comision ?? 0}
             onChange={(e) => handlePctChange(rowIndex, e.target.value)}
             placeholder="0.07"
-            disabled={disabledPct}
+            // disabled={disabledPct}
           />
           <span className="absolute right-2 text-gray-500 select-none" aria-hidden="true">
             %
