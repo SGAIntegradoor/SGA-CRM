@@ -11,6 +11,7 @@ export const TableDirectos = ({
   from = ""
 }) => {
 
+  console.log(data)
   // --- Utils ---
   const toNumberCOP = (v) => {
     if (typeof v === "number" && Number.isFinite(v)) return v;
@@ -46,6 +47,7 @@ export const TableDirectos = ({
       placa: "placa",
       "prima sin iva + asistencia": "prima_sin_iva_asistencia",
       "asesor 10": "asesor_10",
+      "unidad de negocio": "unidad_negocio",
       "asesor ganador": "asesor_ganador",
       "asesor freelance": "asesor_freelance",
       "tipo expedición": "tipo_expedicion",
@@ -115,12 +117,20 @@ export const TableDirectos = ({
     );
   };
 
+  const unidadesNegocioOptions = {
+    1: "Freelance",
+    2: "Negocio Directo",
+    3: "Asesor 10",
+    4: "Asesor Ganador",
+  }
+
   const renderCell = (row, header, rowIndex) => {
     const key = keyByHeader[header.toLowerCase()] ?? header;
     const lower = header.toLowerCase();
     const isPct = lower.includes("% comisión");
     const isTotal = lower.includes("total comisión");
     const isBase = lower.includes("prima sin iva + asistencia");
+    const isUnidadNegocio = lower.includes("unidad de negocio");
 
     if (isPct) {
       const disabledPct =
@@ -153,6 +163,10 @@ export const TableDirectos = ({
     if (isBase) {
       const base = rows[rowIndex].__baseNum ?? toNumberCOP(row[key]);
       return formatCOP(base);
+    }
+
+    if (isUnidadNegocio) {
+      return unidadesNegocioOptions[row[key]] ?? row[key];
     }
 
     const val = row[key];

@@ -35,6 +35,82 @@ const headersAsesorFreelance = [
   "Total Comisión",
 ];
 
+// "fecha de expedición": "fecha_expedicion",
+// ramo: "ramo",
+// aseguradora: "aseguradora",
+// poliza: "poliza",
+// anexo: "anexo",
+// asegurado: "asegurado",
+// "identificación asegurado": "identificacion_asegurado",
+// placa: "placa",
+// "prima sin iva + asistencia": "prima_sin_iva_asistencia",
+// "asesor 10": "asesor_10",
+// "asesor ganador": "asesor_ganador",
+// "asesor freelance": "asesor_freelance",
+// "tipo expedición": "tipo_expedicion",
+// "inicio vigencia": "inicio_vigencia",
+// "% comisión": "porcentaje_comision",
+// "total comisión": "total_comision",
+
+const headersDirectos = [
+  "Fecha de expedición",
+  "Ramo",
+  "Aseguradora",
+  "Poliza",
+  "Anexo",
+  "Asegurado",
+  "Placa",
+  "Prima sin IVA + asistencia",
+  "Tipo expedición",
+  "% Comisión",
+  "Total Comisión",
+];
+
+const headersAsesor10 = [
+  "Fecha de expedición",
+  "Ramo",
+  "Aseguradora",
+  "Poliza",
+  "Anexo",
+  "Asegurado",
+  "Placa",
+  "Prima sin IVA + asistencia",
+  "Asesor 10",
+  "Tipo expedición",
+  "% Comisión",
+  "Total Comisión",
+];
+
+const headersAsesorGanador = [
+  "Fecha de expedición",
+  "Ramo",
+  "Aseguradora",
+  "Poliza",
+  "Anexo",
+  "Asegurado",
+  "Placa",
+  "Prima sin IVA + asistencia",
+  "Asesor Ganador",
+  "Tipo expedición",
+  "% Comisión",
+  "Total Comisión",
+];
+
+const headersCancelaciones = [
+  "Fecha de expedición",
+  "Ramo",
+  "Aseguradora",
+  "Poliza",
+  "Anexo",
+  "Asegurado",
+  "Placa",
+  "Prima sin IVA + asistencia",
+  "Unidad de negocio",
+  "Tipo expedición",
+  "% Comisión",
+  "Total Comisión",
+];
+
 const nombresTablas = {
   directos: "Directos",
   asesor10: "Asesor 10",
@@ -84,10 +160,6 @@ export default function LiquidacionImpresion() {
   const usuario = state?.usuario || (detalles[0]?.usuario_sga ?? "");
   const emisor_liquidacion = liquidacion?.nombre_emisor_liq;
 
-  console.log(state)
-  console.log(detalles[0])
-
-
   const pdfRef = useRef(null);
 
   useEffect(() => {
@@ -136,7 +208,17 @@ export default function LiquidacionImpresion() {
 
       if (poliza.tipo === "directo") t.directos.push(baseRow);
       else if (isCancel) t.cancelaciones.push(baseRow);
-      else if ((poliza.asesor_10 === "N/A" || poliza.asesor_10 === "" || poliza.asesor_10 == null) && (poliza.asesor_ganador === "N/A" || poliza.asesor_ganador === "" || poliza.asesor_ganador == null) && (poliza.asesor_freelance === "N/A" || poliza.asesor_freelance === "" || poliza.asesor_freelance == null)){
+      else if (
+        (poliza.asesor_10 === "N/A" ||
+          poliza.asesor_10 === "" ||
+          poliza.asesor_10 == null) &&
+        (poliza.asesor_ganador === "N/A" ||
+          poliza.asesor_ganador === "" ||
+          poliza.asesor_ganador == null) &&
+        (poliza.asesor_freelance === "N/A" ||
+          poliza.asesor_freelance === "" ||
+          poliza.asesor_freelance == null)
+      ) {
         t.directos.push(baseRow);
         // eliminar el indece 8
         headersAsesorFreelance.splice(8, 1);
@@ -151,7 +233,9 @@ export default function LiquidacionImpresion() {
   }, [detalles]);
 
   const isAnulada =
-    String(liquidacion?.estado || "").trim().toLowerCase() === "anulada";
+    String(liquidacion?.estado || "")
+      .trim()
+      .toLowerCase() === "anulada";
 
   const handlePrint = useReactToPrint({
     contentRef: pdfRef,
@@ -213,8 +297,8 @@ export default function LiquidacionImpresion() {
    *  Para evitar huecos y no partir filas, usamos paginación fija.
    *  En la ÚLTIMA sección dejamos hueco para que quepa el bloque de "Total".
    */
-  const ROWS_PER_PRINT_PAGE = 14;      // filas normales por hoja
-  const RESERVE_ROWS_FOR_SUMMARY = 3;  // “hueco” aproximado para el total (ajústalo si hace falta)
+  const ROWS_PER_PRINT_PAGE = 14; // filas normales por hoja
+  const RESERVE_ROWS_FOR_SUMMARY = 3; // “hueco” aproximado para el total (ajústalo si hace falta)
 
   const paginate = (rows, perPage) => {
     const pages = [];
@@ -268,15 +352,23 @@ export default function LiquidacionImpresion() {
         }
       `}</style>
 
-      {isAnulada && <div aria-hidden className="wm-anulada">ANULADA</div>}
+      {isAnulada && (
+        <div aria-hidden className="wm-anulada">
+          ANULADA
+        </div>
+      )}
 
       <header className="px-8 flex flex-row pt-4 justify-between">
         <div className="flex items-center gap-4 mt-9">
           <div className="flex flex-col">
             <img src={LogoGA} alt="Logo" className="h-12 w-44" />
             <div className="flex flex-col pt-2">
-              <span className="h-[16px] text-gray-500">NIT: 900.600.470 - 8</span>
-              <span className="h-[16px] text-gray-500">Calle 70 # 7T2 - 16</span>
+              <span className="h-[16px] text-gray-500">
+                NIT: 900.600.470 - 8
+              </span>
+              <span className="h-[16px] text-gray-500">
+                Calle 70 # 7T2 - 16
+              </span>
               <span className="h-[14px] text-gray-500">3156091204</span>
             </div>
             {usuario && (
@@ -300,20 +392,44 @@ export default function LiquidacionImpresion() {
           </div>
         </div>
 
-        <div className="flex flex-col gap-2 items-center justify-center" data-html2canvas-ignore="true">
+        <div
+          className="flex flex-col gap-2 items-center justify-center"
+          data-html2canvas-ignore="true"
+        >
           <div className="flex flex-row gap-6 w-full justify-center no-print">
-            <button type="button" title="Enviar por correo (pendiente)" className="p-1 rounded hover:bg-gray-100">
+            <button
+              type="button"
+              title="Enviar por correo (pendiente)"
+              className="p-1 rounded hover:bg-gray-100"
+            >
               <MdAttachEmail size={40} className="text-lime-9000" />
             </button>
-            <button type="button" title="Descargar PDF" onClick={handlePrint} className="p-1 rounded hover:bg-gray-100">
+            <button
+              type="button"
+              title="Descargar PDF"
+              onClick={handlePrint}
+              className="p-1 rounded hover:bg-gray-100"
+            >
               <IoIosCloudDownload size={40} className="text-lime-9000" />
             </button>
           </div>
           <div className="flex flex-col gap-1 mt-6">
-            <div style={{ fontSize: 12, fontFamily: "Helvetica", lineHeight: "1.2" }}>
+            <div
+              style={{
+                fontSize: 12,
+                fontFamily: "Helvetica",
+                lineHeight: "1.2",
+              }}
+            >
               Generado el: {new Date().toLocaleDateString()}
             </div>
-            <div style={{ fontSize: 12, fontFamily: "Helvetica", lineHeight: "1.2" }}>
+            <div
+              style={{
+                fontSize: 12,
+                fontFamily: "Helvetica",
+                lineHeight: "1.2",
+              }}
+            >
               Liquidación #: {id_liquidacion || 0}
             </div>
           </div>
@@ -333,15 +449,29 @@ export default function LiquidacionImpresion() {
                 )
               : paginate(sec.rows, ROWS_PER_PRINT_PAGE);
 
-        return pages.map((pageRows, p) => (
+          return pages.map((pageRows, p) => (
             <section
               key={`${sec.key}-${p}`}
-              className={`print-keep ${p < pages.length - 1 ? "page-break" : ""}`}
+              className={`print-keep ${
+                p < pages.length - 1 ? "page-break" : ""
+              }`}
             >
               <h2 className="text-lg font-semibold mb-2">{sec.title}</h2>
               <TableDirectos
                 classname="w-full"
-                headers={headersAsesorFreelance}
+                headers={
+                  sec.key === "directos"
+                    ? headersDirectos
+                    : sec.key === "asesor10"
+                    ? headersAsesor10
+                    : sec.key === "asesorGanador"
+                    ? headersAsesorGanador
+                    : sec.key === "asesorFreelance"
+                    ? headersAsesorFreelance
+                    : sec.key === "cancelaciones"
+                    ? headersCancelaciones
+                    : []
+                }
                 data={pageRows}
                 readOnly
                 title={sec.title}
@@ -381,13 +511,14 @@ export default function LiquidacionImpresion() {
             </li>
             <li className="break-words" style={{ marginTop: 5 }}>
               Enviar cuenta de cobro o factura electrónica al correo{" "}
-              <b>administracion@grupoasistencia.com</b>, adjuntando copia del RUT,
-              cédula, la liquidación enviada y certificación bancaria en un solo PDF.
+              <b>administracion@grupoasistencia.com</b>, adjuntando copia del
+              RUT, cédula, la liquidación enviada y certificación bancaria en un
+              solo PDF.
             </li>
             <li className="break-words" style={{ marginTop: 5 }}>
-              Tener en cuenta que al valor total de la liquidación se le aplicarán
-              las retenciones a las que haya lugar de acuerdo a la información
-              que se encuentre registrada en el RUT.
+              Tener en cuenta que al valor total de la liquidación se le
+              aplicarán las retenciones a las que haya lugar de acuerdo a la
+              información que se encuentre registrada en el RUT.
             </li>
           </ul>
         </section>
