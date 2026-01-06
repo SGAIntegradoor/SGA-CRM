@@ -205,12 +205,24 @@ export const Sidebar = ({ isCollapsed, setIsCollapsed, loggedDataInfo }) => {
                 justifyContent="space-between"
                 alignItems="center"
               >
-                <Image src={Integrador} />
+                <a
+                  href="https://integradoor.com/Pruebas"
+                  target="_blank"
+                  rel="noopener"
+                >
+                  <Image src={Integrador} />
+                </a>
               </Box>
             )}
             {isCollapsed && (
               <Box id="icoIntegradoor">
-                <Image src={iconIntegradoor} />
+                <a
+                  href="https://integradoor.com/Pruebas"
+                  target="_blank"
+                  rel="noopener"
+                >
+                  <Image src={iconIntegradoor} />
+                </a>
               </Box>
             )}
           </MenuItem>
@@ -270,9 +282,8 @@ export const Sidebar = ({ isCollapsed, setIsCollapsed, loggedDataInfo }) => {
               to="/polizas/consulta"
               isCollapsed={isCollapsed}
               setIsCollapsed={setIsCollapsed}
-              icon={<MdBusinessCenter size={20}/>}
+              icon={<MdBusinessCenter size={20} />}
             />
-
           </Box>
         </Menu>
       </ProSidebar>

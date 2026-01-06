@@ -38,6 +38,8 @@ import { getBeneficiarios } from "../../../services/Polizas/getBeneficiarios";
 import { getFinancieras } from "../../../services/Polizas/getFinancieras";
 import { getQuotesFinancieras } from "../../../services/Polizas/getQuotesFinancieras";
 import { getFasecoldaBrands, getFasecoldaClass } from "../../../utils/utils";
+import { getAsesoresGanadores } from "../../../services/Users/getAsesoresGanadores";
+import { getAsesores10 } from "../../../services/Users/getAsesores10";
 
 export const Polizas = ({ setLoading, loading }) => {
   const navigate = useNavigate();
@@ -314,6 +316,8 @@ export const Polizas = ({ setLoading, loading }) => {
   const [asistentes, setAsistentes] = useState([]);
   const [coordinadores, setCoordinadores] = useState([]);
   const [directoresComerciales, setDirectoresComerciales] = useState([]);
+  const [asesoresGanadores, setAsesoresGanadores] = useState([]);
+  const [asesores10, setAsesores10] = useState([]);
 
   const [gestionComercial, setGestionComercial] = useState({
     tecnicoemisor: "",
@@ -763,6 +767,15 @@ export const Polizas = ({ setLoading, loading }) => {
         setLoading(false);
       });
 
+    handlerLoadAsesoresSGA()
+      .then(() => {
+        // setLoading(false);
+      })
+      .catch((error) => {
+        console.error("Error loading Asesores SGA:", error);
+        setLoading(false);
+      });
+
     handlerLoadTiposPoliza()
       .then(() => {
         setLoading(false);
@@ -874,10 +887,26 @@ export const Polizas = ({ setLoading, loading }) => {
     setAsesoresSGA(asesorescomercialesint);
   };
 
+  const handlerLoadAsesoresGanadores = async () => {
+    // Function to load business units data
+    // This is a placeholder for the actual implementation
+    const asesGanadores = await getAsesoresGanadores();
+    setAsesoresGanadores(asesGanadores);
+  };
+
+  const handlerLoadAsesores10 = async () => {
+    // Function to load business units data
+    // This is a placeholder for the actual implementation
+    const ases10 = await getAsesores10();
+    setAsesores10(ases10);
+  };
+
   useEffect(() => {
     const unidad = gestionComercial.unidadnegocio;
-    if (["2", "3", "4"].includes(unidad)) {
-      handlerLoadAsesoresSGA(unidad);
+    if (["3"].includes(unidad)) {
+      handlerLoadAsesores10();
+    } else if (["4"].includes(unidad)) {
+      handlerLoadAsesoresGanadores();
     } else {
       // Si no aplica asesores internos, limpiar opciones para evitar residuos de selects
       setAsesoresSGA([]);
@@ -1360,6 +1389,8 @@ export const Polizas = ({ setLoading, loading }) => {
     });
   };
 
+  const NOT_ALLOWED_FORMA_PAGO_FINAN = [6, 44, 45, 46, 47];
+
   return (
     <div className="flex flex-col">
       <ModalOneroso
@@ -1555,6 +1586,14 @@ export const Polizas = ({ setLoading, loading }) => {
                   value={ramo.find((opt) => opt.value === cabezotePoliza.ramo)}
                   onChange={(selectedOption, meta) => {
                     const value = selectedOption ? selectedOption.value : "";
+
+                    NOT_ALLOWED_FORMA_PAGO_FINAN.includes(Number(value))
+                      ? setValoresPoliza((prev) => ({
+                          ...prev,
+                          formapago: "2",
+                        }))
+                      : null;
+
                     handleCabezotePolizaChange({
                       target: { name: meta.name, value },
                     });
@@ -2046,16 +2085,8 @@ export const Polizas = ({ setLoading, loading }) => {
                     <Select
                       name="asesor10"
                       id="asesor10"
-                      options={[
-                        // { value: "", label: "" },
-                        { value: "133213123", label: "Carlos Perez" },
-                        { value: "23213213", label: "Henry Arias" },
-                      ]}
-                      value={[
-                        // { value: "", label: "" },
-                        { value: "133213123", label: "Carlos Perez" },
-                        { value: "23213213", label: "Henry Arias" },
-                      ].find((a) => a.value === gestionComercial.asesor10)}
+                      options={asesores10}
+                      value={asesores10.find((a) => a.value === gestionComercial.asesor10)}
                       onChange={(selectedOption, meta) => {
                         const value = selectedOption
                           ? selectedOption.value
@@ -2109,14 +2140,8 @@ export const Polizas = ({ setLoading, loading }) => {
                     <Select
                       name="asesorganador"
                       id="asesorganador"
-                      options={[
-                        { value: "12222111", label: "Armando Segura" },
-                        { value: "22211122", label: "Patricia Poliza" },
-                      ]}
-                      value={[
-                        { value: "12222111", label: "Armando Segura" },
-                        { value: "22211122", label: "Patricia Poliza" },
-                      ].find((a) => a.value === gestionComercial.asesorganador)}
+                      options={asesoresGanadores}
+                      value={asesoresGanadores.find((a) => a.value === gestionComercial.asesorganador)}
                       onChange={(selectedOption, meta) => {
                         const value = selectedOption
                           ? selectedOption.value
@@ -2211,518 +2236,6 @@ export const Polizas = ({ setLoading, loading }) => {
         </GeneralBox>
 
         {/* Seccion 7 Valores de Póliza */}
-
-        {/* {cabezotePoliza.ramo !== "6" ? (
-          <GeneralBox titulo="Valores de Póliza">
-            <div className="flex flex-col gap-6 w-full">
-              <div className="flex flex-row gap-4 pt-[20px] pb-[20px] flex-wrap w-auto">
-                <div className="flex flex-col w-[158px]">
-                  <div className="relative">
-                    <input
-                      type="text"
-                      id="primaneta"
-                      name="primaneta"
-                      style={{ backgroundColor: "#FCFCFC" }}
-                      className="peer w-[158px] border-b-[1.5px] border-gray-300 text-gray-900 placeholder-transparent focus:outline-none focus:border-lime-600 mt-2"
-                      placeholder="Prima Neta"
-                      value={valoresPoliza.primaneta}
-                      onChange={(e) => {
-                        const { value, name } = e.target;
-
-                        // Elimina caracteres que no sean dígitos
-                        const soloNumeros = value.replace(/\D/g, "");
-
-                        // Si el valor está vacío o no es un número válido, deja el campo vacío
-                        if (soloNumeros === "") {
-                          setValoresPoliza((prev) => ({
-                            ...prev,
-                            [name]: "",
-                          }));
-                          return;
-                        }
-
-                        const numero = parseInt(soloNumeros, 10);
-
-                        setValoresPoliza((prev) => ({
-                          ...prev,
-                          [name]: numero.toLocaleString("es-CO", {
-                            style: "currency",
-                            currency: "COP",
-                            minimumFractionDigits: 0,
-                            maximumFractionDigits: 0,
-                          }),
-                        }));
-                      }}
-                    />
-                    <label
-                      htmlFor="primaneta"
-                      className="absolute left-0 -top-4 text-gray-500 text-[15px] transition-all peer-placeholder-shown:top-[5px] peer-placeholder-shown:text-[14px] peer-placeholder-shown:text-gray-400 peer-focus:-top-5 peer-focus:text-sm peer-focus:text-gray-600"
-                    >
-                      Prima Neta
-                    </label>
-                  </div>
-                </div>
-                <div className="flex flex-col w-[158px]">
-                  <div className="relative w-[158px]">
-                    <input
-                      type="text"
-                      id="asistenciasotros"
-                      name="asistenciasotros"
-                      style={{ backgroundColor: "#FCFCFC" }}
-                      className="peer w-[158px] border-b-[1.5px] border-gray-300 text-gray-900 placeholder-transparent focus:outline-none focus:border-lime-600 mt-2"
-                      placeholder="Asistencias/Otros"
-                      value={valoresPoliza.asistenciasotros}
-                      onChange={(e) => {
-                        const { value, name } = e.target;
-
-                        // Elimina caracteres que no sean dígitos
-                        const soloNumeros = value.replace(/\D/g, "");
-
-                        // Si el valor está vacío o no es un número válido, deja el campo vacío
-                        if (soloNumeros === "") {
-                          setValoresPoliza((prev) => ({
-                            ...prev,
-                            [name]: "",
-                          }));
-                          return;
-                        }
-
-                        const numero = parseInt(soloNumeros, 10);
-
-                        setValoresPoliza((prev) => ({
-                          ...prev,
-                          [name]: numero.toLocaleString("es-CO", {
-                            style: "currency",
-                            currency: "COP",
-                            minimumFractionDigits: 0,
-                            maximumFractionDigits: 0,
-                          }),
-                        }));
-                      }}
-                    />
-                    <label
-                      htmlFor="asistenciasotros"
-                      style={{ backgroundColor: "#FCFCFC" }}
-                      className="absolute w-[158px] left-0 -top-4 text-gray-500 text-[15px] transition-all peer-placeholder-shown:top-[5px] peer-placeholder-shown:text-[14px] peer-placeholder-shown:text-gray-400 peer-focus:-top-5 peer-focus:text-sm peer-focus:text-gray-600"
-                    >
-                      Asistencias/Otros
-                    </label>
-                  </div>
-                </div>
-
-                <div className="flex flex-col w-[158px]">
-                  <div className="relative w-[158px]">
-                    <input
-                      type="text"
-                      name="gastosexpedicion"
-                      id="gastosexpedicion"
-                      style={{ backgroundColor: "#FCFCFC" }}
-                      className="peer w-[158px] border-b-[1.5px] border-gray-300 text-gray-900 placeholder-transparent focus:outline-none focus:border-lime-600 mt-2"
-                      placeholder="Gastos Expedición"
-                      value={valoresPoliza.gastosexpedicion}
-                      onChange={(e) => {
-                        const { value, name } = e.target;
-
-                        // Elimina caracteres que no sean dígitos
-                        const soloNumeros = value.replace(/\D/g, "");
-
-                        // Si el valor está vacío o no es un número válido, deja el campo vacío
-                        if (soloNumeros === "") {
-                          setValoresPoliza((prev) => ({
-                            ...prev,
-                            [name]: "",
-                          }));
-                          return;
-                        }
-
-                        const numero = parseInt(soloNumeros, 10);
-
-                        setValoresPoliza((prev) => ({
-                          ...prev,
-                          [name]: numero.toLocaleString("es-CO", {
-                            style: "currency",
-                            currency: "COP",
-                            minimumFractionDigits: 0,
-                            maximumFractionDigits: 0,
-                          }),
-                        }));
-                      }}
-                    />
-                    <label
-                      htmlFor="gastosexpedicion"
-                      className="w-[158px] absolute left-0 -top-4 text-gray-500 text-[15px] transition-all peer-placeholder-shown:top-[5px] peer-placeholder-shown:text-[14px] peer-placeholder-shown:text-gray-400 peer-focus:-top-5 peer-focus:text-sm peer-focus:text-gray-600"
-                    >
-                      Gastos Expedición
-                    </label>
-                  </div>
-                </div>
-              </div>
-
-              <div className="flex flex-row w-auto gap-4">
-                <div className="flex flex-col w-[158px]">
-                  <div className="relative w-[158px]">
-                    <input
-                      type="text"
-                      id="iva"
-                      name="iva"
-                      style={{ backgroundColor: "#FCFCFC" }}
-                      className="peer w-[158px] border-b-[1.5px] border-gray-300 text-gray-900 placeholder-transparent focus:outline-none focus:border-lime-600 mt-2"
-                      placeholder="IVA"
-                      value={valoresPoliza.iva}
-                      onChange={(e) => {
-                        const { value, name } = e.target;
-                        const soloNumeros = value.replace(/\D/g, "");
-                        if (soloNumeros === "") {
-                          // Vacío: quita el modo manual para que vuelva a calcular por %
-                          setValoresPoliza((prev) => ({
-                            ...prev,
-                            [name]: "",
-                            ivaManual: false,
-                          }));
-                          return;
-                        }
-                        const numero = parseInt(soloNumeros, 10);
-                        setValoresPoliza((prev) => ({
-                          ...prev,
-                          ivaManual: true, // se activa al escribir
-                          [name]: numero.toLocaleString("es-CO", {
-                            style: "currency",
-                            currency: "COP",
-                            minimumFractionDigits: 0,
-                            maximumFractionDigits: 0,
-                          }),
-                        }));
-                      }}
-                    />
-                    <label
-                      htmlFor="iva"
-                      className="w-[158px] absolute left-0 -top-4 text-gray-500 text-[15px] transition-all peer-placeholder-shown:top-[5px] peer-placeholder-shown:text-[14px] peer-placeholder-shown:text-gray-400 peer-focus:-top-5 peer-focus:text-sm peer-focus:text-gray-600"
-                    >
-                      IVA
-                    </label>
-                  </div>
-                </div>
-
-                <div className="flex flex-col w-[158px]">
-                  <div className="relative w-[158px]">
-                    <input
-                      type="text"
-                      id="valortotal"
-                      name="valortotal"
-                      value={valoresPoliza.valortotal}
-                      onChange={handleValorTotalChange}
-                      style={{ backgroundColor: "#FCFCFC" }}
-                      className="peer w-[158px] border-b-[1.5px] border-gray-300 text-gray-900 placeholder-transparent focus:outline-none focus:border-lime-600 mt-2"
-                      placeholder="Valor Total"
-                    />
-                    <label
-                      htmlFor="valortotal"
-                      className="w-[158px] absolute left-0 -top-4 text-gray-500 text-[15px] transition-all peer-placeholder-shown:top-[5px] peer-placeholder-shown:text-[14px] peer-placeholder-shown:text-gray-400 peer-focus:-top-5 peer-focus:text-sm peer-focus:text-gray-600"
-                    >
-                      Valor Total
-                    </label>
-                  </div>
-                </div>
-
-                <div className="flex flex-col w-1/3"></div>
-              </div>
-
-              <div className="flex flex-row gap-4">
-                <div className="flex flex-col w-1/3">
-                  <label htmlFor="formapago">Forma de pago:</label>
-                  <Select
-                    name="formapago"
-                    id="formapago"
-                    options={[
-                      { value: "1", label: "Financiada" },
-                      { value: "2", label: "Contado" },
-                    ]}
-                    value={[
-                      { value: "1", label: "Financiada" },
-                      { value: "2", label: "Contado" },
-                    ].find((opt) => opt.value === valoresPoliza.formapago)}
-                    onChange={async (selectedOption, meta) => {
-                      const value = selectedOption ? selectedOption.value : "";
-                      if (selectedOption?.value === "1") {
-                        await handleChangesFinanciera();
-                      }
-                      if (
-                        selectedOption?.value === "2" ||
-                        selectedOption?.value === ""
-                      ) {
-                        setValoresPoliza((prev) => ({
-                          ...prev,
-                          financiada: "",
-                          nocuotas: "",
-                        }));
-                        setQuotesFinancieras([]);
-                      }
-
-                      handleValorTotalChange({
-                        target: {
-                          name: meta.name,
-                          value,
-                        },
-                      });
-                    }}
-                    styles={customStyles}
-                    placeholder=""
-                    isClearable
-                  />
-                </div>
-                {valoresPoliza.formapago == "1" ? (
-                  <>
-                    <div className="flex flex-col w-1/3">
-                      <label htmlFor="financiada">Financiada por:</label>
-                      <Select
-                        name="financiada"
-                        id="financiada"
-                        options={financieras}
-                        value={financieras.find(
-                          (opt) => opt.value === valoresPoliza.financiada
-                        )}
-                        onChange={(selectedOption, meta) => {
-                          handlerChargeQuotesFinanciera(
-                            selectedOption.value || ""
-                          );
-                          const value = selectedOption
-                            ? selectedOption.value
-                            : "";
-                          handleValorTotalChange({
-                            target: {
-                              name: meta.name,
-                              value,
-                            },
-                          });
-                        }}
-                        styles={customStyles}
-                        placeholder=""
-                        isClearable
-                      />
-                    </div>
-
-                    <div className="flex flex-col w-1/3">
-                      <label htmlFor="no_cuotas"># Cuotas:</label>
-                      <Select
-                        name="nocuotas"
-                        id="nocuotas"
-                        options={quotesFinancieras}
-                        value={quotesFinancieras.find(
-                          (opt) => opt.value === valoresPoliza.nocuotas
-                        )}
-                        onChange={(selectedOption, meta) => {
-                          handleValorTotalChange({
-                            target: {
-                              name: meta.name,
-                              value: selectedOption ? selectedOption.value : "",
-                            },
-                          });
-                        }}
-                        styles={customStyles}
-                        placeholder="Seleccione..."
-                        isClearable
-                      />
-                    </div>
-                  </>
-                ) : (
-                  ""
-                )}
-              </div>
-            </div>
-
-            <div className="flex flex-col gap-1 w-1/3 mt-[25px]">
-              <label htmlFor="fechalimite">Fecha limite de pago:</label>
-              <input
-                type="date"
-                name="fechalimite"
-                id="fechalimite"
-                style={{ resize: "none", backgroundColor: "#FCFCFC" }}
-                className="border-0 border-gray-300 text-gray-900 focus:outline-none h-[30px] p-1 border-b-[1px]"
-                cols={1}
-                placeholder="Fecha límite de pago:"
-                value={sumarDias(cabezotePoliza.fechaInicioVigencia, 30) || ""}
-                onChange={handleValorTotalChange}
-              />
-            </div>
-          </GeneralBox>
-        ) : (
-          <GeneralBox titulo="Valores de Póliza">
-            <div className="flex flex-col gap-6 w-full">
-              <div className="flex flex-row gap-4 pt-[20px] pb-[20px] flex-wrap w-auto">
-                <div className="flex flex-col w-[158px]">
-                  <div className="relative">
-                    <input
-                      type="text"
-                      id="primaneta_aviajes"
-                      name="primaneta_aviajes"
-                      style={{ backgroundColor: "#FCFCFC" }}
-                      className="peer w-[158px] border-b-[1.5px] border-gray-300 text-gray-900 placeholder-transparent focus:outline-none focus:border-lime-600 mt-2"
-                      placeholder="Prima Neta"
-                      value={valoresPoliza.primaneta_aviajes}
-                      onChange={(e) => {
-                        const { value, name } = e.target;
-
-                        // Elimina caracteres que no sean dígitos
-                        const soloNumeros = value.replace(/\D/g, "");
-
-                        // Si el valor está vacío o no es un número válido, deja el campo vacío
-                        if (soloNumeros === "") {
-                          setValoresPoliza((prev) => ({
-                            ...prev,
-                            [name]: "",
-                          }));
-                          return;
-                        }
-
-                        const numero = parseInt(soloNumeros, 10);
-
-                        setValoresPoliza((prev) => ({
-                          ...prev,
-                          [name]: numero.toLocaleString("es-CO", {
-                            style: "currency",
-                            currency: "COP",
-                            minimumFractionDigits: 0,
-                            maximumFractionDigits: 0,
-                          }),
-                        }));
-                      }}
-                    />
-                    <label
-                      htmlFor="primaneta_aviajes"
-                      className="absolute left-0 -top-4 text-gray-500 text-[15px] transition-all peer-placeholder-shown:top-[5px] peer-placeholder-shown:text-[14px] peer-placeholder-shown:text-gray-400 peer-focus:-top-5 peer-focus:text-sm peer-focus:text-gray-600"
-                    >
-                      * Valor asistencia (US):
-                    </label>
-                  </div>
-                </div>
-                <div className="flex flex-col w-[158px]">
-                  <div className="relative w-[158px]">
-                    <input
-                      type="text"
-                      id="TRM_aviajes"
-                      name="TRM_aviajes"
-                      style={{ backgroundColor: "#FCFCFC" }}
-                      className="peer w-[158px] border-b-[1.5px] border-gray-300 text-gray-900 placeholder-transparent focus:outline-none focus:border-lime-600 mt-2"
-                      placeholder="TRM"
-                      value={valoresPoliza.TRM_aviajes}
-                      onChange={(e) => {
-                        const { value, name } = e.target;
-
-                        // Elimina caracteres que no sean dígitos
-                        const soloNumeros = value.replace(/\D/g, "");
-
-                        // Si el valor está vacío o no es un número válido, deja el campo vacío
-                        if (soloNumeros === "") {
-                          setValoresPoliza((prev) => ({
-                            ...prev,
-                            [name]: "",
-                          }));
-                          return;
-                        }
-
-                        const numero = parseInt(soloNumeros, 10);
-
-                        setValoresPoliza((prev) => ({
-                          ...prev,
-                          [name]: numero.toLocaleString("es-CO", {
-                            style: "currency",
-                            currency: "COP",
-                            minimumFractionDigits: 0,
-                            maximumFractionDigits: 0,
-                          }),
-                        }));
-                      }}
-                    />
-                    <label
-                      htmlFor="TRM_aviajes"
-                      style={{ backgroundColor: "#FCFCFC" }}
-                      className="absolute w-[158px] left-0 -top-4 text-gray-500 text-[15px] transition-all peer-placeholder-shown:top-[5px] peer-placeholder-shown:text-[14px] peer-placeholder-shown:text-gray-400 peer-focus:-top-5 peer-focus:text-sm peer-focus:text-gray-600"
-                    >
-                      TRM:
-                    </label>
-                  </div>
-                </div>
-
-                <div className="flex flex-col w-[158px]">
-                  <div className="relative w-[158px]">
-                    <input
-                      type="text"
-                      name="valor_asistencia_aviajes"
-                      id="valor_asistencia_aviajes"
-                      style={{ backgroundColor: "#FCFCFC" }}
-                      className="peer w-[158px] border-b-[1.5px] border-gray-300 text-gray-900 placeholder-transparent focus:outline-none focus:border-lime-600 mt-2"
-                      placeholder="Valor Asistencia (COP):"
-                      value={valoresPoliza.valor_asistencia_aviajes}
-                      onChange={(e) => {
-                        const { value, name } = e.target;
-
-                        // Elimina caracteres que no sean dígitos
-                        const soloNumeros = value.replace(/\D/g, "");
-
-                        // Si el valor está vacío o no es un número válido, deja el campo vacío
-                        if (soloNumeros === "") {
-                          setValoresPoliza((prev) => ({
-                            ...prev,
-                            [name]: "",
-                          }));
-                          return;
-                        }
-
-                        const numero = parseInt(soloNumeros, 10);
-
-                        setValoresPoliza((prev) => ({
-                          ...prev,
-                          [name]: numero.toLocaleString("es-CO", {
-                            style: "currency",
-                            currency: "COP",
-                            minimumFractionDigits: 0,
-                            maximumFractionDigits: 0,
-                          }),
-                        }));
-                      }}
-                    />
-                    <label
-                      htmlFor="valor_asistencia_aviajes"
-                      className="w-[158px] absolute left-0 -top-4 text-gray-500 text-[15px] transition-all peer-placeholder-shown:top-[5px] peer-placeholder-shown:text-[14px] peer-placeholder-shown:text-gray-400 peer-focus:-top-5 peer-focus:text-sm peer-focus:text-gray-600"
-                    >
-                      *Valor asistencia (COP):
-                    </label>
-                  </div>
-                </div>
-                <div className="flex flex-col w-[158px]">
-                  <div className="relative w-[158px]">
-                    <label htmlFor="formapago">Forma de pago:</label>
-                    <Select
-                      name="formapago"
-                      id="formapago"
-                      options={[{ value: "2", label: "Contado" }]}
-                      value={[{ value: "2", label: "Contado" }].find(
-                        (opt) => opt.value === valoresPoliza.formapago
-                      )}
-                      onChange={async (selectedOption, meta) => {
-                        const value = selectedOption
-                          ? selectedOption.value
-                          : "";
-                        if (selectedOption?.value === "1") {
-                          await handleChangesFinanciera();
-                        }
-                        handleValorTotalChange({
-                          target: {
-                            name: meta.name,
-                            value,
-                          },
-                        });
-                      }}
-                      styles={customStyles}
-                      placeholder=""
-                      isClearable
-                    />
-                  </div>
-                </div>
-              </div>
-            </div>
-          </GeneralBox>
-        )} */}
 
         <GeneralBox titulo="Valores de Póliza">
           <div className="flex flex-col gap-6 w-full">
@@ -2939,110 +2452,107 @@ export const Polizas = ({ setLoading, loading }) => {
             </div>
 
             <div className="flex flex-row gap-4">
-              {valoresPoliza.formapago == "1"
-                ? cabezotePoliza.ramo != 6 && (
-                    <>
-                      <div className="flex flex-col w-1/3">
-                        <label htmlFor="formapago">Forma de pago:</label>
-                        <Select
-                          name="formapago"
-                          id="formapago"
-                          options={[
-                            { value: "1", label: "Financiada" },
-                            { value: "2", label: "Contado" },
-                          ]}
-                          value={[
-                            { value: "1", label: "Financiada" },
-                            { value: "2", label: "Contado" },
-                          ].find(
-                            (opt) => opt.value === valoresPoliza.formapago
-                          )}
-                          onChange={async (selectedOption, meta) => {
-                            const value = selectedOption
-                              ? selectedOption.value
-                              : "";
-                            if (selectedOption?.value === "1") {
-                              await handleChangesFinanciera();
-                            }
-                            if (
-                              selectedOption?.value === "2" ||
-                              selectedOption?.value === ""
-                            ) {
-                              setValoresPoliza((prev) => ({
-                                ...prev,
-                                financiada: "",
-                                nocuotas: "",
-                              }));
-                              setQuotesFinancieras([]);
-                            }
+              <>
+                <div className="flex flex-col w-1/3">
+                  <label htmlFor="formapago">Forma de pago:</label>
+                  <Select
+                    name="formapago"
+                    id="formapago"
+                    options={[
+                      { value: "1", label: "Financiada" },
+                      { value: "2", label: "Contado" },
+                    ]}
+                    value={[
+                      { value: "1", label: "Financiada" },
+                      { value: "2", label: "Contado" },
+                    ].find((opt) => opt.value === valoresPoliza.formapago)}
+                    onChange={async (selectedOption, meta) => {
+                      const value = selectedOption ? selectedOption.value : "";
+                      if (selectedOption?.value === "1") {
+                        await handleChangesFinanciera();
+                      }
+                      if (
+                        selectedOption?.value === "2" ||
+                        selectedOption?.value === ""
+                      ) {
+                        setValoresPoliza((prev) => ({
+                          ...prev,
+                          financiada: "",
+                          nocuotas: "",
+                        }));
+                        setQuotesFinancieras([]);
+                      }
 
-                            handleValorTotalChange({
-                              target: {
-                                name: meta.name,
-                                value,
-                              },
-                            });
-                          }}
-                          styles={customStyles}
-                          placeholder=""
-                          isClearable
-                        />
-                      </div>
-                      <div className="flex flex-col w-1/3">
-                        <label htmlFor="financiada">Financiada por:</label>
-                        <Select
-                          name="financiada"
-                          id="financiada"
-                          options={financieras}
-                          value={financieras.find(
-                            (opt) => opt.value === valoresPoliza.financiada
-                          )}
-                          onChange={(selectedOption, meta) => {
-                            handlerChargeQuotesFinanciera(
-                              selectedOption.value || ""
-                            );
-                            const value = selectedOption
-                              ? selectedOption.value
-                              : "";
-                            handleValorTotalChange({
-                              target: {
-                                name: meta.name,
-                                value,
-                              },
-                            });
-                          }}
-                          styles={customStyles}
-                          placeholder=""
-                          isClearable
-                        />
-                      </div>
-                      <div className="flex flex-col w-1/3">
-                        <label htmlFor="no_cuotas"># Cuotas:</label>
-                        <Select
-                          name="nocuotas"
-                          id="nocuotas"
-                          options={quotesFinancieras}
-                          value={quotesFinancieras.find(
-                            (opt) => opt.value === valoresPoliza.nocuotas
-                          )}
-                          onChange={(selectedOption, meta) => {
-                            handleValorTotalChange({
-                              target: {
-                                name: meta.name,
-                                value: selectedOption
-                                  ? selectedOption.value
-                                  : "",
-                              },
-                            });
-                          }}
-                          styles={customStyles}
-                          placeholder="Seleccione..."
-                          isClearable
-                        />
-                      </div>
-                    </>
-                  )
-                : ""}
+                      handleValorTotalChange({
+                        target: {
+                          name: meta.name,
+                          value,
+                        },
+                      });
+                    }}
+                    styles={customStyles}
+                    placeholder=""
+                    isClearable
+                  />
+                </div>
+                {valoresPoliza.formapago == "1" ? (
+                  <>
+                    <div className="flex flex-col w-1/3">
+                      <label htmlFor="financiada">Financiada por:</label>
+                      <Select
+                        name="financiada"
+                        id="financiada"
+                        options={financieras}
+                        value={financieras.find(
+                          (opt) => opt.value === valoresPoliza.financiada
+                        )}
+                        onChange={(selectedOption, meta) => {
+                          handlerChargeQuotesFinanciera(
+                            selectedOption.value || ""
+                          );
+                          const value = selectedOption
+                            ? selectedOption.value
+                            : "";
+                          handleValorTotalChange({
+                            target: {
+                              name: meta.name,
+                              value,
+                            },
+                          });
+                        }}
+                        styles={customStyles}
+                        placeholder=""
+                        isClearable
+                      />
+                    </div>
+                    <div className="flex flex-col w-1/3">
+                      <label htmlFor="no_cuotas"># Cuotas:</label>
+                      <Select
+                        name="nocuotas"
+                        id="nocuotas"
+                        options={quotesFinancieras}
+                        value={quotesFinancieras.find(
+                          (opt) => opt.value === valoresPoliza.nocuotas
+                        )}
+                        onChange={(selectedOption, meta) => {
+                          handleValorTotalChange({
+                            target: {
+                              name: meta.name,
+                              value: selectedOption ? selectedOption.value : "",
+                            },
+                          });
+                        }}
+                        styles={customStyles}
+                        placeholder="Seleccione..."
+                        isClearable
+                      />
+                    </div>
+                  </>
+                ) : (
+                  ""
+                )}
+              </>
+              {/* )} */}
             </div>
           </div>
 

@@ -84,8 +84,9 @@ const ModalRegistroPago = ({
             </div>
             <section className="text-center pt-5">
               <p>
-                Ha seleccionado {selectedLiquidaciones.length} liquidaci{selectedLiquidaciones.length > 1 ? "ones": "ón"}.
-                Ingresa fecha de pago
+                Ha seleccionado {selectedLiquidaciones.length} liquidaci
+                {selectedLiquidaciones.length > 1 ? "ones" : "ón"}. Ingresa
+                fecha de pago
               </p>
               <div className="flex flex-row justify-center mt-9 items-center gap-3">
                 <p>Fecha de pago</p>
@@ -95,7 +96,7 @@ const ModalRegistroPago = ({
                   className="text-md border-[1px] border-gray-300 text-gray-900 focus:outline-none h-[35px] rounded-md p-2"
                   value={fechaPago}
                   onKeyDown={(e) => e.preventDefault()}
-                  min={new Date().toISOString().split("T")[0]}
+                  max={new Date().toISOString().split("T")[0]} // NO permite fechas futuras
                   onChange={(e) => setFechaPago(e.target.value)}
                 />
               </div>

@@ -137,7 +137,7 @@ export const Pagos = ({ loading, setLoading, isCollapsed }) => {
     "Director Comercial",
     "Analista Comercial",
     "Asistente Comercial",
-    "Asesor Comercial",
+    "Asesor Comercial Interno",
     "Analista Tecnico", // si a veces viene “Técnico”, lo cubrimos con normalización
     "Coordinador Tecnico Emision",
   ];
