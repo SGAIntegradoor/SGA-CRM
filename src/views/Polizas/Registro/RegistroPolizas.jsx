@@ -904,8 +904,12 @@ export const Polizas = ({ setLoading, loading }) => {
   useEffect(() => {
     const unidad = gestionComercial.unidadnegocio;
     if (["3"].includes(unidad)) {
+      handlerLoadAsesoresSGA(unidad)
       handlerLoadAsesores10();
+    } else if (["2"].includes(unidad)) {
+      handlerLoadAsesoresSGA(unidad)
     } else if (["4"].includes(unidad)) {
+      handlerLoadAsesoresSGA(unidad)
       handlerLoadAsesoresGanadores();
     } else {
       // Si no aplica asesores internos, limpiar opciones para evitar residuos de selects

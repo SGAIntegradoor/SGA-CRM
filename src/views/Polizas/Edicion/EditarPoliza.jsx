@@ -42,6 +42,9 @@ import { getLiquidacionesToQuery } from "../../../services/Polizas/Query/getLiqu
 import SkeletonLine from "../../../components/SkeletonLine/SkeletonLine";
 import { getCoordinadores } from "../../../services/Users/getCoordinadores";
 import { getFinancieras } from "../../../services/Polizas/getFinancieras";
+import { getAsesores10 } from "../../../services/Users/getAsesores10";
+import { getAsesoresGanadores } from "../../../services/Users/getAsesoresGanadores";
+import { getAsesoresSGA } from "../../../services/Users/getAsesoresSGA";
 
 /* Helpers */
 const noop = () => {};
@@ -318,8 +321,12 @@ export const EditarPoliza = ({ setLoading, loading }) => {
   const [freelances, setFreelances] = useState([]);
   const [unidadNegocio, setUnidadNegocio] = useState([]);
   const [tecnicosEmisores, setTecnicosEmisores] = useState([]);
+  const [asesoresSGA, setAsesoresSGA] = useState([]);
   const [asistentes, setAsistentes] = useState([]);
+  // const [coordinadores, setCoordinadores] = useState([]);
   const [directoresComerciales, setDirectoresComerciales] = useState([]);
+  const [asesoresGanadores, setAsesoresGanadores] = useState([]);
+  const [asesores10, setAsesores10] = useState([]);
 
   const [gestionComercial, setGestionComercial] = useState({
     tecnicoemisor: "",
@@ -1036,7 +1043,8 @@ export const EditarPoliza = ({ setLoading, loading }) => {
             coordinadortecnico: data.gestionComercial.coordinadortecnico || "",
             asistente: data.gestionComercial.asistente || "",
             unidadnegocio: data.gestionComercial.unidadnegocio || "",
-            observaciones: data.gestionComercial.observaciones_gstn_comercial || "",
+            observaciones:
+              data.gestionComercial.observaciones_gstn_comercial || "",
           });
           setValoresPoliza({
             iva: convertToPesos(data.valoresPoliza.iva || 0),
@@ -1135,7 +1143,7 @@ export const EditarPoliza = ({ setLoading, loading }) => {
       if (response.status === "Ok" && response.codeStatus !== 404) {
         // ✅ por defecto trae todo
         dataP = response.data || {};
-        console.log(dataP)
+        console.log(dataP);
         // Si es unidad 1, oculta ciertos roles
         if (unidadNeg === "1") {
           delete dataP["Asesor 10"];
@@ -1460,6 +1468,50 @@ export const EditarPoliza = ({ setLoading, loading }) => {
 
   const loc =
     path.split("/")[2] !== "edicion" && path.split("/")[2] !== "consulta";
+
+  const handlerLoadAsesoresGanadores = async () => {
+    // Function to load business units data
+    // This is a placeholder for the actual implementation
+    const asesGanadores = await getAsesoresGanadores();
+    setAsesoresGanadores(asesGanadores);
+  };
+
+  const handlerLoadAsesores10 = async () => {
+    // Function to load business units data
+    // This is a placeholder for the actual implementation
+    const ases10 = await getAsesores10();
+    setAsesores10(ases10);
+  };
+
+  const handlerLoadAsesoresSGA = async (unidadNegocio) => {
+    // Function to load business units data
+    // This is a placeholder for the actual implementation
+    const asesorescomercialesint = await getAsesoresSGA(unidadNegocio);
+    setAsesoresSGA(asesorescomercialesint);
+  };
+
+  useEffect(() => {
+    const unidad = gestionComercial.unidadnegocio;
+    if (["3"].includes(unidad)) {
+      handlerLoadAsesoresSGA(unidad);
+      handlerLoadAsesores10();
+    } else if (["2"].includes(unidad)) {
+      handlerLoadAsesoresSGA(unidad);
+    } else if (["4"].includes(unidad)) {
+      handlerLoadAsesoresSGA(unidad);
+      handlerLoadAsesoresGanadores();
+    } else {
+      // Si no aplica asesores internos, limpiar opciones para evitar residuos de selects
+      setAsesoresSGA([]);
+    }
+  }, [gestionComercial.unidadnegocio]);
+
+  const sumarDias = (fecha, dias) => {
+    if (fecha == null || fecha == "") return null;
+    const nuevaFecha = new Date(fecha);
+    nuevaFecha.setDate(nuevaFecha.getDate() + dias);
+    return nuevaFecha.toISOString().split("T")[0]; // Formato YYYY-MM-DD
+  };
 
   return (
     <div className="flex flex-col">
@@ -1976,6 +2028,7 @@ export const EditarPoliza = ({ setLoading, loading }) => {
       </section>
 
       {/* Seccion 6 Gestion Comercial */}
+      {/* Seccion 6 Gestion Comercial */}
       <section className="grid grid-cols-1 md:grid-cols-2 w-full">
         <GeneralBox titulo="Gestión Comercial">
           <div className="flex flex-col gap-6 w-full">
@@ -1992,13 +2045,15 @@ export const EditarPoliza = ({ setLoading, loading }) => {
                     (opt) => opt.value === gestionComercial.tecnicoemisor
                   )}
                   onChange={(selectedOption, meta) => {
+                    const value = selectedOption ? selectedOption.value : "";
                     handleGestionComercialChange({
-                      target: { name: meta.name, value: selectedOption.value },
+                      target: { name: meta.name, value },
                     });
                   }}
-                  isDisabled={id_poliza || id_anexo}
+                  isClearable
                 />
               </div>
+
               <div className="flex flex-col w-1/3">
                 <label htmlFor="unidadnegocio">Unidad de negocio</label>
                 <Select
@@ -2007,15 +2062,19 @@ export const EditarPoliza = ({ setLoading, loading }) => {
                   options={unidadNegocio}
                   placeholder=""
                   styles={customStyles}
-                  value={unidadNegocio.find(
-                    (opt) => opt.value === gestionComercial.unidadnegocio
-                  )}
+                  value={
+                    unidadNegocio.find(
+                      (opt) =>
+                        opt.value === (gestionComercial.unidadnegocio ?? "")
+                    ) || null
+                  }
                   onChange={(selectedOption, meta) => {
+                    const value = selectedOption ? selectedOption.value : "";
                     handleGestionComercialChange({
-                      target: { name: meta.name, value: selectedOption.value },
+                      target: { name: meta.name, value },
                     });
                   }}
-                  isDisabled={id_poliza || id_anexo}
+                  isClearable
                 />
               </div>
               {gestionComercial.unidadnegocio == "1" ||
@@ -2030,23 +2089,24 @@ export const EditarPoliza = ({ setLoading, loading }) => {
                         (f) => f.value === gestionComercial.asesorfreelance
                       )}
                       onChange={(selectedOption, meta) => {
+                        const value = selectedOption
+                          ? selectedOption.value
+                          : "";
                         handleGetAnalistaByFreelance({
                           target: {
                             name: meta.name,
-                            value: selectedOption.value,
+                            value,
                           },
                         });
+
                         handleGestionComercialChange({
-                          target: {
-                            name: meta.name,
-                            value: selectedOption.value,
-                          },
+                          target: { name: meta.name, value },
                         });
                       }}
                       options={freelances}
                       placeholder=""
                       styles={customStyles}
-                      isDisabled={id_poliza || id_anexo}
+                      isClearable
                     />
                   </div>
                 </>
@@ -2062,31 +2122,25 @@ export const EditarPoliza = ({ setLoading, loading }) => {
                     </label>
                     <Select
                       name="asesorcomercialinterno"
-                      id="asesorcomercialinterno"
-                      value={[
-                        { value: "", label: "" },
-                        { value: "1144082654", label: "Santiago Taborda" },
-                        { value: "67038128", label: "Leidy Johanna Arenas" },
-                      ].find(
-                        (f) =>
-                          f.value === gestionComercial.asesorcomercialinterno
-                      )}
-                      onChange={(selectedOption, meta) => {
+                      options={asesoresSGA}
+                      value={
+                        gestionComercial.asesorcomercialinterno
+                          ? asesoresSGA.find(
+                              (o) =>
+                                o.value ===
+                                gestionComercial.asesorcomercialinterno
+                            )
+                          : null
+                      }
+                      onChange={(opt, meta) =>
                         handleGestionComercialChange({
-                          target: {
-                            name: meta.name,
-                            value: selectedOption.value,
-                          },
-                        });
-                      }}
-                      options={[
-                        { value: "", label: "" },
-                        { value: "1144082654", label: "Santiago Taborda" },
-                        { value: "67038128", label: "Leidy Johanna Arenas" },
-                      ]}
-                      placeholder=""
+                          target: { name: meta.name, value: opt?.value ?? "" },
+                        })
+                      }
+                      // isClearable
                       styles={customStyles}
-                      isDisabled={id_poliza || id_anexo}
+                      placeholder=""
+                      isClearable
                     />
                   </div>
                 </>
@@ -2099,107 +2153,115 @@ export const EditarPoliza = ({ setLoading, loading }) => {
               {gestionComercial.unidadnegocio == "" ||
               gestionComercial.unidadnegocio == "1" ? (
                 <>
-                  <div className="flex flex-col w-1/3">
-                    <label htmlFor="analista">Analista Comercial</label>
-                    <Select
-                      name="analista"
-                      id="analista"
-                      options={analistas}
-                      placeholder=""
-                      styles={customStyles}
-                      value={analistas.find(
-                        (a) => a.value === gestionComercial.analista
-                      )}
-                      onChange={(selectedOption, meta) => {
-                        handleGestionComercialChange({
-                          target: {
-                            name: meta.name,
-                            value: selectedOption.value,
-                          },
-                        });
-                      }}
-                      isDisabled={id_poliza || id_anexo}
-                    />
-                  </div>
-                  <div className="flex flex-col w-1/3">
-                    <label htmlFor="asistente">Asistente Comercial</label>
-                    <Select
-                      options={asistentes}
-                      name="asistente"
-                      id="asistente"
-                      value={asistentes.find(
-                        (a) => a.value === gestionComercial.asistente
-                      )}
-                      onChange={(selectedOption, meta) => {
-                        handleGestionComercialChange({
-                          target: {
-                            name: meta.name,
-                            value: selectedOption.value,
-                          },
-                        });
-                      }}
-                      placeholder=""
-                      styles={customStyles}
-                      isDisabled={id_poliza || id_anexo}
-                    />
-                  </div>
+                  <>
+                    <div className="flex flex-col w-1/3">
+                      <label htmlFor="analista">Analista Comercial</label>
+                      <Select
+                        name="analista"
+                        id="analista"
+                        options={analistas}
+                        placeholder=""
+                        styles={customStyles}
+                        value={analistas.find(
+                          (a) => a.value === gestionComercial.analista
+                        )}
+                        onChange={(selectedOption, meta) => {
+                          const value = selectedOption
+                            ? selectedOption.value
+                            : "";
+                          handleGestionComercialChange({
+                            target: {
+                              name: meta.name,
+                              value,
+                            },
+                          });
+                        }}
+                        isClearable
+                      />
+                    </div>
+                    <div className="flex flex-col w-1/3">
+                      <label htmlFor="asistente">Asistente Comercial</label>
+                      <Select
+                        options={asistentes}
+                        name="asistente"
+                        id="asistente"
+                        value={asistentes.find(
+                          (a) => a.value === gestionComercial.asistente
+                        )}
+                        onChange={(selectedOption, meta) => {
+                          const value = selectedOption
+                            ? selectedOption.value
+                            : "";
+                          handleGestionComercialChange({
+                            target: {
+                              name: meta.name,
+                              value,
+                            },
+                          });
+                        }}
+                        placeholder=""
+                        styles={customStyles}
+                        isClearable
+                      />
+                    </div>
 
-                  <div className="flex flex-col w-1/3">
-                    <label htmlFor="directorcomercial">
-                      Director Comercial
-                    </label>
-                    <Select
-                      name="directorcomercial"
-                      id="directorcomercial"
-                      options={directoresComerciales}
-                      value={directoresComerciales.find(
-                        (a) => a.value === gestionComercial.directorcomercial
-                      )}
-                      onChange={(selectedOption, meta) => {
-                        handleGestionComercialChange({
-                          target: {
-                            name: meta.name,
-                            value: selectedOption.value,
-                          },
-                        });
-                      }}
-                      placeholder=""
-                      styles={customStyles}
-                      isDisabled={id_poliza || id_anexo}
-                    />
-                  </div>
+                    <div className="flex flex-col w-1/3">
+                      <label htmlFor="directorcomercial">
+                        Director Comercial
+                      </label>
+                      <Select
+                        name="directorcomercial"
+                        id="directorcomercial"
+                        options={directoresComerciales}
+                        value={directoresComerciales.find(
+                          (a) => a.value === gestionComercial.directorcomercial
+                        )}
+                        onChange={(selectedOption, meta) => {
+                          const value = selectedOption
+                            ? selectedOption.value
+                            : "";
+                          handleGestionComercialChange({
+                            target: {
+                              name: meta.name,
+                              value,
+                            },
+                          });
+                        }}
+                        placeholder=""
+                        styles={customStyles}
+                        isClearable
+                      />
+                    </div>
+                  </>
                 </>
               ) : (
                 ""
               )}
               {gestionComercial.unidadnegocio == "3" ? (
                 <>
-                  <div className="flex flex-col w-1/3">
+                  <div className="flex flex-col w-[165px]">
                     <label htmlFor="asesor10">Asesor 10</label>
                     <Select
                       name="asesor10"
                       id="asesor10"
-                      options={[
-                        { value: "", label: "" },
-                        { value: "133213123", label: "Carlos Perez" },
-                        { value: "23213213", label: "Henry Arias" },
-                      ]}
-                      value={[
-                        { value: "", label: "" },
-                        { value: "133213123", label: "Carlos Perez" },
-                        { value: "23213213", label: "Henry Arias" },
-                      ].find((a) => a.value === gestionComercial.asesor10)}
+                      options={asesores10}
+                      value={asesores10.find(
+                        (a) => a.value === gestionComercial.asesor10
+                      )}
                       onChange={(selectedOption, meta) => {
+                        const value = selectedOption
+                          ? selectedOption.value
+                          : "";
                         handleGestionComercialChange({
                           target: {
                             name: meta.name,
-                            value: selectedOption.value,
+                            value,
                           },
                         });
                       }}
                       placeholder=""
                       styles={customStyles}
-                      isDisabled={id_poliza || id_anexo}
+                      isClearable
                     />
                   </div>
 
@@ -2216,7 +2278,7 @@ export const EditarPoliza = ({ setLoading, loading }) => {
                       value={coordinadores.find(
                         (opt) =>
                           opt.value === gestionComercial.coordinadortecnico
-                      ) || ""}
+                      )}
                       onChange={(selectedOption, meta) => {
                         const value = selectedOption
                           ? selectedOption.value
@@ -2225,7 +2287,7 @@ export const EditarPoliza = ({ setLoading, loading }) => {
                           target: { name: meta.name, value },
                         });
                       }}
-                      // isClearable
+                      isClearable
                     />
                   </div>
                 </>
@@ -2234,32 +2296,54 @@ export const EditarPoliza = ({ setLoading, loading }) => {
               )}
               {gestionComercial.unidadnegocio == "4" ? (
                 <>
-                  <div className="flex flex-col w-1/3">
+                  <div className="flex flex-col w-[165px]">
                     <label htmlFor="asesorganador">Asesor Ganador</label>
                     <Select
                       name="asesorganador"
                       id="asesorganador"
-                      options={[
-                        { value: "", label: "" },
-                        { value: "12222111", label: "Armando Segura" },
-                        { value: "22211122", label: "Patricia Poliza" },
-                      ]}
-                      value={[
-                        { value: "", label: "" },
-                        { value: "12222111", label: "Armando Segura" },
-                        { value: "22211122", label: "Patricia Poliza" },
-                      ].find((a) => a.value === gestionComercial.asesorganador)}
+                      options={asesoresGanadores}
+                      value={asesoresGanadores.find(
+                        (a) => a.value === gestionComercial.asesorganador
+                      )}
                       onChange={(selectedOption, meta) => {
+                        const value = selectedOption
+                          ? selectedOption.value
+                          : "";
                         handleGestionComercialChange({
                           target: {
                             name: meta.name,
-                            value: selectedOption.value,
+                            value,
                           },
                         });
                       }}
                       placeholder=""
                       styles={customStyles}
-                      isDisabled={id_poliza || id_anexo}
+                      isClearable
+                    />
+                  </div>
+                  <div className="flex flex-col w-[165px]">
+                    <label htmlFor="coordinadortecnico">
+                      Coordinador Técnico
+                    </label>
+                    <Select
+                      name="coordinadortecnico"
+                      id="coordinadortecnico"
+                      options={coordinadores}
+                      placeholder=""
+                      styles={customStyles}
+                      value={coordinadores.find(
+                        (opt) =>
+                          opt.value === gestionComercial.coordinadortecnico
+                      )}
+                      onChange={(selectedOption, meta) => {
+                        const value = selectedOption
+                          ? selectedOption.value
+                          : "";
+                        handleGestionComercialChange({
+                          target: { name: meta.name, value },
+                        });
+                      }}
+                      isClearable
                     />
                   </div>
                 </>
@@ -2268,7 +2352,8 @@ export const EditarPoliza = ({ setLoading, loading }) => {
               )}
             </div>
           </div>
-          {gestionComercial.unidadnegocio != "3" ? (
+          {gestionComercial.unidadnegocio != "3" &&
+          gestionComercial.unidadnegocio != "4" ? (
             <>
               <div className="flex flex-row gap-4 mt-2">
                 <div className="flex flex-col w-[165px]">
@@ -2290,7 +2375,7 @@ export const EditarPoliza = ({ setLoading, loading }) => {
                         target: { name: meta.name, value },
                       });
                     }}
-                    // isClearable
+                    isClearable
                   />
                 </div>
               </div>
@@ -2309,7 +2394,6 @@ export const EditarPoliza = ({ setLoading, loading }) => {
               placeholder="Observaciones"
               value={gestionComercial.observaciones}
               onChange={handleGestionComercialChange}
-              disabled={id_poliza || id_anexo}
             ></textarea>
           </div>
         </GeneralBox>
@@ -2322,21 +2406,40 @@ export const EditarPoliza = ({ setLoading, loading }) => {
               <div className="flex flex-col w-[158px]">
                 <div className="relative">
                   <input
-                    // disabled={
-                    //   valoresRecibidos.length >= 1
-                    //     ? valoresRecibidos.some((v) => v.valor !== "")
-                    //     : id_anexo || id_poliza
-                    //     ? true
-                    //     : false
-                    // }
                     type="text"
                     id="primaneta"
                     name="primaneta"
                     style={{ backgroundColor: "#FCFCFC" }}
                     className="peer w-[158px] border-b-[1.5px] border-gray-300 text-gray-900 placeholder-transparent focus:outline-none focus:border-lime-600 mt-2"
                     placeholder="Prima Neta"
-                    value={valoresPoliza.primaneta || ""}
-                    onChange={handleMoneyPoliza}
+                    value={valoresPoliza.primaneta}
+                    onChange={(e) => {
+                      const { value, name } = e.target;
+
+                      // Elimina caracteres que no sean dígitos
+                      const soloNumeros = value.replace(/\D/g, "");
+
+                      // Si el valor está vacío o no es un número válido, deja el campo vacío
+                      if (soloNumeros === "") {
+                        setValoresPoliza((prev) => ({
+                          ...prev,
+                          [name]: "",
+                        }));
+                        return;
+                      }
+
+                      const numero = parseInt(soloNumeros, 10);
+
+                      setValoresPoliza((prev) => ({
+                        ...prev,
+                        [name]: numero.toLocaleString("es-CO", {
+                          style: "currency",
+                          currency: "COP",
+                          minimumFractionDigits: 0,
+                          maximumFractionDigits: 0,
+                        }),
+                      }));
+                    }}
                   />
                   <label
                     htmlFor="primaneta"
@@ -2350,27 +2453,42 @@ export const EditarPoliza = ({ setLoading, loading }) => {
                 <div className="relative w-[158px]">
                   <input
                     type="text"
-                    // disabled={
-                    //   valoresRecibidos.length >= 1
-                    //     ? valoresRecibidos.some((v) => v.valor !== "")
-                    //     : id_anexo || id_poliza
-                    //     ? true
-                    //     : false
-                    // }
                     id="asistenciasotros"
                     name="asistenciasotros"
                     style={{ backgroundColor: "#FCFCFC" }}
                     className="peer w-[158px] border-b-[1.5px] border-gray-300 text-gray-900 placeholder-transparent focus:outline-none focus:border-lime-600 mt-2"
                     placeholder="Asistencias/Otros"
-                    value={valoresPoliza.asistenciasotros || ""}
-                    onChange={handleMoneyPoliza}
+                    value={valoresPoliza.asistenciasotros}
+                    onChange={(e) => {
+                      const { value, name } = e.target;
+
+                      // Elimina caracteres que no sean dígitos
+                      const soloNumeros = value.replace(/\D/g, "");
+
+                      // Si el valor está vacío o no es un número válido, deja el campo vacío
+                      if (soloNumeros === "") {
+                        setValoresPoliza((prev) => ({
+                          ...prev,
+                          [name]: "",
+                        }));
+                        return;
+                      }
+
+                      const numero = parseInt(soloNumeros, 10);
+
+                      setValoresPoliza((prev) => ({
+                        ...prev,
+                        [name]: numero.toLocaleString("es-CO", {
+                          style: "currency",
+                          currency: "COP",
+                          minimumFractionDigits: 0,
+                          maximumFractionDigits: 0,
+                        }),
+                      }));
+                    }}
                   />
                   <label
                     htmlFor="asistenciasotros"
-                    disabled={
-                      valoresRecibidos.length >= 1 &&
-                      valoresRecibidos.some((v) => v.valor !== "")
-                    }
                     style={{ backgroundColor: "#FCFCFC" }}
                     className="absolute w-[158px] left-0 -top-4 text-gray-500 text-[15px] transition-all peer-placeholder-shown:top-[5px] peer-placeholder-shown:text-[14px] peer-placeholder-shown:text-gray-400 peer-focus:-top-5 peer-focus:text-sm peer-focus:text-gray-600"
                   >
@@ -2385,18 +2503,37 @@ export const EditarPoliza = ({ setLoading, loading }) => {
                     type="text"
                     name="gastosexpedicion"
                     id="gastosexpedicion"
-                    // disabled={
-                    //   valoresRecibidos.length >= 1
-                    //     ? valoresRecibidos.some((v) => v.valor !== "")
-                    //     : id_anexo || id_poliza
-                    //     ? true
-                    //     : false
-                    // }
                     style={{ backgroundColor: "#FCFCFC" }}
                     className="peer w-[158px] border-b-[1.5px] border-gray-300 text-gray-900 placeholder-transparent focus:outline-none focus:border-lime-600 mt-2"
                     placeholder="Gastos Expedición"
-                    value={valoresPoliza.gastosexpedicion || ""}
-                    onChange={handleMoneyPoliza}
+                    value={valoresPoliza.gastosexpedicion}
+                    onChange={(e) => {
+                      const { value, name } = e.target;
+
+                      // Elimina caracteres que no sean dígitos
+                      const soloNumeros = value.replace(/\D/g, "");
+
+                      // Si el valor está vacío o no es un número válido, deja el campo vacío
+                      if (soloNumeros === "") {
+                        setValoresPoliza((prev) => ({
+                          ...prev,
+                          [name]: "",
+                        }));
+                        return;
+                      }
+
+                      const numero = parseInt(soloNumeros, 10);
+
+                      setValoresPoliza((prev) => ({
+                        ...prev,
+                        [name]: numero.toLocaleString("es-CO", {
+                          style: "currency",
+                          currency: "COP",
+                          minimumFractionDigits: 0,
+                          maximumFractionDigits: 0,
+                        }),
+                      }));
+                    }}
                   />
                   <label
                     htmlFor="gastosexpedicion"
@@ -2415,18 +2552,34 @@ export const EditarPoliza = ({ setLoading, loading }) => {
                     type="text"
                     id="iva"
                     name="iva"
-                    // disabled={
-                    //   valoresRecibidos.length >= 1
-                    //     ? valoresRecibidos.some((v) => v.valor !== "")
-                    //     : id_anexo || id_poliza
-                    //     ? true
-                    //     : false
-                    // }
                     style={{ backgroundColor: "#FCFCFC" }}
                     className="peer w-[158px] border-b-[1.5px] border-gray-300 text-gray-900 placeholder-transparent focus:outline-none focus:border-lime-600 mt-2"
                     placeholder="IVA"
-                    value={valoresPoliza.iva || ""}
-                    onChange={handleMoneyPoliza}
+                    value={valoresPoliza.iva}
+                    onChange={(e) => {
+                      const { value, name } = e.target;
+                      const soloNumeros = value.replace(/\D/g, "");
+                      if (soloNumeros === "") {
+                        // Vacío: quita el modo manual para que vuelva a calcular por %
+                        setValoresPoliza((prev) => ({
+                          ...prev,
+                          [name]: "",
+                          ivaManual: false,
+                        }));
+                        return;
+                      }
+                      const numero = parseInt(soloNumeros, 10);
+                      setValoresPoliza((prev) => ({
+                        ...prev,
+                        ivaManual: true, // se activa al escribir
+                        [name]: numero.toLocaleString("es-CO", {
+                          style: "currency",
+                          currency: "COP",
+                          minimumFractionDigits: 0,
+                          maximumFractionDigits: 0,
+                        }),
+                      }));
+                    }}
                   />
                   <label
                     htmlFor="iva"
@@ -2443,15 +2596,8 @@ export const EditarPoliza = ({ setLoading, loading }) => {
                     type="text"
                     id="valortotal"
                     name="valortotal"
-                    // disabled={
-                    //   valoresRecibidos.length >= 1
-                    //     ? valoresRecibidos.some((v) => v.valor !== "")
-                    //     : id_anexo || id_poliza
-                    //     ? true
-                    //     : false
-                    // }
-                    value={valoresPoliza.valortotal || ""}
-                    onChange={handleMoneyPoliza}
+                    value={valoresPoliza.valortotal}
+                    onChange={handleValorTotalChange}
                     style={{ backgroundColor: "#FCFCFC" }}
                     className="peer w-[158px] border-b-[1.5px] border-gray-300 text-gray-900 placeholder-transparent focus:outline-none focus:border-lime-600 mt-2"
                     placeholder="Valor Total"
@@ -2469,115 +2615,107 @@ export const EditarPoliza = ({ setLoading, loading }) => {
             </div>
 
             <div className="flex flex-row gap-4">
-              {valoresPoliza.formapago == "1"
-                ? cabezotePoliza.ramo != 6 && (
-                    <>
-                      <div className="flex flex-col w-1/3">
-                        <label htmlFor="formapago">Forma de pago:</label>
-                        <Select
-                          name="formapago"
-                          id="formapago"
-                          options={[
-                            { value: "1", label: "Financiada" },
-                            { value: "2", label: "Contado" },
-                          ]}
-                          value={
-                            [
-                              { value: "1", label: "Financiada" },
-                              { value: "2", label: "Contado" },
-                            ].find(
-                              (opt) => opt.value === valoresPoliza.formapago
-                            ) || ""
-                          }
-                          onChange={async (selectedOption, meta) => {
-                            const value = selectedOption
-                              ? selectedOption.value
-                              : "";
-                            if (selectedOption?.value === "1") {
-                              await handleChangesFinanciera();
-                            }
-                            if (
-                              selectedOption?.value === "2" ||
-                              selectedOption?.value === ""
-                            ) {
-                              setValoresPoliza((prev) => ({
-                                ...prev,
-                                financiada: "",
-                                nocuotas: "",
-                              }));
-                              setQuotesFinancieras([]);
-                            }
+              <>
+                <div className="flex flex-col w-1/3">
+                  <label htmlFor="formapago">Forma de pago:</label>
+                  <Select
+                    name="formapago"
+                    id="formapago"
+                    options={[
+                      { value: "1", label: "Financiada" },
+                      { value: "2", label: "Contado" },
+                    ]}
+                    value={[
+                      { value: "1", label: "Financiada" },
+                      { value: "2", label: "Contado" },
+                    ].find((opt) => opt.value === valoresPoliza.formapago)}
+                    onChange={async (selectedOption, meta) => {
+                      const value = selectedOption ? selectedOption.value : "";
+                      if (selectedOption?.value === "1") {
+                        await handleChangesFinanciera();
+                      }
+                      if (
+                        selectedOption?.value === "2" ||
+                        selectedOption?.value === ""
+                      ) {
+                        setValoresPoliza((prev) => ({
+                          ...prev,
+                          financiada: "",
+                          nocuotas: "",
+                        }));
+                        setQuotesFinancieras([]);
+                      }
 
-                            handleValorTotalChange({
-                              target: {
-                                name: meta.name,
-                                value,
-                              },
-                            });
-                          }}
-                          styles={customStyles}
-                          placeholder=""
-                          isClearable
-                        />
-                      </div>
-                      <div className="flex flex-col w-1/3">
-                        <label htmlFor="financiada">Financiada por:</label>
-                        <Select
-                          name="financiada"
-                          id="financiada"
-                          options={financieras}
-                          value={financieras.find(
-                            (opt) =>
-                              opt.value === valoresPoliza.financiada || ""
-                          )}
-                          onChange={(selectedOption, meta) => {
-                            handlerChargeQuotesFinanciera(
-                              selectedOption.value || ""
-                            );
-                            const value = selectedOption
-                              ? selectedOption.value
-                              : "";
-                            handleValorTotalChange({
-                              target: {
-                                name: meta.name,
-                                value,
-                              },
-                            });
-                          }}
-                          styles={customStyles}
-                          placeholder=""
-                          isClearable
-                        />
-                      </div>
-                      <div className="flex flex-col w-1/3">
-                        <label htmlFor="no_cuotas"># Cuotas:</label>
-                        <Select
-                          name="nocuotas"
-                          id="nocuotas"
-                          options={quotesFinancieras}
-                          value={
-                            quotesFinancieras.find(
-                              (opt) => opt.value === valoresPoliza.nocuotas
-                            ) || ""
-                          }
-                          onChange={(selectedOption, meta) => {
-                            handleValorTotalChange({
-                              target: {
-                                name: meta.name,
-                                value: selectedOption
-                                  ? selectedOption.value
-                                  : "",
-                              },
-                            });
-                          }}
-                          styles={customStyles}
-                          placeholder="Seleccione..."
-                          isClearable
-                        />
-                      </div>
-                    </>
-                  )
-                : ""}
+                      handleValorTotalChange({
+                        target: {
+                          name: meta.name,
+                          value,
+                        },
+                      });
+                    }}
+                    styles={customStyles}
+                    placeholder=""
+                    isClearable
+                  />
+                </div>
+                {valoresPoliza.formapago == "1" ? (
+                  <>
+                    <div className="flex flex-col w-1/3">
+                      <label htmlFor="financiada">Financiada por:</label>
+                      <Select
+                        name="financiada"
+                        id="financiada"
+                        options={financieras}
+                        value={financieras.find(
+                          (opt) => opt.value === valoresPoliza.financiada
+                        )}
+                        onChange={(selectedOption, meta) => {
+                          handlerChargeQuotesFinanciera(
+                            selectedOption.value || ""
+                          );
+                          const value = selectedOption
+                            ? selectedOption.value
+                            : "";
+                          handleValorTotalChange({
+                            target: {
+                              name: meta.name,
+                              value,
+                            },
+                          });
+                        }}
+                        styles={customStyles}
+                        placeholder=""
+                        isClearable
+                      />
+                    </div>
+                    <div className="flex flex-col w-1/3">
+                      <label htmlFor="no_cuotas"># Cuotas:</label>
+                      <Select
+                        name="nocuotas"
+                        id="nocuotas"
+                        options={quotesFinancieras}
+                        value={quotesFinancieras.find(
+                          (opt) => opt.value === valoresPoliza.nocuotas
+                        )}
+                        onChange={(selectedOption, meta) => {
+                          handleValorTotalChange({
+                            target: {
+                              name: meta.name,
+                              value: selectedOption ? selectedOption.value : "",
+                            },
+                          });
+                        }}
+                        styles={customStyles}
+                        placeholder="Seleccione..."
+                        isClearable
+                      />
+                    </div>
+                  </>
+                ) : (
+                  ""
+                )}
+              </>
+              {/* )} */}
             </div>
           </div>
 
@@ -2587,20 +2725,12 @@ export const EditarPoliza = ({ setLoading, loading }) => {
               type="date"
               name="fechalimite"
               id="fechalimite"
-              // disabled={
-              //   valoresRecibidos.length >= 1
-              //     ? valoresRecibidos.some((v) => v.valor !== "")
-              //     : id_anexo || id_poliza
-              //     ? true
-              //     : false
-              // }
               style={{ resize: "none", backgroundColor: "#FCFCFC" }}
               className="border-0 border-gray-300 text-gray-900 focus:outline-none h-[30px] p-1 border-b-[1px]"
               cols={1}
               placeholder="Fecha límite de pago:"
-              value={valoresPoliza.fechalimite}
+              value={sumarDias(cabezotePoliza.fechaInicioVigencia, 30) || ""}
               onChange={handleValorTotalChange}
-              disabled={id_poliza || id_anexo}
             />
           </div>
         </GeneralBox>
@@ -2752,9 +2882,12 @@ export const EditarPoliza = ({ setLoading, loading }) => {
                 <th className="border-[1.5px] px-4 py-2">Comision Director</th>
                 <th className="border-[1.5px] px-4 py-2">Comision Asistente</th>
                 <th className="border-[1.5px] px-4 py-2">Comision Técnica</th>
-                <th className="border-[1.5px] px-4 py-2">Comision Coor. Técnico</th>
-                <th className="border-[1.5px] px-4 py-2">Comision Asesor Comercial Interno</th>
-                
+                <th className="border-[1.5px] px-4 py-2">
+                  Comision Coor. Técnico
+                </th>
+                <th className="border-[1.5px] px-4 py-2">
+                  Comision Asesor Comercial Interno
+                </th>
               </tr>
             </thead>
             <tbody>
