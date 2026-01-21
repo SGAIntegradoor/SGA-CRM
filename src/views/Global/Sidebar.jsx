@@ -206,7 +206,7 @@ export const Sidebar = ({ isCollapsed, setIsCollapsed, loggedDataInfo }) => {
                 alignItems="center"
               >
                 <a
-                  href="https://integradoor.com/Pruebas"
+                  href="https://integradoor.com/app"
                   target="_blank"
                   rel="noopener"
                 >
