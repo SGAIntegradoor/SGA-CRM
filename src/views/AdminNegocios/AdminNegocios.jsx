@@ -51,7 +51,7 @@ export const AdminNegocios = ({ loading, setLoading, isCollapsed }) => {
   const userData = JSON.parse(localStorage.getItem("userData") || "{}");
 
   useEffect(() => {
-    // setLoading(true);
+    setLoading(true);
     handlerLoadUnidadNegocio()
       .then(() => {
         // setLoading(false);
@@ -89,12 +89,21 @@ export const AdminNegocios = ({ loading, setLoading, isCollapsed }) => {
 
     handlerFinancieras()
       .then(() => {
-        setLoading(false);
+        // setLoading(false);
       })
       .catch((error) => {
         console.error("Error loading formas de pago:", error);
         // setLoading(false);
       });
+
+    handlerLoadUsuarios()
+      .then(() => {
+      })
+      .catch((error) => {
+        console.error("Error loading usuarios:", error);
+        // setLoading(false);
+      });
+      setLoading(false);
   }, [loading]);
 
   const handlerLoadRamo = async () => {
@@ -241,7 +250,8 @@ export const AdminNegocios = ({ loading, setLoading, isCollapsed }) => {
   const INCLUDED_CARGOS = [
     "Director Comercial",
     "Analista Comercial",
-    "Asesor Comercial",
+    "Asistente Comercial",
+    "Asesor Comercial Interno",
     "Analista Tecnico",
     "Coordinador Tecnico Emision",
   ];
@@ -255,7 +265,7 @@ export const AdminNegocios = ({ loading, setLoading, isCollapsed }) => {
   const includedSet = new Set(INCLUDED_CARGOS.map(norm));
 
   const handlerLoadUsuarios = async () => {
-    setLoading?.(true);
+    // setLoading?.(true);
     try {
       const userLiq = await getUserLiquidaciones();
       const filtered = userLiq
@@ -264,16 +274,8 @@ export const AdminNegocios = ({ loading, setLoading, isCollapsed }) => {
       setUsuarios(filtered.sort((a, b) => a.label.localeCompare(b.label)));
     } catch (e) {
       console.error(e);
-    } finally {
-      setLoading?.(false);
-    }
+    } 
   };
-
-  useEffect(() => {
-    handlerLoadUsuarios();
-
-    return () => setUsuarios([]);
-  }, []);
 
   // === handler consulta (mantengo tu estructura) ===
   const handlerFichasPoliza = async () => {
