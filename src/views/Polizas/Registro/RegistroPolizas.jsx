@@ -740,24 +740,6 @@ export const Polizas = ({ setLoading, loading }) => {
         setLoading(false);
       });
 
-    handlerLoadOtrosConceptos()
-      .then(() => {
-        // setLoading(false);
-      })
-      .catch((error) => {
-        console.error("Error loading otros conceptos:", error);
-        setLoading(false);
-      });
-
-    handlerLoadOtrosConceptos()
-      .then(() => {
-        // setLoading(false);
-      })
-      .catch((error) => {
-        console.error("Error loading otros conceptos:", error);
-        setLoading(false);
-      });
-
     handlerLoadBeneficiarios()
       .then(() => {
         // setLoading(false);
@@ -1069,7 +1051,7 @@ export const Polizas = ({ setLoading, loading }) => {
     });
   };
 
-  const INPUT_PLACA_ALLOW = [1, 7, 8, 11, 14, 15, 22, 24, 25, 26, 27, 30, 31];
+  const INPUT_PLACA_ALLOW = [1, 7, 8, 14, 15, 24, 25, 26, 27, 31];
 
   // Custom Styles Select React-Select
 
@@ -1423,7 +1405,7 @@ export const Polizas = ({ setLoading, loading }) => {
         procedenciaCliente={procedenciaCliente}
         setProcedenciaCliente={setProcedenciaCliente}
         setDatosUsuarios={setDatosUsuarios}
-        calledFrom={calledFrom}
+        searchMethod={calledFrom}
       />
       <Loader isLoading={loading} />
 

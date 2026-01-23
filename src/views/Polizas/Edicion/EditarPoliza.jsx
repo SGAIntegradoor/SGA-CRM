@@ -45,6 +45,7 @@ import { getFinancieras } from "../../../services/Polizas/getFinancieras";
 import { getAsesores10 } from "../../../services/Users/getAsesores10";
 import { getAsesoresGanadores } from "../../../services/Users/getAsesoresGanadores";
 import { getAsesoresSGA } from "../../../services/Users/getAsesoresSGA";
+import { getQuotesFinancieras } from "../../../services/Polizas/getQuotesFinancieras";
 
 /* Helpers */
 const noop = () => {};
@@ -217,7 +218,7 @@ export const EditarPoliza = ({ setLoading, loading }) => {
 
   // Estados de vehiculo
 
-  const INPUT_PLACA_ALLOW = [1, 7, 8, 11, 14, 15, 22, 24, 25, 26, 27, 30, 31];
+  const INPUT_PLACA_ALLOW = [1, 7, 8, 14, 15, 24, 25, 26, 27, 31];
 
   const [vehiculo, setVehiculo] = useState({
     busqueda: "",
@@ -459,17 +460,6 @@ export const EditarPoliza = ({ setLoading, loading }) => {
   };
 
   const calculateValorTotal = () => {
-    // if (cabezotePoliza.ramo === "6") {
-    //   const primaneta = parseCOP(valoresPoliza.primaneta_aviajes);
-    //   const TRM_aviajes = parseCOP(valoresPoliza.TRM_aviajes);
-
-    //   const valor_total = primaneta * TRM_aviajes;
-    //   setValoresPoliza((prev) => ({
-    //     ...prev,
-    //     valor_asistencia_aviajes: formatCOP(valor_total),
-    //   }));
-    //   return;
-    // }
     const primaneta = parseCOP(valoresPoliza.primaneta);
     const asistenciasotros = parseCOP(valoresPoliza.asistenciasotros);
     const gastosexpedicion = parseCOP(valoresPoliza.gastosexpedicion);
@@ -795,6 +785,11 @@ export const EditarPoliza = ({ setLoading, loading }) => {
 
     let options = [];
 
+    if(cuotasBackend == null) {
+      setQuotesFinancieras([]);
+      return;
+    }
+
     if (cuotasBackend.includes("1") && cuotasBackend.includes("12")) {
       options = [...ALL_OPTIONS.cuotas];
 
@@ -816,13 +811,13 @@ export const EditarPoliza = ({ setLoading, loading }) => {
   const calculateTotalSaldo = () => {
     const totalRecibido = [...valoresRecibidosTemp, ...valoresRecibidos].reduce(
       (acc, pago) => acc + (parseCOP(pago.valor) || 0),
-      0
+      0,
     );
     const totalPoliza = parseCOP(
       // (cabezotePoliza.ramo === "6"
       // ? valoresPoliza.valor_asistencia_aviajes
       // :
-      valoresPoliza.valortotal
+      valoresPoliza.valortotal,
       // )
       // || 0
     );
@@ -933,26 +928,26 @@ export const EditarPoliza = ({ setLoading, loading }) => {
               data.gestionComercial.observaciones_gstn_comercial || "",
           });
           setValoresPoliza({
-            iva: convertToPesos(data.valoresPoliza.iva),
+            iva: convertToPesos(data.valoresPoliza.iva) || "",
             asistenciasotros: convertToPesos(
-              data.valoresPoliza.asistenciasotros
-            ),
+              data.valoresPoliza.asistenciasotros,
+            ) || "",
             gastosexpedicion: convertToPesos(
-              data.valoresPoliza.gastosexpedicion
-            ),
-            primaneta: convertToPesos(data.valoresPoliza.primaneta),
+              data.valoresPoliza.gastosexpedicion,
+            ) || "",
+            primaneta: convertToPesos(data.valoresPoliza.primaneta) || "",
             primaneta_aviajes: convertToPesos(
-              data.valoresPoliza.primaneta_aviajes
-            ),
-            TRM_aviajes: convertToPesos(data.valoresPoliza.TRM_aviajes),
+              data.valoresPoliza.primaneta_aviajes,
+            ) || "",
+            TRM_aviajes: convertToPesos(data.valoresPoliza.TRM_aviajes) || "",
             valor_asistencia_aviajes: convertToPesos(
-              data.valoresPoliza.valor_asistencia_aviajes
-            ),
-            valortotal: convertToPesos(data.valoresPoliza.valortotal),
-            formapago: data.valoresPoliza.formapago,
-            financiada: data.valoresPoliza.financiada,
-            nocuotas: data.valoresPoliza.nocuotas,
-            fechalimite: data.valoresPoliza.fechalimite,
+              data.valoresPoliza.valor_asistencia_aviajes,
+            ) || "",
+            valortotal: convertToPesos(data.valoresPoliza.valortotal) || "",
+            formapago: data.valoresPoliza.formapago || "",
+            financiada: data.valoresPoliza.financiada || "",
+            nocuotas: data.valoresPoliza.nocuotas || "",
+            fechalimite: data.valoresPoliza.fechalimite || "",
           });
 
           if (data.valoresRecibidos) {
@@ -960,7 +955,7 @@ export const EditarPoliza = ({ setLoading, loading }) => {
               data.valoresRecibidos.map((item) => ({
                 ...item,
                 valor: convertToPesos(item.valor),
-              }))
+              })),
             );
           }
 
@@ -1008,6 +1003,9 @@ export const EditarPoliza = ({ setLoading, loading }) => {
         const response = await retrivePoliza(id);
         if (response.status === "Ok" && response.codeStatus !== 404) {
           const data = response.data;
+          await handleChangesFinanciera();
+          await handlerChargeQuotesFinanciera(data.valoresPoliza.financiada
+          );
           setIdPoliza(data.id_poliza);
           setCabezotePoliza({
             id_poliza: data.id_poliza,
@@ -1044,23 +1042,23 @@ export const EditarPoliza = ({ setLoading, loading }) => {
             asistente: data.gestionComercial.asistente || "",
             unidadnegocio: data.gestionComercial.unidadnegocio || "",
             observaciones:
-              data.gestionComercial.observaciones_gstn_comercial || "",
+              data.gestionComercial.observaciones || "",
           });
           setValoresPoliza({
             iva: convertToPesos(data.valoresPoliza.iva || 0),
             asistenciasotros: convertToPesos(
-              data.valoresPoliza.asistenciasotros || 0
+              data.valoresPoliza.asistenciasotros || 0,
             ),
             gastosexpedicion: convertToPesos(
-              data.valoresPoliza.gastosexpedicion || 0
+              data.valoresPoliza.gastosexpedicion || 0,
             ),
             primaneta: convertToPesos(data.valoresPoliza.primaneta || 0),
             primaneta_aviajes: convertToPesos(
-              data.valoresPoliza.primaneta_aviajes || 0
+              data.valoresPoliza.primaneta_aviajes || 0,
             ),
             TRM_aviajes: convertToPesos(data.valoresPoliza.TRM_aviajes || 0),
             valor_asistencia_aviajes: convertToPesos(
-              data.valoresPoliza.valor_asistencia_aviajes || 0
+              data.valoresPoliza.valor_asistencia_aviajes || 0,
             ),
             valortotal: convertToPesos(data.valoresPoliza.valortotal || 0),
             formapago: data.valoresPoliza.formapago || "",
@@ -1074,7 +1072,7 @@ export const EditarPoliza = ({ setLoading, loading }) => {
               data.valoresRecibidos.map((item) => ({
                 ...item,
                 valor: convertToPesos(item.valor),
-              }))
+              })),
             );
           }
 
@@ -1250,7 +1248,7 @@ export const EditarPoliza = ({ setLoading, loading }) => {
 
   const numeroPagos = useMemo(
     () => valoresRecibidos.length + valoresRecibidosTemp.length,
-    [valoresRecibidos, valoresRecibidosTemp]
+    [valoresRecibidos, valoresRecibidosTemp],
   );
 
   useEffect(() => {
@@ -1325,7 +1323,7 @@ export const EditarPoliza = ({ setLoading, loading }) => {
         },
       };
       for (const field of Object.keys(
-        fieldsToCheck[gestionComercial.unidadnegocio]
+        fieldsToCheck[gestionComercial.unidadnegocio],
       )) {
         if (!gestionComercial[field]) {
           Swal.fire({
@@ -1733,7 +1731,7 @@ export const EditarPoliza = ({ setLoading, loading }) => {
                   options={insurers}
                   value={
                     insurers.find(
-                      (opt) => opt.value === cabezotePoliza.aseguradora
+                      (opt) => opt.value === cabezotePoliza.aseguradora,
                     ) || ""
                   }
                   onChange={(selectedOption, meta) => {
@@ -1774,7 +1772,7 @@ export const EditarPoliza = ({ setLoading, loading }) => {
                   options={tiposPoliza}
                   value={
                     tiposPoliza.find(
-                      (opt) => opt.value === cabezotePoliza.tipoCertificado
+                      (opt) => opt.value === cabezotePoliza.tipoCertificado,
                     ) || ""
                   }
                   onChange={(selectedOption, meta) => {
@@ -2042,7 +2040,7 @@ export const EditarPoliza = ({ setLoading, loading }) => {
                   placeholder=""
                   styles={customStyles}
                   value={tecnicosEmisores.find(
-                    (opt) => opt.value === gestionComercial.tecnicoemisor
+                    (opt) => opt.value === gestionComercial.tecnicoemisor,
                   )}
                   onChange={(selectedOption, meta) => {
                     const value = selectedOption ? selectedOption.value : "";
@@ -2065,7 +2063,7 @@ export const EditarPoliza = ({ setLoading, loading }) => {
                   value={
                     unidadNegocio.find(
                       (opt) =>
-                        opt.value === (gestionComercial.unidadnegocio ?? "")
+                        opt.value === (gestionComercial.unidadnegocio ?? ""),
                     ) || null
                   }
                   onChange={(selectedOption, meta) => {
@@ -2086,7 +2084,7 @@ export const EditarPoliza = ({ setLoading, loading }) => {
                       name="asesorfreelance"
                       id="asesorfreelance"
                       value={freelances.find(
-                        (f) => f.value === gestionComercial.asesorfreelance
+                        (f) => f.value === gestionComercial.asesorfreelance,
                       )}
                       onChange={(selectedOption, meta) => {
                         const value = selectedOption
@@ -2128,7 +2126,7 @@ export const EditarPoliza = ({ setLoading, loading }) => {
                           ? asesoresSGA.find(
                               (o) =>
                                 o.value ===
-                                gestionComercial.asesorcomercialinterno
+                                gestionComercial.asesorcomercialinterno,
                             )
                           : null
                       }
@@ -2163,7 +2161,7 @@ export const EditarPoliza = ({ setLoading, loading }) => {
                         placeholder=""
                         styles={customStyles}
                         value={analistas.find(
-                          (a) => a.value === gestionComercial.analista
+                          (a) => a.value === gestionComercial.analista,
                         )}
                         onChange={(selectedOption, meta) => {
                           const value = selectedOption
@@ -2186,7 +2184,7 @@ export const EditarPoliza = ({ setLoading, loading }) => {
                         name="asistente"
                         id="asistente"
                         value={asistentes.find(
-                          (a) => a.value === gestionComercial.asistente
+                          (a) => a.value === gestionComercial.asistente,
                         )}
                         onChange={(selectedOption, meta) => {
                           const value = selectedOption
@@ -2214,7 +2212,7 @@ export const EditarPoliza = ({ setLoading, loading }) => {
                         id="directorcomercial"
                         options={directoresComerciales}
                         value={directoresComerciales.find(
-                          (a) => a.value === gestionComercial.directorcomercial
+                          (a) => a.value === gestionComercial.directorcomercial,
                         )}
                         onChange={(selectedOption, meta) => {
                           const value = selectedOption
@@ -2246,7 +2244,7 @@ export const EditarPoliza = ({ setLoading, loading }) => {
                       id="asesor10"
                       options={asesores10}
                       value={asesores10.find(
-                        (a) => a.value === gestionComercial.asesor10
+                        (a) => a.value === gestionComercial.asesor10,
                       )}
                       onChange={(selectedOption, meta) => {
                         const value = selectedOption
@@ -2277,7 +2275,7 @@ export const EditarPoliza = ({ setLoading, loading }) => {
                       styles={customStyles}
                       value={coordinadores.find(
                         (opt) =>
-                          opt.value === gestionComercial.coordinadortecnico
+                          opt.value === gestionComercial.coordinadortecnico,
                       )}
                       onChange={(selectedOption, meta) => {
                         const value = selectedOption
@@ -2303,7 +2301,7 @@ export const EditarPoliza = ({ setLoading, loading }) => {
                       id="asesorganador"
                       options={asesoresGanadores}
                       value={asesoresGanadores.find(
-                        (a) => a.value === gestionComercial.asesorganador
+                        (a) => a.value === gestionComercial.asesorganador,
                       )}
                       onChange={(selectedOption, meta) => {
                         const value = selectedOption
@@ -2333,7 +2331,7 @@ export const EditarPoliza = ({ setLoading, loading }) => {
                       styles={customStyles}
                       value={coordinadores.find(
                         (opt) =>
-                          opt.value === gestionComercial.coordinadortecnico
+                          opt.value === gestionComercial.coordinadortecnico,
                       )}
                       onChange={(selectedOption, meta) => {
                         const value = selectedOption
@@ -2367,7 +2365,8 @@ export const EditarPoliza = ({ setLoading, loading }) => {
                     placeholder=""
                     styles={customStyles}
                     value={coordinadores.find(
-                      (opt) => opt.value === gestionComercial.coordinadortecnico
+                      (opt) =>
+                        opt.value === gestionComercial.coordinadortecnico,
                     )}
                     onChange={(selectedOption, meta) => {
                       const value = selectedOption ? selectedOption.value : "";
@@ -2666,16 +2665,28 @@ export const EditarPoliza = ({ setLoading, loading }) => {
                         name="financiada"
                         id="financiada"
                         options={financieras}
-                        value={financieras.find(
-                          (opt) => opt.value === valoresPoliza.financiada
-                        )}
+                        value={
+                          Array.isArray(financieras)
+                            ? financieras.find(
+                                (opt) => opt.value === valoresPoliza.financiada,
+                              ) || null
+                            : null
+                        }
                         onChange={(selectedOption, meta) => {
-                          handlerChargeQuotesFinanciera(
-                            selectedOption.value || ""
-                          );
                           const value = selectedOption
                             ? selectedOption.value
                             : "";
+
+                          // SOLO llamar al backend si hay valor
+                          if (value) {
+                            handlerChargeQuotesFinanciera(value);
+                          } else {
+                            setQuotesFinancieras([]); // limpiar cuotas al borrar
+                            handleValorTotalChange({
+                              target: { name: "nocuotas", value: "" },
+                            });
+                          }
+
                           handleValorTotalChange({
                             target: {
                               name: meta.name,
@@ -2695,7 +2706,7 @@ export const EditarPoliza = ({ setLoading, loading }) => {
                         id="nocuotas"
                         options={quotesFinancieras}
                         value={quotesFinancieras.find(
-                          (opt) => opt.value === valoresPoliza.nocuotas
+                          (opt) => opt.value === valoresPoliza.nocuotas,
                         )}
                         onChange={(selectedOption, meta) => {
                           handleValorTotalChange({

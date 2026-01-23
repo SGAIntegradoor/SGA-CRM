@@ -51,60 +51,25 @@ export const AdminNegocios = ({ loading, setLoading, isCollapsed }) => {
   const userData = JSON.parse(localStorage.getItem("userData") || "{}");
 
   useEffect(() => {
-    setLoading(true);
-    handlerLoadUnidadNegocio()
-      .then(() => {
-        // setLoading(false);
-      })
-      .catch((error) => {
-        console.error("Error loading unidad de negocio:", error);
-        // setLoading(false);
-      });
-    handlerLoadInsurers()
-      .then(() => {
-        // setLoading(false);
-      })
-      .catch((error) => {
-        console.error("Error loading insurers:", error);
-        // setLoading(false);
-      });
-
-    handlerLoadRamo()
-      .then(() => {
-        // setLoading(false);
-      })
-      .catch((error) => {
-        console.error("Error loading ramo:", error);
-        // setLoading(false);
-      });
-
-    handlerLoadFormasPago()
-      .then(() => {
-        // setLoading(false);
-      })
-      .catch((error) => {
-        console.error("Error loading formas de pago:", error);
-        // setLoading(false);
-      });
-
-    handlerFinancieras()
-      .then(() => {
-        // setLoading(false);
-      })
-      .catch((error) => {
-        console.error("Error loading formas de pago:", error);
-        // setLoading(false);
-      });
-
-    handlerLoadUsuarios()
-      .then(() => {
-      })
-      .catch((error) => {
-        console.error("Error loading usuarios:", error);
-        // setLoading(false);
-      });
-      setLoading(false);
-  }, [loading]);
+    const loadInitialData = async () => {
+      setLoading(true);
+      try {
+        await Promise.all([
+          handlerLoadUnidadNegocio(),
+          handlerLoadInsurers(),
+          handlerLoadRamo(),
+          handlerLoadFormasPago(),
+          handlerFinancieras(),
+          handlerLoadUsuarios(),
+        ]);
+      } catch (error) {
+        console.error("Error loading initial data:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    loadInitialData();
+  }, []);
 
   const handlerLoadRamo = async () => {
     // Function to load ramo data

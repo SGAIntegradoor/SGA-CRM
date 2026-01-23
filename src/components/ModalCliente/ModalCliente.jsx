@@ -376,6 +376,9 @@ const ModalCliente = ({
             } else {
               setNombre(response.nombres || "");
               setApellido(response.apellidos || "");
+              setRazonSocial(
+                `${response.nombres || ""} ${response.apellidos || ""}`.trim()
+              );
               setTipoDocumento(response.tipoDocumento || "1");
               setDocumento(response.documento || "");
               setFechaNacimiento(toISODate(response.fechaNacimiento || ""));
@@ -738,21 +741,23 @@ const ModalCliente = ({
                     : `${nombre} ${apellido}`.trim();
 
                 if (searchMethod == "Asegurado") {
-                  setDatosUsuarios({
+                  setDatosUsuarios((prev) => ({
+                    ...prev,
                     Asegurado: {
                       tipoIdentificacion: tipoDocumento,
                       numeroIdentificacion: documento,
                       nombre: nombreCompleto,
                     },
-                  });
+                  }));
                 } else if (searchMethod == "Tomador") {
-                  setDatosUsuarios({
+                  setDatosUsuarios((prev) => ({
+                    ...prev,
                     Tomador: {
                       tipoIdentificacion: tipoDocumento,
                       numeroIdentificacion: documento,
                       nombre: nombreCompleto,
                     },
-                  });
+                  }));
                 }
               }
             },
