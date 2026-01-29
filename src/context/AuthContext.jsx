@@ -1,4 +1,4 @@
-import React, { createContext, useState, useEffect } from "react";
+import React, { createContext, useState, useEffect, useContext } from "react";
 import { useNavigate } from "react-router-dom";
 import { loginSSO } from "../services/Login/loginSSO";
 import { 
@@ -16,6 +16,16 @@ import {
 } from "../utils/jwtHelper";
 
 export const AuthContext = createContext();
+
+// Hook personalizado para usar el contexto de autenticación
+export const useAuth = () => {
+  const context = useContext(AuthContext);
+  if (!context) {
+    throw new Error('useAuth debe usarse dentro de un AuthProvider');
+  }
+  return context;
+};
+
 export const AuthProvider = ({ children }) => {
   const nav = useNavigate();
   const [isAuthenticated, setIsAuthenticated] = useState(false);
