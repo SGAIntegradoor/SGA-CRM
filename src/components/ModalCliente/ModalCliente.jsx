@@ -722,8 +722,8 @@ const ModalCliente = ({
           });
         }
       } else {
-        const response = await createClient(userData["Editaruncliente"], body);
-        if (response.status === "Ok" && response.data.statusCode === 1) {
+        const response = await createClient("x", body);
+        if (response?.status === "Ok" && response?.data?.statusCode === 1) {
           Swal.fire({
             icon: "success",
             title: "Éxito",
@@ -768,7 +768,7 @@ const ModalCliente = ({
             cleanFields();
           });
         } else {
-          if (response.data.statusCode == 1062) {
+          if (response?.data?.statusCode == 1062) {
             Swal.fire({
               icon: "error",
               title: "Error",
