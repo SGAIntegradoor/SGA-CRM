@@ -4,6 +4,7 @@ import { CssBaseline, ThemeProvider, Box } from "@mui/material";
 import { ColorModeContext, useMode } from "./theme";
 import Loader from "./components/LoaderFullScreen/Loader";
 import Login from "./views/login/Login";
+import SSOCallback from "./views/SSOCallback";
 import MainLayout from "./layouts/MainLayout"; // <-- el nuevo layout
 import { AuthContext } from "./context/AuthContext";
 import { Inicio } from "./views/Inicio/Inicio";
@@ -50,6 +51,9 @@ function App() {
       <ThemeProvider theme={theme}>
         <CssBaseline />
         <Routes>
+          {/* Ruta SSO - accesible sin autenticación */}
+          <Route path="/sso" element={<SSOCallback />} />
+          
           {!log ? (
             <>
               <Route
