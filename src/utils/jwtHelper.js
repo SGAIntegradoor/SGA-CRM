@@ -4,6 +4,7 @@
  */
 
 const TOKEN_KEY = 'jwt_token';
+const TOKEN= 'token';
 const USER_DATA_KEY = 'userData';
 
 /**
@@ -27,6 +28,7 @@ export const getToken = () => {
  */
 export const removeToken = () => {
   localStorage.removeItem(TOKEN_KEY);
+  localStorage.removeItem(TOKEN);
 };
 
 /**
@@ -37,9 +39,14 @@ export const removeToken = () => {
  */
 export const decodeToken = (token) => {
   try {
-    if (!token) return null;
+    if (!token || typeof token !== 'string') return null;
     
-    const base64Url = token.split('.')[1];
+    const parts = token.split('.');
+    if (parts.length !== 3) return null; // JWT debe tener 3 partes
+    
+    const base64Url = parts[1];
+    if (!base64Url) return null;
+    
     const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
     const jsonPayload = decodeURIComponent(
       atob(base64)
@@ -224,6 +231,7 @@ export const clearSession = () => {
   removeToken();
   localStorage.removeItem(USER_DATA_KEY);
   localStorage.removeItem('logged');
+
 };
 
 /**

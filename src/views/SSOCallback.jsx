@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { decodeToken, isTokenExpired } from '../utils/jwtHelper';
@@ -13,8 +13,12 @@ const SSOCallback = () => {
   const { login } = useAuth();
   const [status, setStatus] = useState('validating');
   const [message, setMessage] = useState('Validando credenciales...');
+  const processedRef = useRef(false);
 
   useEffect(() => {
+    // Evitar ejecutar múltiples veces
+    if (processedRef.current) return;
+    
     const processToken = async () => {
       const token = searchParams.get('token');
 
@@ -24,6 +28,8 @@ const SSOCallback = () => {
         setTimeout(() => navigate('/login'), 3000);
         return;
       }
+
+      processedRef.current = true;
 
       try {
         // Verificar si el token ha expirado

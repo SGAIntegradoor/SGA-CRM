@@ -56,7 +56,8 @@ const Login = ({ isLoading, setIsLoading }) => {
     loginService(user, password).then((response) => {
       if (response.state === "ok") {
         setIsLoading(false);
-        login(true, response.userData);
+        // Pasar el token JWT y los datos del usuario
+        login(response.token, response.userData);
       } else {
         setTimeout(() => {
           setIsLoading(false);

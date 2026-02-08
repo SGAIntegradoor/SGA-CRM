@@ -241,18 +241,18 @@ export const Comisiones = ({ setLoading, loading }) => {
   };
 
   const headers = [
-    { field: "poliza", header: "Poliza" },
     { field: "id_remision", header: "ID Remisión"},
+    { field: "fecha_expedicion", header: "Fecha de expedición" },
+    { field: "ramo", header: "Ramo" },
+    { field: "poliza", header: "Poliza" },
     {
       field: "tipo_expedicion",
       header: "Tipo de expedición",
       style: { color: "red" },
     },
-    { field: "fecha_expedicion", header: "Fecha de expedición" },
-    { field: "ramo", header: "Ramo" },
     { field: "aseguradora", header: "Aseguradora" },
-    { field: "asegurado", header: "Asegurado" },
-    { field: "identificacion_asegurado", header: "Identificación" },
+    { field: "identificacion_tomador", header: "Identificación" },
+    { field: "nombre_completo_tomador", header: "Tomador" },
     { field: "placa", header: "Placa" },
     { field: "usuario_sga", header: "Usuario SGA" },
     { field: "forma_de_pago", header: "Forma de Pago" },
