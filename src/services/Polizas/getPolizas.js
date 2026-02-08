@@ -347,6 +347,26 @@ export const getPolizas = async (dataFilters) => {
             poliza.usuario_freelance.info_usuario.u_apellido
           : "N/A";
 
+      const unidadesNegocio = {
+        1: "Freelance",
+        2: "Directo",
+        3: "Asesor 10",
+        4: "Asesor Ganador",
+      };
+
+      const financieras = {
+        0: "N/A",
+        1: "Finesa",
+        2: "CrediMapfre",
+        3: "HDI - Financia Ya",
+        4: "Bolivar",
+        5: "Sura",
+        6: "Allianz",
+        7: "CrediSeguro",
+        8: "Previcredito",
+        9: "Estado",
+      };
+
       return {
         id_poliza: poliza.id_poliza,
         id_anexo_poliza: poliza.id_anexo_poliza,
@@ -361,10 +381,26 @@ export const getPolizas = async (dataFilters) => {
           aseguradoras[Number(poliza.aseguradora_poliza)] || "Desconocido",
         asegurado: poliza.nombre_completo_asegurado,
         identificacion_asegurado: poliza.numero_documento_asegurado,
+        
+        // Datos del tomador
+        nombre_tomador: poliza.nombre_completo_tomador || "N/A",
+        documento_tomador: poliza.numero_documento_tomador || "N/A",
+        
         placa: ALLOW_RAMOS_PLACA.includes(Number(poliza.ramo_poliza))
           ? poliza.placa_veh_poliza || "N/A"
           : "N/A",
         anexo: poliza.no_certificado,
+
+        // Valores financieros separados
+        asistencia: formatCOP(Number(poliza.asistencias_otros_poliza ?? 0)),
+        prima_neta: formatCOP(Number(poliza.prima_neta_poliza ?? 0)),
+        gastos_expedicion: formatCOP(Number(poliza.gastos_expedicion_poliza ?? 0)),
+        iva: formatCOP(Number(poliza.iva_poliza ?? 0)),
+        valor_total: formatCOP(Number(poliza.valor_total_poliza ?? 0)),
+        
+        // Vigencia
+        fecha_inicio_vigencia: poliza.fecha_inicio_vig_poliza || "N/A",
+        fecha_fin_vigencia: poliza.fecha_fin_vig_poliza || "N/A",
 
         usuario_sga:
           poliza.usuario_sga?.info_usuario?.u_nombre +
@@ -374,6 +410,17 @@ export const getPolizas = async (dataFilters) => {
 
         forma_de_pago:
           formas_pago[Number(poliza.forma_pago_poliza)] || "Desconocido",
+        
+        // Unidad de negocio y financiación
+        unidad_negocio: unidadesNegocio[Number(poliza.unidad_negocio_poliza)] || "N/A",
+        financiera: financieras[Number(poliza.financiada_por)] || "N/A",
+        cuotas: poliza.no_cuotas || "0",
+        
+        // Estado cartera (basado en liquidación)
+        estado_cartera: Number(poliza.liquidada) === 1 ? "Pagada" : "Pendiente",
+        
+        // Observaciones
+        observaciones: poliza.observaciones_gstn_comercial || "N/A",
 
         asesor_freelance: nombreFreelance,
         asesor_10: poliza.asesor_10 || "N/A",

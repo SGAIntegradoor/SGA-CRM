@@ -78,9 +78,19 @@ export const TableComisiones = ({
     );
   }, [data, searchFields, globalFilterValue]);
 
-  // Export visible to Excel
+  // Export visible to Excel - respetando el orden de headers
   const exportExcel = () => {
-    const worksheet = xlsx.utils.json_to_sheet(filtered);
+    // Crear data solo con las columnas visibles en el orden de headers
+    const exportData = filtered.map((row) => {
+      const orderedRow = {};
+      headers.forEach((col) => {
+        // Usar el header como nombre de columna en Excel
+        orderedRow[col.header] = row[col.field] ?? "";
+      });
+      return orderedRow;
+    });
+
+    const worksheet = xlsx.utils.json_to_sheet(exportData);
     const workbook = { Sheets: { data: worksheet }, SheetNames: ["data"] };
     const excelBuffer = xlsx.write(workbook, { bookType: "xlsx", type: "array" });
     const blob = new Blob([excelBuffer], {
@@ -229,12 +239,14 @@ export const TableComisiones = ({
           icon="pi pi-check-square"
           className="!text-[10px] h-[32px] bg-lime-9000 border-lime-9000 hover:border-lime-600 hover:bg-lime-600 ml-1 !p-2"
           onClick={selectPageRows}
+          disabled
         />
         <Button
           label="Deseleccionar página"
           icon="pi pi-times"
           className="!text-[10px] h-[32px] bg-lime-9000 border-lime-9000 hover:border-lime-600 hover:bg-lime-600 ml-1 !p-2"
           onClick={deselectPageRows}
+          disabled
         />
         <IconField iconPosition="right">
           <InputIcon className="pi pi-search xs:block xxs:hidden !p-1 !text-[11px]" />
