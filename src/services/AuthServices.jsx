@@ -19,7 +19,7 @@ export const login = async (username, password) => {
             saveToken(response.data.token);
           }
           
-          localStorage.setItem("userData", JSON.stringify(response.data.userData));
+          localStorage.setItem("userData", JSON.stringify(response.data));
           return response.data;
     }
     catch (error){
