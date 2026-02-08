@@ -45,8 +45,12 @@ export const AuthProvider = ({ children }) => {
       } else {
         // Fallback a localStorage si el token no tiene datos
         const storedData = localStorage.getItem("userData");
+        const storedPermisos = localStorage.getItem("permisos");
         if (storedData) {
           setUserData(JSON.parse(storedData));
+        }
+        if (storedPermisos) {
+          setPermissions(JSON.parse(storedPermisos));
         }
       }
     } else if (token) {
@@ -104,25 +108,71 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  const login = (token, userData) => {
+  const login = (token, responseData) => {
     // Guardar JWT token
     if (token) {
       saveToken(token);
     }
     
-    localStorage.setItem("logged", true);
-    localStorage.setItem("userData", JSON.stringify(userData));
+    // Normalizar la estructura de datos
+    // Puede venir como:
+    // 1. Login normal: { state, token, userData: {...}, permisos: {...} }
+    // 2. SSO (decoded token): { id_usuario, nombre, permisos: {...} }
     
-    // Obtener datos del token si está disponible
-    const tokenData = getUserFromToken();
-    setUserData(tokenData || userData);
-    setPermissions(tokenData?.permisos || {});
+    let normalizedUserData;
+    let normalizedPermisos;
+    
+    // Si tiene userData anidado (viene del login normal)
+    if (responseData?.userData) {
+      normalizedUserData = {
+        id_usuario: responseData.userData.id_usuario,
+        nombre: responseData.userData.nombre,
+        apellido: responseData.userData.apellido,
+        usuario: responseData.userData.usuario,
+        foto: responseData.userData.usu_foto,
+        id_rol: responseData.userData.id_rol,
+        id_intermediario: responseData.userData.id_intermediario,
+        id_cargo: responseData.userData.id_cargo,
+        descripcion_cargo: responseData.userData.descripcion_cargo,
+      };
+      normalizedPermisos = responseData.permisos || responseData.userData.permisos || {};
+    } 
+    // Si tiene id_usuario directo (viene del SSO/token decodificado)
+    else if (responseData?.id_usuario) {
+      normalizedUserData = {
+        id_usuario: responseData.id_usuario,
+        nombre: responseData.nombre,
+        apellido: responseData.apellido,
+        usuario: responseData.usuario,
+        foto: responseData.foto,
+        id_rol: responseData.id_rol,
+        id_intermediario: responseData.id_intermediario,
+        id_cargo: responseData.id_cargo,
+        descripcion_cargo: responseData.descripcion_cargo,
+      };
+      normalizedPermisos = responseData.permisos || {};
+    }
+    // Fallback: intentar obtener del token
+    else {
+      console.log(responseData)
+      const tokenData = getUserFromToken();
+      normalizedUserData = tokenData || responseData;
+      normalizedPermisos = tokenData?.permisos || {};
+    }
+    
+    localStorage.setItem("logged", true);
+    localStorage.setItem("userData", JSON.stringify(normalizedUserData));
+    localStorage.setItem("permisos", JSON.stringify(normalizedPermisos));
+    
+    setUserData(normalizedUserData);
+    setPermissions(normalizedPermisos);
     setIsAuthenticated(true);
   };
 
   const logout = () => {
     clearSession();
     localStorage.removeItem("lastVisitCRM");
+    localStorage.removeItem("permisos");
     setIsAuthenticated(false);
     setUserData({});
     setPermissions({});

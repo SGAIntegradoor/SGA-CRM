@@ -17,7 +17,7 @@ export const Topbar = ({ isCollapsed, setIsCollapsed }) => {
   useEffect(() => {
     let userData = JSON.parse(localStorage.getItem("userData"));
     if (isLogged()) {
-      setImageSession(`https://integradoor.com/app/${userData.usu_foto || userData.foto}`);
+      setImageSession(`https://integradoor.com/app/${userData?.foto}`);
     }
   }, []);
 
