@@ -1547,10 +1547,10 @@ export const Polizas = ({ setLoading, loading }) => {
                 <label htmlFor="aseguradora">Aseguradora</label>
                 <Select
                   name="aseguradora"
-                  options={insurers}
+                  options={insurers || []}
                   value={insurers.find(
                     (opt) => opt.value === cabezotePoliza.aseguradora
-                  )}
+                  ) || ""}
                   onChange={(selectedOption, meta) => {
                     // cuando haces clear, selectedOption === null
                     const value = selectedOption ? selectedOption.value : "";
@@ -1568,8 +1568,8 @@ export const Polizas = ({ setLoading, loading }) => {
 
                 <Select
                   name="ramo"
-                  options={ramo}
-                  value={ramo.find((opt) => opt.value === cabezotePoliza.ramo)}
+                  options={ramo || []}
+                  value={ramo.find((opt) => opt.value === cabezotePoliza.ramo) || ""}
                   onChange={(selectedOption, meta) => {
                     const value = selectedOption ? selectedOption.value : "";
 
@@ -1594,10 +1594,10 @@ export const Polizas = ({ setLoading, loading }) => {
                 <Select
                   name="tipoCertificado"
                   id="tipoCertificado"
-                  options={tiposPoliza}
+                  options={tiposPoliza || []}
                   value={tiposPoliza.find(
                     (opt) => opt.value === tiposPoliza.value
-                  )}
+                  ) || ""}
                   onChange={(selectedOption, meta) => {
                     const value = selectedOption ? selectedOption.value : "";
                     handleCabezotePolizaChange({
@@ -1625,7 +1625,7 @@ export const Polizas = ({ setLoading, loading }) => {
                 id="fechaExpedicion"
                 name="fechaExpedicion"
                 className="w-full text-md border-[1px] border-gray-300 text-gray-900 focus:outline-none h-[30px] rounded-md p-2"
-                value={cabezotePoliza.fechaExpedicion}
+                value={cabezotePoliza.fechaExpedicion ? cabezotePoliza.fechaExpedicion.split("T")[0] : ""}
                 onChange={handleCabezotePolizaChange}
               />
             </div>
@@ -1638,7 +1638,7 @@ export const Polizas = ({ setLoading, loading }) => {
                 id="fechaInicioVigencia"
                 name="fechaInicioVigencia"
                 className="w-full text-md border-[1px] border-gray-300 text-gray-900 focus:outline-none h-[30px] rounded-md p-2"
-                value={cabezotePoliza.fechaInicioVigencia}
+                value={cabezotePoliza.fechaInicioVigencia ? cabezotePoliza.fechaInicioVigencia.split("T")[0] : ""}
                 onChange={handleCabezotePolizaChange}
               />
             </div>
@@ -1646,7 +1646,7 @@ export const Polizas = ({ setLoading, loading }) => {
               <label htmlFor="fechaFinVigencia">Fecha fin de Vigencia</label>
               <input
                 type="date"
-                value={cabezotePoliza.fechaFinVigencia}
+                value={cabezotePoliza.fechaFinVigencia ? cabezotePoliza.fechaFinVigencia.split("T")[0] : ""}
                 id="fechaFinVigencia"
                 name="fechaFinVigencia"
                 className="w-full text-md border-[1px] border-gray-300 text-gray-900 focus:outline-none h-[30px] rounded-md p-2"
@@ -1657,7 +1657,7 @@ export const Polizas = ({ setLoading, loading }) => {
               <label htmlFor="fechaRegistro">Fecha de Registro</label>
               <input
                 type="date"
-                value={cabezotePoliza.fechaRegistro}
+                value={cabezotePoliza.fechaRegistro ? cabezotePoliza.fechaRegistro.split("T")[0] : ""}
                 id="fechaRegistro"
                 className="w-full text-md border-[1px] border-gray-300 text-gray-900 focus:outline-none h-[30px] rounded-md p-2"
                 disabled
@@ -1745,7 +1745,7 @@ export const Polizas = ({ setLoading, loading }) => {
                   name="placa"
                   className="text-md border-[1px] border-gray-300 text-gray-900 focus:outline-none h-[30px] rounded-md p-2"
                   // placeholder="Número Identificación"
-                  value={vehiculo.placa}
+                  value={vehiculo.placa || ""}
                   onInput={handleVehiculoChange}
                 />
               </div>
@@ -1865,12 +1865,12 @@ export const Polizas = ({ setLoading, loading }) => {
                 <Select
                   name="tecnicoemisor"
                   id="tecnicoemisor"
-                  options={tecnicosEmisores}
+                  options={tecnicosEmisores || []}
                   placeholder=""
                   styles={customStyles}
                   value={tecnicosEmisores.find(
                     (opt) => opt.value === gestionComercial.tecnicoemisor
-                  )}
+                  ) || ""}
                   onChange={(selectedOption, meta) => {
                     const value = selectedOption ? selectedOption.value : "";
                     handleGestionComercialChange({
@@ -1886,14 +1886,14 @@ export const Polizas = ({ setLoading, loading }) => {
                 <Select
                   name="unidadnegocio"
                   id="unidadnegocio"
-                  options={unidadNegocio}
+                  options={unidadNegocio || []}
                   placeholder=""
                   styles={customStyles}
                   value={
                     unidadNegocio.find(
                       (opt) =>
                         opt.value === (gestionComercial.unidadnegocio ?? "")
-                    ) || null
+                    ) || ""
                   }
                   onChange={(selectedOption, meta) => {
                     const value = selectedOption ? selectedOption.value : "";
@@ -1913,8 +1913,8 @@ export const Polizas = ({ setLoading, loading }) => {
                       name="asesorfreelance"
                       id="asesorfreelance"
                       value={freelances.find(
-                        (f) => f.value === gestionComercial.asesorfreelance
-                      )}
+                        (f) => f.value === gestionComercial.asesorfreelance 
+                      ) || ""}
                       onChange={(selectedOption, meta) => {
                         const value = selectedOption
                           ? selectedOption.value
@@ -1930,7 +1930,7 @@ export const Polizas = ({ setLoading, loading }) => {
                           target: { name: meta.name, value },
                         });
                       }}
-                      options={freelances}
+                      options={freelances || []}
                       placeholder=""
                       styles={customStyles}
                       isClearable
@@ -1949,7 +1949,7 @@ export const Polizas = ({ setLoading, loading }) => {
                     </label>
                     <Select
                       name="asesorcomercialinterno"
-                      options={asesoresSGA}
+                      options={asesoresSGA || []}
                       value={
                         gestionComercial.asesorcomercialinterno
                           ? asesoresSGA.find(
@@ -1957,7 +1957,7 @@ export const Polizas = ({ setLoading, loading }) => {
                                 o.value ===
                                 gestionComercial.asesorcomercialinterno
                             )
-                          : null
+                          : ""
                       }
                       onChange={(opt, meta) =>
                         handleGestionComercialChange({
@@ -1986,12 +1986,12 @@ export const Polizas = ({ setLoading, loading }) => {
                       <Select
                         name="analista"
                         id="analista"
-                        options={analistas}
+                        options={analistas  || []}
                         placeholder=""
                         styles={customStyles}
                         value={analistas.find(
                           (a) => a.value === gestionComercial.analista
-                        )}
+                        ) || ""}
                         onChange={(selectedOption, meta) => {
                           const value = selectedOption
                             ? selectedOption.value
@@ -2009,12 +2009,12 @@ export const Polizas = ({ setLoading, loading }) => {
                     <div className="flex flex-col w-1/3">
                       <label htmlFor="asistente">Asistente Comercial</label>
                       <Select
-                        options={asistentes}
+                        options={asistentes || []}
                         name="asistente"
                         id="asistente"
                         value={asistentes.find(
                           (a) => a.value === gestionComercial.asistente
-                        )}
+                        ) || ""}
                         onChange={(selectedOption, meta) => {
                           const value = selectedOption
                             ? selectedOption.value
@@ -2039,10 +2039,10 @@ export const Polizas = ({ setLoading, loading }) => {
                       <Select
                         name="directorcomercial"
                         id="directorcomercial"
-                        options={directoresComerciales}
+                        options={directoresComerciales || []}
                         value={directoresComerciales.find(
                           (a) => a.value === gestionComercial.directorcomercial
-                        )}
+                        ) || ""}
                         onChange={(selectedOption, meta) => {
                           const value = selectedOption
                             ? selectedOption.value
@@ -2071,8 +2071,8 @@ export const Polizas = ({ setLoading, loading }) => {
                     <Select
                       name="asesor10"
                       id="asesor10"
-                      options={asesores10}
-                      value={asesores10.find((a) => a.value === gestionComercial.asesor10)}
+                      options={asesores10 || []}
+                      value={asesores10.find((a) => a.value === gestionComercial.asesor10) || ""}
                       onChange={(selectedOption, meta) => {
                         const value = selectedOption
                           ? selectedOption.value
@@ -2097,12 +2097,12 @@ export const Polizas = ({ setLoading, loading }) => {
                     <Select
                       name="coordinadortecnico"
                       id="coordinadortecnico"
-                      options={coordinadores}
+                      options={coordinadores || []}
                       placeholder=""
                       styles={customStyles}
                       value={coordinadores.find(
                         (opt) =>
-                          opt.value === gestionComercial.coordinadortecnico
+                          opt.value === gestionComercial.coordinadortecnico || ""
                       )}
                       onChange={(selectedOption, meta) => {
                         const value = selectedOption
@@ -2126,8 +2126,8 @@ export const Polizas = ({ setLoading, loading }) => {
                     <Select
                       name="asesorganador"
                       id="asesorganador"
-                      options={asesoresGanadores}
-                      value={asesoresGanadores.find((a) => a.value === gestionComercial.asesorganador)}
+                      options={asesoresGanadores || []}
+                      value={asesoresGanadores.find((a) => a.value === gestionComercial.asesorganador) || ""}
                       onChange={(selectedOption, meta) => {
                         const value = selectedOption
                           ? selectedOption.value
@@ -2151,13 +2151,13 @@ export const Polizas = ({ setLoading, loading }) => {
                     <Select
                       name="coordinadortecnico"
                       id="coordinadortecnico"
-                      options={coordinadores}
+                      options={coordinadores || []}
                       placeholder=""
                       styles={customStyles}
                       value={coordinadores.find(
                         (opt) =>
                           opt.value === gestionComercial.coordinadortecnico
-                      )}
+                      ) || ""}
                       onChange={(selectedOption, meta) => {
                         const value = selectedOption
                           ? selectedOption.value
@@ -2186,12 +2186,12 @@ export const Polizas = ({ setLoading, loading }) => {
                   <Select
                     name="coordinadortecnico"
                     id="coordinadortecnico"
-                    options={coordinadores}
+                    options={coordinadores || []}
                     placeholder=""
                     styles={customStyles}
                     value={coordinadores.find(
                       (opt) => opt.value === gestionComercial.coordinadortecnico
-                    )}
+                    ) || ""}
                     onChange={(selectedOption, meta) => {
                       const value = selectedOption ? selectedOption.value : "";
                       handleGestionComercialChange({
