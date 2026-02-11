@@ -145,52 +145,57 @@ export const AdminNegocios = ({ loading, setLoading, isCollapsed }) => {
   // === headers de tabla según selección (póliza/certificado) ===
   const headersOptFichaPoliza = [
     { field: "accion", header: "Acción" },
-    { field: "fecha_exp_poliza", header: "Fecha Expedición" },
-    { field: "no_poliza", header: "# Póliza" },
     { field: "id_remision", header: "ID Remisión" },
-    { field: "ramo", header: "Ramo" },
-    { field: "aseguradora", header: "Aseguradora" },
-    { field: "tomador", header: "Tomador" },
-    { field: "no_documento", header: "No. documento" },
-    { field: "asegurado", header: "Asegurado" },
-    { field: "beneficiario", header: "Beneficiario" },
+    { field: "fecha_exp_poliza", header: "Fecha Expedición" },
+    { field: "nombre_ramo", header: "Ramo" },
+    { field: "no_poliza", header: "# Póliza" },
+    { field: "nombre_completo_tomador", header: "Tomador" },
+    { field: "numero_documento_tomador", header: "Doc Tomador" },
+    { field: "placa_veh_poliza", header: "Placa" },
+    { field: "asistencias_otros_poliza", header: "Asist." },
+    { field: "prima_neta_poliza", header: "Prima" },
+    { field: "gastos_expedicion_poliza", header: "Gastos" },
+    { field: "iva_poliza", header: "IVA" },
+    { field: "valor_total_poliza", header: "Valor Total" },
+    { field: "fecha_inicio_vig_poliza", header: "Inicio Vigencia" },
+    { field: "nombre_aseguradora", header: "Compañía" },
+    { field: "tipo_certificado_desc", header: "Tipo" },
     { field: "nombre_asesor_freelance", header: "Nombre Freelance" },
-    { field: "asesor_freelance", header: "Documento Freelance" },
-    { field: "placa", header: "Placa" },
-    { field: "asistencia_otros", header: "Asistencia/Otros" },
-    { field: "prima_neta", header: "Prima Neta" },
-    { field: "gastos_expedicion", header: "Gastos" },
-    { field: "iva", header: "IVA" },
-    { field: "valor_total", header: "Valor Total" },
-    { field: "inicio_vigencia", header: "Inicio Vigencia" },
-    { field: "fin_vigencia", header: "Fin Vigencia" },
-    { field: "unidad_negocio", header: "Unidad de negocio" },
-    { field: "estado", header: "Estado" },
+    { field: "asesor_sga", header: "Asesor Interno SGA" },
+    { field: "nombre_unidad_negocio", header: "Unidad de Negocio" },
+    { field: "forma_pago_desc", header: "Forma de Pago" },
+    { field: "nombre_financiera", header: "Financiera" },
+    { field: "no_cuotas", header: "Cuotas" },
+    { field: "estado_cartera", header: "Estado Cartera" },
+    { field: "observaciones_gstn_comercial", header: "Observaciones" },
   ];
 
   const headersOptFichaCertificado = [
     { field: "accion", header: "Acción" },
-    { field: "fecha_exp_poliza", header: "Fecha Expedición" },
-    { field: "no_poliza", header: "# Póliza" },
     { field: "id_remision", header: "ID Remisión" },
-    { field: "anexo_poliza", header: "Certificado" },
-    { field: "ramo", header: "Ramo" },
-    { field: "aseguradora", header: "Aseguradora" },
-    { field: "tomador", header: "Tomador" },
-    { field: "no_documento", header: "No. documento" },
-    { field: "asegurado", header: "Asegurado" },
-    { field: "beneficiario", header: "Beneficiario" },
+    { field: "fecha_exp_poliza", header: "Fecha Expedición" },
+    { field: "nombre_ramo", header: "Ramo" },
+    { field: "no_poliza", header: "# Póliza" },
+    { field: "no_certificado", header: "Certificado" },
+    { field: "nombre_completo_tomador", header: "Tomador" },
+    { field: "numero_documento_tomador", header: "Doc Tomador" },
+    { field: "placa_veh_poliza", header: "Placa" },
+    { field: "asistencias_otros_poliza", header: "Asist." },
+    { field: "prima_neta_poliza", header: "Prima" },
+    { field: "gastos_expedicion_poliza", header: "Gastos" },
+    { field: "iva_poliza", header: "IVA" },
+    { field: "valor_total_poliza", header: "Valor Total" },
+    { field: "fecha_inicio_vig_poliza", header: "Inicio Vigencia" },
+    { field: "nombre_aseguradora", header: "Compañía" },
+    { field: "tipo_certificado_desc", header: "Tipo" },
     { field: "nombre_asesor_freelance", header: "Nombre Freelance" },
-    { field: "asesor_freelance", header: "Documento Freelance" },
-    { field: "placa", header: "Placa" },
-    { field: "asistencia_otros", header: "Asistencia/Otros" },
-    { field: "prima_neta", header: "Prima Neta" },
-    { field: "gastos_expedicion", header: "Gastos" },
-    { field: "iva", header: "IVA" },
-    { field: "valor_total", header: "Valor Total" },
-    { field: "inicio_vigencia", header: "Inicio Vigencia" },
-    { field: "fin_vigencia", header: "Fin Vigencia" },
-    { field: "unidad_negocio", header: "Unidad de negocio" },
+    { field: "asesor_sga", header: "Asesor Interno SGA" },
+    { field: "nombre_unidad_negocio", header: "Unidad de Negocio" },
+    { field: "forma_pago_desc", header: "Forma de Pago" },
+    { field: "nombre_financiera", header: "Financiera" },
+    { field: "no_cuotas", header: "Cuotas" },
+    { field: "estado_cartera", header: "Estado Cartera" },
+    { field: "observaciones_gstn_comercial", header: "Observaciones" },
   ];
 
   const formatPeso = (value) => {
@@ -316,15 +321,15 @@ export const AdminNegocios = ({ loading, setLoading, isCollapsed }) => {
       from
     );
 
-    if (fichasPolizaData?.statusCode !== -1) {
-      setFichasPoliza(fichasPolizaData || []);
-      // setFiltrosAbiertos(false); // <<< NUEVO: cierra los filtros al mostrar resultados
+    // Verificar si es un array con datos o un objeto de error
+    if (Array.isArray(fichasPolizaData) && fichasPolizaData.length > 0) {
+      setFichasPoliza(fichasPolizaData);
     } else {
       setFichasPoliza([]);
       Swal.fire({
-        icon: "error",
-        title: "Error",
-        text: "No se encontraron liquidaciones.",
+        icon: "info",
+        title: "Sin resultados",
+        text: "No se encontraron pólizas para los filtros seleccionados.",
       });
     }
   };

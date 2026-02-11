@@ -34,8 +34,8 @@ export const TableConsultas = ({
       searchFields.some((f) =>
         String(item?.[f] ?? "")
           .toLowerCase()
-          .includes(term)
-      )
+          .includes(term),
+      ),
     );
   }, [data, searchFields, globalFilterValue]);
 
@@ -153,12 +153,11 @@ export const TableConsultas = ({
         {headers.map((col) => {
           // columnas que quieres en formato pesos
           const moneyFields = [
-            "asistencia_otros",
-            "prima_neta",
-            "gastos",
-            "iva",
-            "valor_total",
-            "gastos_expedicion"
+            "asistencias_otros_poliza",
+            "prima_neta_poliza",
+            "gastos_expedicion_poliza",
+            "iva_poliza",
+            "valor_total_poliza",
           ];
 
           if (moneyFields.includes(col.field)) {
@@ -222,6 +221,40 @@ export const TableConsultas = ({
                   rowData[col.field] == null || rowData[col.field].trim() === ""
                     ? "N/A"
                     : rowData[col.field]
+                }
+              />
+            );
+          }
+          if (col.field === "nombre_asesor_sga") {
+            return (
+              <Column
+                key={col.field}
+                field={col.field}
+                header={col.header}
+                style={{ textAlign: "center" }}
+                headerStyle={{ textAlign: "center" }}
+                body={(rowData) =>
+                  rowData["asesor_sga"] == null || rowData["asesor_sga"].trim() === ""
+                    ? "N/A"
+                    : rowData["nombre_asesor_sga"]
+                
+                }
+              />
+            );
+          }
+          if (col.field === "nombre_financiera") {
+            return (
+              <Column
+                key={col.field}
+                field={col.field}
+                header={col.header}
+                style={{ textAlign: "center" }}
+                headerStyle={{ textAlign: "center" }}
+                body={(rowData) =>
+                  rowData["financiada_por"] == "0" 
+                    ? "N/A"
+                    : rowData["nombre_financiera"]
+                
                 }
               />
             );

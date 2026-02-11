@@ -1,145 +1,8 @@
 import axios from "axios";
 
 /**
- * Mapea filas del WS al formato que necesita la tabla.
- * - Para criteria_busqueda === "1" (Póliza): usa columnas estándar.
- * - Para criteria_busqueda === "2" (Certificado): además agrega `anexo_poliza`.
- */
-const tipos_certificado = {
-  1: "Nueva",
-  2: "Renovación",
-  3: "Modificación",
-  4: "Cancelación",
-};
-const estados_por_liquidar = {
-  0: "Por liquidar",
-  1: "Liquidada",
-  2: "Cancelada",
-}; // Sólo para visualización
-const ramos = {
-  2: "Hogar",
-  4: "Salud",
-  5: "Vida",
-  6: "Asistencia en viajes",
-  7: "Motos",
-  8: "Pesados",
-  9: "Vida deudor",
-  10: "Arrendamiento",
-  1:  "Autos Livianos",
-  12: "AP Estudiantil",
-  13: "AP",
-  14: "Autos Pasajeros",
-  15: "Autos Colectivo",
-  16: "Bicicleta",
-  17: "Credito",
-  18: "Cumplimiento",
-  19: "Equipo Maquinaria",
-  20: "Exequias",
-  21: "Hogar Deudor",
-  22: "Manejo",
-  23: "PYME",
-  24: "RCE Autos Livianos",
-  25: "RCE Motos",
-  26: "RCE Pesados",
-  27: "RCE Pasajeros",
-  28: "RCC Colectivos",
-  29: "RCE Colectivos",
-  30: "RC Cumplimiento",
-  31: "RC Hidrocarburos",
-  32: "RC Medica Profesional",
-  33: "Asistente E/V",
-};
-const formas_pago = { 1: "Contado", 2: "Financiada" };
-const aseguradoras = {
-  1: "Allianz",
-  2: "AXA Colpatria",
-  3: "Bolivar",
-  4: "Equidad",
-  5: "Estado",
-  6: "HDI Seguros",
-  7: "Mapfre",
-  8: "Mundial",
-  9: "Previsora",
-  10: "Qualitas",
-  11: "SBS Seguros",
-  12: "Solidaria",
-  13: "Zurich",
-  14: "AssistCard",
-  15: "Universal",
-  16: "Assist1",
-  17: "Los Olivos",
-  18: "Sura",
-  19: "Cesce",
-  20: "Colmena",
-  21: "Coomeva",
-  22: "Palig",
-};
-const unidadNegocio = {
-  1: "Freelance",
-  2: "Directo",
-  3: "Asesor 10",
-  4: "Asesor Ganador",
-};
-
-const mapPolizasToTable = (rows = [], criterio = "1") => {
-  return rows.map((it) => ({
-    accion: "",
-
-    // Fechas / identificación
-    fecha_exp_poliza: it?.fecha_exp_poliza ?? it?.fecha_expedicion ?? "",
-    no_poliza: it?.no_poliza ?? "",
-    id_remision: it?.id_remision ?? "",
-
-    // Si es criterio "2" la tabla espera columna 'anexo_poliza'
-    ...(String(criterio) === "2"
-      ? { anexo_poliza: it?.no_certificado ?? it?.id_anexo_poliza ?? "" }
-      : {}),
-
-    // Datos de póliza
-    ramo: ramos[it?.ramo_poliza ?? it?.ramo ?? ""] ?? "",
-    aseguradora:
-      aseguradoras[it?.aseguradora_poliza ?? it?.aseguradora ?? ""] ?? "",
-    tomador: it?.nombre_completo_tomador ?? it?.tomador ?? "",
-    no_documento: it?.numero_documento_tomador ?? it?.no_documento ?? "",
-    asegurado: it?.nombre_completo_asegurado ?? it?.asegurado ?? "",
-    beneficiario:
-      it?.nombre_completo_beneficiario == null ||
-      it?.nombre_completo_beneficiario === ""
-        ? "N/A"
-        : it?.nombre_completo_beneficiario,
-    nombre_asesor_freelance: it?.nombre_asesor_freelance,
-    asesor_freelance: it?.asesor_freelance,
-
-    // Vehículo
-    placa: it?.placa_veh_poliza ?? it?.placa ?? "",
-
-    // Valores
-    asistencia_otros:
-      it?.asistencias_otros_poliza ?? it?.asistencia_otros ?? "",
-    prima_neta: it?.prima_neta_poliza ?? it?.prima_neta ?? "",
-    gastos_expedicion:
-      it?.gastos_expedicion_poliza ?? it?.gastos_expedicion ?? "",
-    iva: it?.iva_poliza ?? it?.iva ?? "",
-    valor_total: it?.valor_total_poliza ?? it?.valor_total ?? "",
-
-    // Vigencias
-    inicio_vigencia: it?.fecha_inicio_vig_poliza ?? it?.inicio_vigencia ?? "",
-    fin_vigencia: it?.fecha_fin_vig_poliza ?? it?.fin_vigencia ?? "",
-
-    // Otros
-    unidad_negocio:
-      unidadNegocio[it?.unidad_negocio_poliza ?? it?.unidad_negocio ?? ""] ??
-      "",
-    estado:
-      it?.estado ?? (String(it?.cancelada) === "1" ? "No vigente" : "Vigente"),
-
-    // Claves para dataKey en la tabla
-    id_poliza: it?.id_poliza ?? "",
-    id_anexo_poliza: it?.id_anexo_poliza ?? "",
-  }));
-};
-/**
- * Llama al WS y devuelve el arreglo ya mapeado para pintar en la tabla.
+ * Llama al WS y devuelve el arreglo ya listo para pintar en la tabla.
+ * Los campos ahora vienen directamente de la API con los nombres correctos.
  * @param {Object} dataFilters - Filtros de búsqueda (incluye criteria_busqueda).
  * @param {String} from - Contexto (por compatibilidad; aquí no se usa para filtrar).
  * @returns {Array} - Filas listas para `TableConsultas`.
@@ -159,16 +22,44 @@ export const getPolizasToQuery = async (dataFilters, from = "search") => {
       : Array.isArray(res)
       ? res
       : [];
-    console.log(lista)
+    
+    console.log("retrievePolizasToQuery response:", lista);
+    
+    // DEBUG: Mostrar campos específicos del primer registro
+    if (lista && lista.length > 0) {
+      const first = lista[0];
+      console.log("DEBUG - Campos del primer registro:", {
+        nombre_ramo: first.nombre_ramo,
+        nombre_aseguradora: first.nombre_aseguradora,
+        nombre_unidad_negocio: first.nombre_unidad_negocio,
+        nombre_financiera: first.nombre_financiera,
+        nombre_asesor_sga: first.nombre_asesor_sga,
+        tipo_certificado_desc: first.tipo_certificado_desc,
+        forma_pago_desc: first.forma_pago_desc,
+        estado_cartera: first.estado_cartera,
+        observaciones_anexo: first.observaciones_anexo,
+        ramo_poliza: first.ramo_poliza,
+        unidad_negocio_poliza: first.unidad_negocio_poliza,
+        aseguradora_poliza: first.aseguradora_poliza,
+      });
+    }
 
-    // Mapeo 1:1 a las columnas esperadas por la tabla
-    const criterio = String(dataFilters?.criteria_busqueda || "1");
-    const adaptadas = mapPolizasToTable(lista, criterio);
+    // Si no hay resultados
+    if (!lista || lista.length === 0) {
+      return { statusCode: -1, data: [] };
+    }
+
+    // Los campos ya vienen con los nombres correctos de la API
+    // Solo agregamos el campo "accion" para la tabla
+    const adaptadas = lista.map((poliza) => ({
+      ...poliza,
+      accion: "", // Campo para el botón de acción en la tabla
+    }));
 
     return adaptadas;
   } catch (error) {
     console.error("getPolizasToQuery error:", error);
-    // Devuelve array vacío para que la tabla muestre "sin registros" sin romper
-    return [];
+    // Devuelve objeto con statusCode -1 para que la tabla muestre mensaje
+    return { statusCode: -1, data: [] };
   }
 };

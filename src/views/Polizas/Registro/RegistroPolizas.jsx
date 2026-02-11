@@ -1594,10 +1594,10 @@ export const Polizas = ({ setLoading, loading }) => {
                 <Select
                   name="tipoCertificado"
                   id="tipoCertificado"
-                  options={tiposPoliza || []}
+                  options={tiposPoliza}
                   value={tiposPoliza.find(
                     (opt) => opt.value === tiposPoliza.value
-                  ) || ""}
+                  ) }
                   onChange={(selectedOption, meta) => {
                     const value = selectedOption ? selectedOption.value : "";
                     handleCabezotePolizaChange({
