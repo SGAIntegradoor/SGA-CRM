@@ -420,7 +420,7 @@ export const EditarPoliza = ({ setLoading, loading }) => {
       if (response.status === "Ok") {
         setGestionComercial((prev) => ({
           ...prev,
-          analista: response.data[0].id_analista,
+          analista: response.data[0]?.id_analista || "",
         }));
       } else {
         Swal.fire({
