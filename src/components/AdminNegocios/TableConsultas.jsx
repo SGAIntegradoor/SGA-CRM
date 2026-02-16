@@ -39,9 +39,72 @@ export const TableConsultas = ({
     );
   }, [data, searchFields, globalFilterValue]);
 
-  // Excel de lo visible
+  // Excel de lo visible - siguiendo el orden de los headers
   const exportExcel = () => {
-    const worksheet = xlsx.utils.json_to_sheet(filtered);
+    // Campos monetarios que deben exportarse como número (para cálculos)
+    const moneyFields = [
+      "asistencias_otros_poliza",
+      "prima_neta_poliza",
+      "gastos_expedicion_poliza",
+      "iva_poliza",
+      "valor_total_poliza",
+    ];
+    
+    // Campos numéricos pequeños que no tendrán problema de notación científica
+    const smallNumericFields = [
+      "no_certificado",
+      "no_cuotas",
+      "id_remision",
+    ];
+
+    // Crear los encabezados en el orden correcto (excluyendo "accion")
+    const headersToExport = headers.filter((h) => h.field !== "accion");
+    const headerRow = headersToExport.map((h) => h.header);
+
+    // Crear las filas de datos en el orden de los headers
+    const dataRows = filtered.map((row) => {
+      return headersToExport.map((h) => {
+        let value = row[h.field];
+        
+        // Si el valor es null, undefined o vacío
+        if (value === null || value === undefined || value === "") {
+          return "";
+        }
+        
+        // Si es un campo monetario, convertir a número para cálculos
+        if (moneyFields.includes(h.field)) {
+          const num = Number(String(value).replace(/[^0-9.-]/g, ""));
+          return isNaN(num) ? value : num;
+        }
+        
+        // Si es un campo numérico pequeño, convertir a número
+        if (smallNumericFields.includes(h.field)) {
+          const num = Number(String(value).replace(/[^0-9.-]/g, ""));
+          return isNaN(num) ? value : num;
+        }
+        
+        // Para campos de identificación (no_poliza, documentos, etc.)
+        // mantener como texto para evitar notación científica
+        return String(value);
+      });
+    });
+
+    // Combinar encabezados y datos
+    const worksheetData = [headerRow, ...dataRows];
+    
+    // Crear el worksheet desde el array
+    const worksheet = xlsx.utils.aoa_to_sheet(worksheetData);
+    
+    // Ajustar el ancho de las columnas automáticamente
+    const colWidths = headersToExport.map((h, idx) => {
+      const maxLength = Math.max(
+        h.header.length,
+        ...dataRows.map((row) => String(row[idx] ?? "").length)
+      );
+      return { wch: Math.min(maxLength + 2, 50) };
+    });
+    worksheet["!cols"] = colWidths;
+
     const workbook = { Sheets: { data: worksheet }, SheetNames: ["data"] };
     const excelBuffer = xlsx.write(workbook, {
       bookType: "xlsx",
