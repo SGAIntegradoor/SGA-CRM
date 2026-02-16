@@ -41,7 +41,7 @@ export const TableConsultas = ({
 
   // Excel de lo visible - siguiendo el orden de los headers
   const exportExcel = () => {
-    // Campos monetarios que deben exportarse como número (para cálculos)
+    // Campos monetarios que deben exportarse con formato de moneda
     const moneyFields = [
       "asistencias_otros_poliza",
       "prima_neta_poliza",
@@ -50,11 +50,20 @@ export const TableConsultas = ({
       "valor_total_poliza",
     ];
     
-    // Campos numéricos pequeños que no tendrán problema de notación científica
-    const smallNumericFields = [
+    // Campos numéricos enteros (formato numérico sin decimales)
+    const integerFields = [
+      "no_poliza",
+      "id_poliza",
       "no_certificado",
       "no_cuotas",
       "id_remision",
+    ];
+    
+    // Campos que deben ser texto para evitar problemas
+    const textFields = [
+      "numero_documento_tomador",
+      "numero_documento_asegurado", 
+      "numero_documento_beneficiario",
     ];
 
     // Crear los encabezados en el orden correcto (excluyendo "accion")
@@ -77,14 +86,13 @@ export const TableConsultas = ({
           return isNaN(num) ? value : num;
         }
         
-        // Si es un campo numérico pequeño, convertir a número
-        if (smallNumericFields.includes(h.field)) {
+        // Si es un campo numérico entero, convertir a número
+        if (integerFields.includes(h.field)) {
           const num = Number(String(value).replace(/[^0-9.-]/g, ""));
-          return isNaN(num) ? value : num;
+          return isNaN(num) ? value : Math.floor(num);
         }
         
-        // Para campos de identificación (no_poliza, documentos, etc.)
-        // mantener como texto para evitar notación científica
+        // Para campos de texto
         return String(value);
       });
     });
@@ -94,6 +102,34 @@ export const TableConsultas = ({
     
     // Crear el worksheet desde el array
     const worksheet = xlsx.utils.aoa_to_sheet(worksheetData);
+    
+    // Aplicar formato a las celdas
+    const range = xlsx.utils.decode_range(worksheet["!ref"]);
+    
+    for (let R = 1; R <= range.e.r; R++) { // Empezar desde fila 1 (después de headers)
+      headersToExport.forEach((h, C) => {
+        const cellAddress = xlsx.utils.encode_cell({ r: R, c: C });
+        const cell = worksheet[cellAddress];
+        
+        if (cell) {
+          // Aplicar formato numérico a campos monetarios (sin signo de pesos)
+          if (moneyFields.includes(h.field) && typeof cell.v === "number") {
+            cell.z = '#,##0';
+          }
+          
+          // Aplicar formato numérico entero (sin decimales)
+          if (integerFields.includes(h.field) && typeof cell.v === "number") {
+            cell.z = '0'; // Formato numérico sin decimales ni separadores
+          }
+          
+          // Forzar formato texto para documentos
+          if (textFields.includes(h.field)) {
+            cell.t = "s"; // Tipo texto
+            cell.v = String(cell.v);
+          }
+        }
+      });
+    }
     
     // Ajustar el ancho de las columnas automáticamente
     const colWidths = headersToExport.map((h, idx) => {
