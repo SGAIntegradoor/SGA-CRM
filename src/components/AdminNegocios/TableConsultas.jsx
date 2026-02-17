@@ -400,7 +400,7 @@ export const TableConsultas = ({
               />
             );
           }
-          if (col.field === "asesor_ganador") {
+          if (col.field === "nombre_asesor_ganador") {
             return (
               <Column
                 key={col.field}
@@ -410,8 +410,37 @@ export const TableConsultas = ({
                 headerStyle={{ textAlign: "center" }}
                 body={(rowData) => {
                   const primary = `${rowData?.[col.field] ?? ""}`.trim();
-                  const fallback = `${rowData?.asesor_10 ?? ""}`.trim();
-                  return primary || fallback || "N/A";
+                  return primary || "N/A";
+                }}
+              />
+            );
+          }
+          if (col.field === "placa_veh_poliza") {
+            return (
+              <Column
+                key={col.field}
+                field={col.field}
+                header={col.header}
+                style={{ textAlign: "center" }}
+                headerStyle={{ textAlign: "center" }}
+                body={(rowData) => {
+                  const primary = `${rowData?.[col.field] ?? ""}`.trim();
+                  return primary || "N/A";
+                }}
+              />
+            );
+          }
+          if (col.field === "nombre_asesor_10") {
+            return (
+              <Column
+                key={col.field}
+                field={col.field}
+                header={col.header}
+                style={{ textAlign: "center" }}
+                headerStyle={{ textAlign: "center" }}
+                body={(rowData) => {
+                  const fallback = `${rowData?.nombre_asesor_10 ?? ""}`.trim();
+                  return fallback || "N/A";
                 }}
               />
             );
