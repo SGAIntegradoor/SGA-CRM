@@ -85,6 +85,16 @@ export const TableConsultas = ({
     const dataRows = filtered.map((row) => {
       return headersToExport.map((h) => {
         let value = row[h.field];
+
+        // Combina asesor_ganador y asesor_10 en una sola columna
+        if (h.field === "asesor_ganador") {
+          const primary = value;
+          const fallback = row["asesor_10"];
+          value =
+            primary !== null && primary !== undefined && primary !== ""
+              ? primary
+              : fallback ?? "";
+        }
         
         // Si el valor es null, undefined o vacío
         if (value === null || value === undefined || value === "") {
@@ -387,6 +397,22 @@ export const TableConsultas = ({
                     : rowData["nombre_financiera"]
                 
                 }
+              />
+            );
+          }
+          if (col.field === "asesor_ganador") {
+            return (
+              <Column
+                key={col.field}
+                field={col.field}
+                header={col.header}
+                style={{ textAlign: "center" }}
+                headerStyle={{ textAlign: "center" }}
+                body={(rowData) => {
+                  const primary = `${rowData?.[col.field] ?? ""}`.trim();
+                  const fallback = `${rowData?.asesor_10 ?? ""}`.trim();
+                  return primary || fallback || "N/A";
+                }}
               />
             );
           }
