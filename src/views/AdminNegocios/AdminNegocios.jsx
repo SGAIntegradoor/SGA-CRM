@@ -170,6 +170,7 @@ export const AdminNegocios = ({ loading, setLoading, isCollapsed }) => {
     { field: "no_cuotas", header: "Cuotas" },
     { field: "estado_cartera", header: "Estado Cartera" },
     { field: "observaciones_gstn_comercial", header: "Observaciones" },
+    { field: "fecha_registro", header: "Fecha Registro" },
   ];
 
   const headersOptFichaCertificado = [
@@ -200,6 +201,7 @@ export const AdminNegocios = ({ loading, setLoading, isCollapsed }) => {
     { field: "no_cuotas", header: "Cuotas" },
     { field: "estado_cartera", header: "Estado Cartera" },
     { field: "observaciones_gstn_comercial", header: "Observaciones" },
+    { field: "fecha_registro", header: "Fecha Registro" },
   ];
 
   const formatPeso = (value) => {
@@ -248,7 +250,7 @@ export const AdminNegocios = ({ loading, setLoading, isCollapsed }) => {
       setUsuarios(filtered.sort((a, b) => a.label.localeCompare(b.label)));
     } catch (e) {
       console.error(e);
-    } 
+    }
   };
 
   // === handler consulta (mantengo tu estructura) ===
@@ -322,7 +324,7 @@ export const AdminNegocios = ({ loading, setLoading, isCollapsed }) => {
         documento,
         unidad_negocio,
       },
-      from
+      from,
     );
 
     // Verificar si es un array con datos o un objeto de error
@@ -350,7 +352,7 @@ export const AdminNegocios = ({ loading, setLoading, isCollapsed }) => {
     opts.find((o) => o.value === value) || null;
 
   // (dummy) opciones de ejemplo
-  const opcionesUnidad = unidadNegocio
+  const opcionesUnidad = unidadNegocio;
   const opcionesAseguradora = insurers;
   const opcionesRamo = ramo;
   const opcionesFormaPago = [
@@ -529,7 +531,7 @@ export const AdminNegocios = ({ loading, setLoading, isCollapsed }) => {
                           options={opcionesTipoFecha}
                           value={optionFromValue(
                             opcionesTipoFecha,
-                            filtros.consulta_de_fecha.tipo_fecha_busqueda
+                            filtros.consulta_de_fecha.tipo_fecha_busqueda,
                           )}
                           onChange={(opt) =>
                             setFiltros((prev) => ({
@@ -613,7 +615,7 @@ export const AdminNegocios = ({ loading, setLoading, isCollapsed }) => {
                           options={unidadNegocio}
                           value={optionFromValue(
                             unidadNegocio,
-                            filtros.unidad_negocio
+                            filtros.unidad_negocio,
                           )}
                           onChange={(opt) =>
                             setFiltros((prev) => ({
@@ -637,7 +639,7 @@ export const AdminNegocios = ({ loading, setLoading, isCollapsed }) => {
                           options={usuarios}
                           value={optionFromValue(
                             usuarios,
-                            filtros.nombre_asesor
+                            filtros.nombre_asesor,
                           )}
                           onChange={(opt) =>
                             setFiltros((prev) => ({
@@ -661,7 +663,7 @@ export const AdminNegocios = ({ loading, setLoading, isCollapsed }) => {
                           options={usuarios}
                           value={optionFromValue(
                             usuarios,
-                            filtros.analista_asesor
+                            filtros.analista_asesor,
                           )}
                           onChange={(opt) =>
                             setFiltros((prev) => ({
@@ -688,7 +690,7 @@ export const AdminNegocios = ({ loading, setLoading, isCollapsed }) => {
                           options={opcionesAseguradora}
                           value={optionFromValue(
                             opcionesAseguradora,
-                            filtros.aseguradora
+                            filtros.aseguradora,
                           )}
                           onChange={(opt) =>
                             setFiltros((prev) => ({
@@ -736,7 +738,7 @@ export const AdminNegocios = ({ loading, setLoading, isCollapsed }) => {
                           options={opcionesFormaPago}
                           value={optionFromValue(
                             opcionesFormaPago,
-                            filtros.forma_pago
+                            filtros.forma_pago,
                           )}
                           onChange={(opt) =>
                             setFiltros((prev) => ({
@@ -760,7 +762,7 @@ export const AdminNegocios = ({ loading, setLoading, isCollapsed }) => {
                           options={opcionesFinanciador}
                           value={optionFromValue(
                             opcionesFinanciador,
-                            filtros.financiada_por
+                            filtros.financiada_por,
                           )}
                           onChange={(opt) =>
                             setFiltros((prev) => ({
@@ -833,7 +835,7 @@ export const AdminNegocios = ({ loading, setLoading, isCollapsed }) => {
                           options={opcionesTipoCliente}
                           value={optionFromValue(
                             opcionesTipoCliente,
-                            filtros.aseg_tom_ben.tipo_cliente
+                            filtros.aseg_tom_ben.tipo_cliente,
                           )}
                           onChange={(opt) =>
                             setFiltros((prev) => ({
