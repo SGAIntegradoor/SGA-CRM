@@ -52,11 +52,15 @@ export const TableConsultas = ({
     
     // Campos numéricos enteros (formato numérico sin decimales)
     const integerFields = [
-      "no_poliza",
-      "id_poliza",
       "no_certificado",
       "no_cuotas",
       "id_remision",
+    ];
+    
+    // Campos de póliza que pueden ser numéricos o alfanuméricos
+    const polizaFields = [
+      "no_poliza",
+      "id_poliza",
     ];
     
     // Campos que deben ser texto para evitar problemas
@@ -65,6 +69,13 @@ export const TableConsultas = ({
       "numero_documento_asegurado", 
       "numero_documento_beneficiario",
     ];
+    
+    // Helper para determinar si un valor debe ser texto o número
+    const isAlphanumeric = (value) => {
+      const str = String(value);
+      // Si contiene cualquier carácter que no sea dígito, es alfanumérico
+      return /[^0-9]/.test(str);
+    };
 
     // Crear los encabezados en el orden correcto (excluyendo "accion")
     const headersToExport = headers.filter((h) => h.field !== "accion");
@@ -84,6 +95,18 @@ export const TableConsultas = ({
         if (moneyFields.includes(h.field)) {
           const num = Number(String(value).replace(/[^0-9.-]/g, ""));
           return isNaN(num) ? value : num;
+        }
+        
+        // Si es un campo de póliza, evaluar si es alfanumérico o numérico puro
+        if (polizaFields.includes(h.field)) {
+          if (isAlphanumeric(value)) {
+            // Mantener como texto (alfanumérico con letras)
+            return String(value);
+          } else {
+            // Es numérico puro (incluyendo los que empiezan con 0), convertir a número
+            const num = Number(String(value));
+            return isNaN(num) ? String(value) : num;
+          }
         }
         
         // Si es un campo numérico entero, convertir a número
@@ -120,6 +143,15 @@ export const TableConsultas = ({
           // Aplicar formato numérico entero (sin decimales)
           if (integerFields.includes(h.field) && typeof cell.v === "number") {
             cell.z = '0'; // Formato numérico sin decimales ni separadores
+          }
+          
+          // Para campos de póliza: número sin decimales si es numérico, texto si es alfanumérico
+          if (polizaFields.includes(h.field)) {
+            if (typeof cell.v === "number") {
+              cell.z = '0'; // Formato numérico sin decimales
+            } else {
+              cell.t = "s"; // Forzar texto
+            }
           }
           
           // Forzar formato texto para documentos
