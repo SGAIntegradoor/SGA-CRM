@@ -15,6 +15,7 @@ export default function PdfServicesImpresion() {
       if (id) {
         const res = await pdfServices(id); // debe devolver un string HTML
         setLiquidacion(res ?? ""); // evita null
+        handlePrint(); // imprime apenas se carga el HTML
       } else return null;
     })();
   }, []);

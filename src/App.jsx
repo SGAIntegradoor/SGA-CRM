@@ -53,7 +53,11 @@ function App() {
         <Routes>
           {/* Ruta SSO - accesible sin autenticación */}
           <Route path="/sso" element={<SSOCallback />} />
-          
+          <Route
+            path="/comisiones/liquidacion/pdfservice"
+            element={<PdfServicesImpresion />}
+          />
+
           {!log ? (
             <>
               <Route
@@ -155,10 +159,6 @@ function App() {
               <Route
                 path="/comisiones/liquidacion/impresion"
                 element={<LiquidacionImpresion />}
-              />
-              <Route
-                path="/comisiones/liquidacion/pdfservice"
-                element={<PdfServicesImpresion />}
               />
             </>
           )}
