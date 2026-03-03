@@ -9,49 +9,67 @@ export default function PdfServicesImpresion() {
 
   const [liquidacion, setLiquidacion] = useState(null);
   const pdfRef = useRef(null);
+  const hasAutoPrintedRef = useRef(false);
+
+  const closeAfterPrint = () => {
+    window.close();
+
+    setTimeout(() => {
+      if (!window.closed) {
+        window.history.back();
+      }
+    }, 300);
+  };
+
+  const handlePrint = useReactToPrint({
+    contentRef: pdfRef,
+    documentTitle: "",
+    removeAfterPrint: true,
+    ignoreGlobalStyles: true,
+    onAfterPrint: closeAfterPrint,
+    pageStyle: `
+      @page { size: A4 landscape; margin: 0mm; }
+      @media print {
+        .no-print { display: none !important; }
+      }
+      * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+      thead { display: table-header-group; }
+      tfoot { display: table-footer-group; }
+      table, tr, td, th, section { break-inside: avoid; page-break-inside: avoid; }
+      .page-break { break-after: page; }
+    `,
+  });
 
   useEffect(() => {
     (async () => {
       if (id) {
-        const res = await pdfServices(id); // debe devolver un string HTML
-        setLiquidacion(res ?? ""); // evita null
-        handlePrint(); // imprime apenas se carga el HTML
+        const res = await pdfServices(id);
+        setLiquidacion(res ?? "");
       } else return null;
     })();
   }, []);
 
-  const handlePrint = useReactToPrint({
-    contentRef: pdfRef, // ✅ v3 usa contentRef
-    documentTitle: "",
-    removeAfterPrint: true,
-    pageStyle: `
-      @page { size: A4 landscape; margin: 0mm; }
-    @media print {
-      /* Fuerza medidas de A4 horizontal para evitar reflow/cortes */
-      // .print-landscape {
-      //   width: 297mm;
-      //   min-height: 210mm;
-      // }
-    }
-    * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
-    thead { display: table-header-group; }
-    tfoot { display: table-footer-group; }
-    table, tr, td, th, section { break-inside: avoid; page-break-inside: avoid; }
-    .page-break { break-after: page; }
-    `,
-  });
+  useEffect(() => {
+    if (!liquidacion || hasAutoPrintedRef.current) return;
+    hasAutoPrintedRef.current = true;
+
+    const frame = requestAnimationFrame(() => {
+      handlePrint();
+    });
+
+    return () => cancelAnimationFrame(frame);
+  }, [liquidacion, handlePrint]);
 
   return (
     <div>
       <button
         className="no-print"
         onClick={() => handlePrint()}
-        disabled={!liquidacion} // evita “There is nothing to print”
+        disabled={!liquidacion}
       >
         Imprimir
       </button>
 
-      {/* El ref DEBE apuntar a un nodo DOM montado */}
       <div ref={pdfRef}>
         <div dangerouslySetInnerHTML={{ __html: liquidacion || "" }} />
       </div>
