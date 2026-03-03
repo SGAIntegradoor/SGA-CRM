@@ -27,6 +27,7 @@ export default function PdfServicesImpresion() {
     removeAfterPrint: true,
     ignoreGlobalStyles: true,
     onAfterPrint: closeAfterPrint,
+
     pageStyle: `
       @page { size: A4 landscape; margin: 0mm; }
       @media print {
