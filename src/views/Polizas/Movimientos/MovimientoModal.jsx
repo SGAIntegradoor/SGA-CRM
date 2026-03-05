@@ -554,7 +554,6 @@ export const MovimientoModal = ({
     if (!handlerValidateFields()) return;
     if (isFromContext) {
       // el body manda todo y en el Backend se distingue por el tipo de movimiento
-      console.log(formModificacion.razoncancelacionmovimiento)
       const bodyGeneral = {
         data: {
           tipomovimiento: formModificacion.tipomovimiento,
@@ -626,6 +625,8 @@ export const MovimientoModal = ({
           formModificacion.gastosexpedicionmovimiento;
         bodySentMovement.valoresPoliza.valortotal =
           formModificacion.valortotalpagar;
+        bodySentMovement.cabezotePoliza.observaciones =
+          formModificacion.observacionesmovimiento;
       } else if (formModificacion.tipomovimiento === "1") {
         bodySentMovement.cabezotePoliza.noCertificado = noCertificado;
         bodySentMovement.cabezotePoliza.fechaRegistro =
@@ -642,8 +643,11 @@ export const MovimientoModal = ({
           formModificacion.gastosexpedicionmovimiento;
         bodySentMovement.valoresPoliza.valortotal =
           formModificacion.valortotalpagar;
+        bodySentMovement.cabezotePoliza.observaciones =
+          formModificacion.observacionesmovimiento;
       }
-
+      // console.log(formModificacion.observacionesmovimiento)
+      console.log(bodySentMovement)
       const crearAnexo = await createAnexo(bodySentMovement);
       if (crearAnexo.status == "Ok" && crearAnexo.codeStatus == 201) {
         // Anexo creado exitosamente

@@ -233,6 +233,7 @@ export const VerMovimientosModal = ({
               {/* {console.log(movimientos)} */}
               <tbody>
                 {movimientos.map((movimiento) => {
+                  console.log(movimiento)
                   let reason = "";
                   if (movimiento.tipo_certificado == "4") {
                     reason =
@@ -322,7 +323,7 @@ export const VerMovimientosModal = ({
                         )}
                       </td>
                       <td className="px-4 py-2 border-t border-r">
-                        {movimiento.observaciones}
+                        {movimiento.observaciones_anexo || ""}
                       </td>
                       <td className="px-4 py-2 border-t border-r">
                         {/* {console.log(handleGetUserName(movimiento.id_usuario))} */}

@@ -785,7 +785,7 @@ export const EditarPoliza = ({ setLoading, loading }) => {
 
     let options = [];
 
-    if(cuotasBackend == null) {
+    if (cuotasBackend == null) {
       setQuotesFinancieras([]);
       return;
     }
@@ -929,20 +929,16 @@ export const EditarPoliza = ({ setLoading, loading }) => {
           });
           setValoresPoliza({
             iva: convertToPesos(data.valoresPoliza.iva) || "",
-            asistenciasotros: convertToPesos(
-              data.valoresPoliza.asistenciasotros,
-            ) || "",
-            gastosexpedicion: convertToPesos(
-              data.valoresPoliza.gastosexpedicion,
-            ) || "",
+            asistenciasotros:
+              convertToPesos(data.valoresPoliza.asistenciasotros) || "",
+            gastosexpedicion:
+              convertToPesos(data.valoresPoliza.gastosexpedicion) || "",
             primaneta: convertToPesos(data.valoresPoliza.primaneta) || "",
-            primaneta_aviajes: convertToPesos(
-              data.valoresPoliza.primaneta_aviajes,
-            ) || "",
+            primaneta_aviajes:
+              convertToPesos(data.valoresPoliza.primaneta_aviajes) || "",
             TRM_aviajes: convertToPesos(data.valoresPoliza.TRM_aviajes) || "",
-            valor_asistencia_aviajes: convertToPesos(
-              data.valoresPoliza.valor_asistencia_aviajes,
-            ) || "",
+            valor_asistencia_aviajes:
+              convertToPesos(data.valoresPoliza.valor_asistencia_aviajes) || "",
             valortotal: convertToPesos(data.valoresPoliza.valortotal) || "",
             formapago: data.valoresPoliza.formapago || "",
             financiada: data.valoresPoliza.financiada || "",
@@ -1004,8 +1000,7 @@ export const EditarPoliza = ({ setLoading, loading }) => {
         if (response.status === "Ok" && response.codeStatus !== 404) {
           const data = response.data;
           await handleChangesFinanciera();
-          await handlerChargeQuotesFinanciera(data.valoresPoliza.financiada
-          );
+          await handlerChargeQuotesFinanciera(data.valoresPoliza.financiada);
           setIdPoliza(data.id_poliza);
           setCabezotePoliza({
             id_poliza: data.id_poliza,
@@ -1041,8 +1036,7 @@ export const EditarPoliza = ({ setLoading, loading }) => {
             coordinadortecnico: data.gestionComercial.coordinadortecnico || "",
             asistente: data.gestionComercial.asistente || "",
             unidadnegocio: data.gestionComercial.unidadnegocio || "",
-            observaciones:
-              data.gestionComercial.observaciones || "",
+            observaciones: data.gestionComercial.observaciones || "",
           });
           setValoresPoliza({
             iva: convertToPesos(data.valoresPoliza.iva || 0),
@@ -2841,23 +2835,23 @@ export const EditarPoliza = ({ setLoading, loading }) => {
               >
                 <span>Ver movimientos</span>
               </BtnGeneral>
-              {userData.crear_movimiento == "x" ? (
-                <BtnGeneral
-                  id={"btnCrearMovimiento"}
-                  className={`bg-gray-400 text-white px-10 h-[35px] m-[2px] rounded hover:bg-lime-600 transition duration-300 ease-in-out ${
-                    cabezotePoliza.tipoCertificado === "4"
-                      ? "opacity-50 cursor-not-allowed"
-                      : ""
-                  }`}
-                  funct={() => {
-                    clearMovimiento(); // ⬅️ limpia el contexto
-                    setModalMovimiento(true);
-                  }}
-                  isDisabled={cabezotePoliza.tipoCertificado === "4"}
-                >
-                  <span>Crear movimiento</span>
-                </BtnGeneral>
-              ) : null}
+
+              <BtnGeneral
+                id={"btnCrearMovimiento"}
+                className={`bg-gray-400 text-white px-10 h-[35px] m-[2px] rounded hover:bg-lime-600 transition duration-300 ease-in-out ${
+                  cabezotePoliza.tipoCertificado === "4"
+                    ? "opacity-50 cursor-not-allowed"
+                    : ""
+                }`}
+                funct={() => {
+                  clearMovimiento(); // ⬅️ limpia el contexto
+                  setModalMovimiento(true);
+                }}
+                isDisabled={cabezotePoliza.tipoCertificado === "4"}
+              >
+                <span>Crear movimiento</span>
+              </BtnGeneral>
+
               <BtnGeneral
                 id={"btnGuardarPoliza"}
                 className={
