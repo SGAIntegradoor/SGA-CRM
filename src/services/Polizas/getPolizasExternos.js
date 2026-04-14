@@ -7,7 +7,7 @@ const nfCOP = new Intl.NumberFormat("es-CO", {
 });
 const formatCOP = (n) => nfCOP.format(Number(n || 0));
 
-export const getPolizas = async (dataFilters) => {
+export const getPolizasExternos = async (dataFilters) => {
   const tipos_certificado = {
     1: "Nueva",
     2: "Renovación",
@@ -202,7 +202,7 @@ export const getPolizas = async (dataFilters) => {
 
   try {
     const { data } = await axios.post(
-      "/Policy/retrievePolizas",
+      "/Policy/retrievePolizasExternos",
       { dataFilters },
       { headers: { "Content-Type": "application/json" } }
     );
@@ -389,7 +389,7 @@ export const getPolizas = async (dataFilters) => {
           ? poliza.placa_veh_poliza || "N/A"
           : "N/A",
         anexo: poliza.no_certificado,
-
+        usu_freelance: poliza.usuario_freelance?.info_usuario,
         // Valores financieros separados
         asistencia: formatCOP(Number(poliza.asistencias_otros_poliza ?? 0)),
         prima_neta: formatCOP(Number(poliza.prima_neta_poliza ?? 0)),
@@ -429,7 +429,9 @@ export const getPolizas = async (dataFilters) => {
 
         valor_a_reversar: valorAReversarStr,
         valor_comision: valorComisionStr,
-
+        id_liquidacion: poliza.id_liquidacion || "N/A",
+        valor_comision_freelance: poliza.pal_valor_usuario ? formatCOP(poliza.pal_valor_usuario) : "N/A",
+        fecha_pago_liquidacion: poliza.pal_fecha_usuario || "N/A",
         estado_liquidacion:
           estados_por_liquidar[Number(poliza.ya_liquidada_para_usuario)] ||
           "Desconocido",
@@ -441,6 +443,14 @@ export const getPolizas = async (dataFilters) => {
         porcentaje_comision_decimal: pctStr,
         porcentaje_comision_pct: pctNum,
         porcentaje_comision_fraccion: pctFrac,
+
+        // Valores raw para cálculos en modal/retoma
+        prima_neta_raw: primaNeta,
+        asistencias_raw: asist,
+        gastos_expedicion_raw: Number(poliza.gastos_expedicion_poliza ?? 0),
+        aseguradora_id: Number(poliza.aseguradora_poliza),
+        ramo_id: Number(poliza.ramo_poliza),
+        porc_com: poliza.porc_com || [],
       };
     });
   } catch (error) {

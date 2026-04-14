@@ -1,292 +1,474 @@
-import { Box, Typography, useTheme } from "@mui/material";
-import { useContext } from "react";
-import { ProSidebar, Menu, MenuItem, SubMenu } from "react-pro-sidebar";
-import { Link } from "react-router-dom";
-import "react-pro-sidebar/dist/css/styles.css";
-import { tokens } from "../../theme";
-import Integrador from "../../assets/img/integradoorLogoWhite.png";
-import iconIntegradoor from "../../assets/img/iconLogoIntegradoorBlack.png";
+/* eslint-disable */
+import {
+  Box,
+  Typography,
+  useTheme,
+  Tooltip,
+  Drawer,
+  List,
+  ListItem,
+  ListItemButton,
+  ListItemIcon,
+  ListItemText,
+  Collapse,
+  Popover,
+  useMediaQuery,
+} from "@mui/material";
+import { ExpandLess, ExpandMore, SafetyCheck } from "@mui/icons-material";
 import HomeIcon from "@mui/icons-material/Home";
 import AccountCircleIcon from "@mui/icons-material/AccountCircle";
-import { Image } from "primereact/image";
+import { cloneElement, Children, useContext, useState, useRef } from "react";
+import { useNavigate } from "react-router-dom";
+import { tokens } from "../../theme";
 import { NavContext } from "../../context/NavContext";
-import { SafetyCheck } from "@mui/icons-material";
+import Integrador from "../../assets/img/integradoorLogoWhite.png";
+import iconIntegradoor from "../../assets/img/iconLogoIntegradoorBlack.png";
 import { FaCalculator } from "react-icons/fa6";
 import { HiCurrencyDollar } from "react-icons/hi";
 import { MdBusinessCenter } from "react-icons/md";
+import { FaCircleCheck } from "react-icons/fa6";
 
-/* eslint-disable */
-export const Item = ({ title, to, icon, isCollapsed, setIsCollapsed }) => {
+
+const EXPANDED_WIDTH = 240;
+const COLLAPSED_WIDTH = 64;
+const ACCENT = "#88d600";
+const drawerZIndex = 1000; // Puedes ajustar este valor según tus necesidades
+
+// ── Item ──────────────────────────────────────────────────────────────────────
+export const Item = ({
+  title,
+  to,
+  icon,
+  isCollapsed,
+  setIsCollapsed,
+  onAfterClick,
+  closeOnClick = false,
+}) => {
   const { selected, moving } = useContext(NavContext);
   const theme = useTheme();
   const colors = tokens(theme.palette.mode);
+  const navigate = useNavigate();
+  const isActive = selected === to;
 
   const handleClick = () => {
-    // ☑️ No colapsar automáticamente al hacer clic en un item
     moving(title);
+    navigate(to);
+    onAfterClick?.();
+    if (closeOnClick) {
+      setIsCollapsed(true);
+    }
   };
 
-  return (
-    <MenuItem
-      key={title}
-      icon={icon}
-      style={{
-        color: colors.gray[100],
-        backgroundColor: selected === to ? colors.gray[900] : "transparent",
-        display: "flex",
-        alignItems: "center",
-        marginRight: isCollapsed ? "0px" : "7px",
-        borderRadius: "5px",
-      }}
+  const btn = (
+    <ListItemButton
       onClick={handleClick}
-      active={selected === to}
-    >
-      <Typography variant="h5" sx={{ padding: "0px" }}>
-        {isCollapsed ? "" : title}
-      </Typography>
-      <Link to={to} />
-    </MenuItem>
-  );
-};
-
-export const Sidebar = ({ isCollapsed, setIsCollapsed, loggedDataInfo }) => {
-  const theme = useTheme();
-  const colors = tokens(theme.palette.mode);
-
-  return (
-    <Box
       sx={{
-        "& .pro-sidebar-inner": {
-          background: `${colors.primary[400]} !important`,
+        borderRadius: "5px",
+        mr: isCollapsed ? 0 : "7px",
+        minHeight: 40,
+        width: "100%",
+        justifyContent: isCollapsed ? "center" : "flex-start",
+        px: isCollapsed ? "8px" : "12px",
+        color: isActive ? ACCENT : colors.gray[100],
+        backgroundColor: isActive ? `${colors.gray[900]} !important` : "transparent",
+        "&:hover": {
+          color: ACCENT,
+          "& .MuiListItemIcon-root": { color: ACCENT },
         },
-        "& .pro-icon-wrapper": {
-          backgroundColor: "transparent !important",
-          width: "28px",
-          height: "28px",
+        "& .MuiListItemIcon-root": {
+          color: isActive ? ACCENT : colors.gray[100],
+          minWidth: 0,
+          mr: isCollapsed ? 0 : "12px",
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-        },
-
-        // Hover
-        "& .pro-inner-item:hover": {
-          color: "#88d600 !important",
-          position: "relative",
-          zIndex: 2,
-        },
-
-        // Activo
-        "& .pro-menu-item.active": {
-          color: "#88d600 !important",
-          borderLeft: isCollapsed ? "3px solid #88d600" : "",
-        },
-
-        // Alturas / padding
-        "& .pro-menu": {
-          height: "100% !important",
-        },
-        "& .pro-sidebar .pro-menu": {
-          paddingTop: "0px",
-          paddingBottom: "0px",
-        },
-
-        // Logo
-        "& #logos .pro-item-content": {
-          backgroundColor: "#88d600 !important",
-          verticalAlign: "middle",
-        },
-
-        // ===== ALINEACIÓN SUBMENU & ÍCONOS =====
-
-        // Centrar y alinear la flecha del SubMenu (modo normal)
-        "& .pro-sidebar .pro-inner-item .pro-arrow": {
-          top: "50% !important",
-          transform: "translateY(-50%)",
-          right: "10px",
-        },
-
-        // Alinear aún más en colapsado
-        "& .pro-sidebar.collapsed .pro-inner-item .pro-arrow": {
-          display: "none !important",
-        },
-
-        // (Opcional) Ocultar flecha en modo colapsado para un look limpio
-        // Descomenta si la quieres ocultar:
-        // "& .pro-sidebar.collapsed .pro-inner-item .pro-arrow": {
-        //   display: "none",
-        // },
-
-        // // Sangría de sub-items (modo normal)
-        // "& .pro-menu .pro-sub-menu .pro-menu-item > .pro-inner-item": {
-        //   paddingLeft: "36px !important",
-        // },
-
-        // // Sangría de sub-items (modo colapsado) -> más a la izquierda
-        // "& .pro-sidebar.collapsed .pro-sub-menu .pro-menu-item > .pro-inner-item":
-        //   {
-        //     paddingLeft: "14px !important",
-        //   },
-
-        // Ícono de sub-items en colapsado: más pegado a la izquierda
-        "& .pro-sidebar.collapsed .pro-sub-menu .pro-menu-item > .pro-inner-item .pro-icon-wrapper":
-          {
-            marginRight: "0 !important",
-          },
-
-        // Ícono del título del SubMenu en colapsado: también alineado
-        "& .pro-sidebar.collapsed .pro-menu > .pro-sub-menu > .pro-inner-item > .pro-icon-wrapper":
-          {
-            marginLeft: "4px !important",
-            marginRight: "0",
-          },
-
-        // Ítems raíz: padding consistente
-        "& .pro-menu .pro-menu-item > .pro-inner-item": {
-          padding: "8px 12px",
-          minHeight: "40px",
-        },
-
-        /* Flecha bien centrada en modo normal */
-
-        /* ❌ Ocultar flecha en modo colapsado (evita el desalineado que se ve en tu captura) */
-        // "& .pro-sidebar.collapsed .pro-menu > .pro-sub-menu > .pro-inner-item > .pro-arrow":
-        //   {
-        //     display: "none !important",
-        //   },
-
-        /* Sub-items (modo normal): sangría cómoda */
-        "& .pro-menu .pro-sub-menu .pro-menu-item > .pro-inner-item": {
-          paddingLeft: "36px !important",
-        },
-
-        /* Sub-items (modo colapsado): más a la izquierda */
-        "& .pro-sidebar.collapsed .pro-sub-menu .pro-menu-item > .pro-inner-item":
-          {
-            paddingLeft: "12px !important",
-          },
-
-        /* Ícono de cualquier item en colapsado: pegado a la izquierda y sin margen extra */
-        "& .pro-sidebar.collapsed .pro-inner-item > .pro-icon-wrapper": {
-          marginLeft: "4px !important",
-          marginRight: "0 !important",
-        },
-
-        "& .pro-inner-list-item": {
-          paddingLeft: "5px !important",
-        },
-        "& .pro-sidebar.collapsed .pro-menu > .pro-sub-menu > .pro-inner-item > .pro-arrow":
-          {
-            right: "50px !important",
-            top: "50% !important",
-            transform: "translateY(-50%)",
-            // Si prefieres ocultarla: descomenta la línea de abajo y borra las 3 de arriba
-            // display: "none !important",
-          },
-        "& .pro-arrow-wrapper": {
-          right: "10px",
-          top: "41% !important",
-          transform: "translateY(-50%)",
+          width: 28,
+          height: 28,
         },
       }}
     >
-      <ProSidebar collapsed={isCollapsed} collapsedWidth={64}>
-        <Menu iconShape="square">
-          <MenuItem
-            style={{
-              color: colors.gray[100],
-            }}
-            id="logos"
-            // onFocus={}
-          >
-            {!isCollapsed && (
-              <Box
-                id="logoIntegradoor"
-                display="flex"
-                justifyContent="space-between"
-                alignItems="center"
-              >
-                <a
-                  href="https://integradoor.com/app"
-                  target="_blank"
-                  rel="noopener"
-                >
-                  <Image src={Integrador} />
-                </a>
-              </Box>
-            )}
-            {isCollapsed && (
-              <Box id="icoIntegradoor">
-                <a
-                  href="https://integradoor.com/app"
-                  target="_blank"
-                  rel="noopener"
-                >
-                  <Image src={iconIntegradoor} />
-                </a>
-              </Box>
-            )}
-          </MenuItem>
+      <ListItemIcon>{icon}</ListItemIcon>
+      {!isCollapsed && (
+        <ListItemText
+          primary={
+            <Typography variant="h5" sx={{ padding: 0 }}>
+              {title}
+            </Typography>
+          }
+        />
+      )}
+    </ListItemButton>
+  );
 
-          <Box
-            paddingLeft={isCollapsed ? undefined : "2%"}
-            marginTop={isCollapsed ? undefined : "10px"}
-          >
-            {/* Inicio */}
-            <Item
-              title="Inicio"
-              to={"/inicio"}
-              isCollapsed={isCollapsed}
-              setIsCollapsed={setIsCollapsed}
-              icon={<HomeIcon />}
-            />
+  return (
+    <ListItem disablePadding sx={{ display: "block" }}>
+      {isCollapsed ? (
+        <Tooltip title={title} placement="right" arrow>
+          {btn}
+        </Tooltip>
+      ) : (
+        btn
+      )}
+    </ListItem>
+  );
+};
 
-            {/* Clientes con sub-items */}
-            <Item
-              title="Clientes"
-              to="/clientes"
-              isCollapsed={isCollapsed}
-              setIsCollapsed={setIsCollapsed}
-              icon={<AccountCircleIcon />} // puedes quitar el icono del sub-item si quieres aún más alineado
-            />
+// ── SubMenuGroup ──────────────────────────────────────────────────────────────
+const SubMenuGroup = ({ title, icon, isCollapsed, children }) => {
+  const theme = useTheme();
+  const colors = tokens(theme.palette.mode);
+  const [expanded, setExpanded] = useState(false);
+  const [popoverAnchor, setPopoverAnchor] = useState(null);
+  const closeTimer = useRef(null);
 
-            {/* Registro de póliza (solo) */}
-            <Item
-              title="Registro de Póliza"
-              to="/polizas/registro"
-              isCollapsed={isCollapsed}
-              setIsCollapsed={setIsCollapsed}
-              icon={<SafetyCheck />}
-            />
+  const openPopover = (e) => {
+    clearTimeout(closeTimer.current);
+    setPopoverAnchor(e.currentTarget);
+  };
 
-            {/* Comisiones con sub-items */}
+  const scheduleClose = () => {
+    closeTimer.current = setTimeout(() => setPopoverAnchor(null), 160);
+  };
 
-            <Item
-              title="Liquidación de comisiones"
-              icon={<FaCalculator size={19} />}
-              to="/comisiones/liquidacion"
-              isCollapsed={isCollapsed}
-              setIsCollapsed={setIsCollapsed}
-            />
+  const cancelClose = () => clearTimeout(closeTimer.current);
 
-            <Item
-              title="Registro de pagos"
-              icon={<HiCurrencyDollar size={23} />}
-              to="/comisiones/registro/pagos"
-              isCollapsed={isCollapsed}
-              setIsCollapsed={setIsCollapsed}
-            />
+  const popoverOpen = Boolean(popoverAnchor);
 
-            {/* Consultas de pólizas (solo) */}
-            <Item
-              title="Administrador de negocios"
-              to="/polizas/consulta"
-              isCollapsed={isCollapsed}
-              setIsCollapsed={setIsCollapsed}
-              icon={<MdBusinessCenter size={20} />}
-            />
+  const triggerBtn = (
+    <ListItemButton
+      onMouseEnter={isCollapsed ? openPopover : undefined}
+      onMouseLeave={isCollapsed ? scheduleClose : undefined}
+      onClick={() => !isCollapsed && setExpanded((v) => !v)}
+      sx={{
+        borderRadius: "5px",
+        mr: isCollapsed ? 0 : "7px",
+        minHeight: 40,
+        width: "100%",
+        justifyContent: isCollapsed ? "center" : "flex-start",
+        px: isCollapsed ? "8px" : "12px",
+        color: colors.gray[100],
+        "&:hover": {
+          color: ACCENT,
+          "& .MuiListItemIcon-root": { color: ACCENT },
+        },
+        "& .MuiListItemIcon-root": {
+          color: colors.gray[100],
+          minWidth: 0,
+          mr: isCollapsed ? 0 : "12px",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          width: 28,
+          height: 28,
+        },
+      }}
+    >
+      <ListItemIcon>{icon}</ListItemIcon>
+      {!isCollapsed && (
+        <>
+          <ListItemText
+            primary={
+              <Typography variant="h5" sx={{ padding: 0 }}>
+                {title}
+              </Typography>
+            }
+          />
+          {expanded ? (
+            <ExpandLess fontSize="small" sx={{ color: colors.gray[300] }} />
+          ) : (
+            <ExpandMore fontSize="small" sx={{ color: colors.gray[300] }} />
+          )}
+        </>
+      )}
+    </ListItemButton>
+  );
+
+  return (
+    <section>
+      <Box
+        onMouseEnter={!isCollapsed ? () => setExpanded(true) : undefined}
+        onMouseLeave={!isCollapsed ? () => setExpanded(false) : undefined}
+      >
+        <ListItem disablePadding sx={{ display: "block" }}>
+          {triggerBtn}
+        </ListItem>
+
+        {/* Modo expandido: acordeón */}
+        {!isCollapsed && (
+          <Collapse in={expanded} timeout="auto" unmountOnExit>
+            <List dense disablePadding sx={{ pl: "8px" }}>
+              {Children.map(children, (child) =>
+                cloneElement(child, {
+                  onAfterClick: () => setExpanded(false),
+                })
+              )}
+            </List>
+          </Collapse>
+        )}
+      </Box>
+
+      {/* Modo colapsado: popover flotante al hacer hover */}
+      {isCollapsed && (
+        <Popover
+          open={popoverOpen}
+          anchorEl={popoverAnchor}
+          onClose={() => setPopoverAnchor(null)}
+          anchorOrigin={{ vertical: "top", horizontal: "right" }}
+          transformOrigin={{ vertical: "top", horizontal: "left" }}
+          disableRestoreFocus
+          disableAutoFocus
+          disableEnforceFocus
+          PaperProps={{
+            onMouseEnter: cancelClose,
+            onMouseLeave: scheduleClose,
+            elevation: 8,
+            sx: {
+              backgroundColor: colors.primary[400],
+              borderRadius: 2,
+              ml: "4px",
+              minWidth: 210,
+              overflow: "hidden",
+            },
+          }}
+          sx={{
+            pointerEvents: "none",
+            "& .MuiPopover-paper": { pointerEvents: "auto" },
+          }}
+        >
+          <Box sx={{ p: "8px" }}>
+            <Typography
+              variant="caption"
+              sx={{
+                px: "8px",
+                py: "4px",
+                display: "block",
+                color: colors.gray[400],
+                textTransform: "uppercase",
+                fontSize: "0.65rem",
+                letterSpacing: "0.08em",
+                mb: "4px",
+              }}
+            >
+              {title}
+            </Typography>
+            <List dense disablePadding>
+              {Children.map(children, (child) =>
+                cloneElement(child, {
+                  isCollapsed: false,
+                  onAfterClick: () => {
+                    setPopoverAnchor(null);
+                    setExpanded(false);
+                  },
+                })
+              )}
+            </List>
           </Box>
-        </Menu>
-      </ProSidebar>
+        </Popover>
+      )}
+    </section>
+  );
+};
+
+// ── Contenido del sidebar (reutilizable en drawer mobile y pane desktop) ──────
+const SidebarContent = ({
+  isCollapsed,
+  setIsCollapsed,
+  colors,
+  closeOnItemClick = false,
+}) => (
+  <Box sx={{ height: "100%", display: "flex", flexDirection: "column" }}>
+    {/* Logo */}
+    <Box
+      sx={{
+        display: "flex",
+        alignItems: "center",
+        justifyContent: isCollapsed ? "center" : "flex-start",
+        px: isCollapsed ? "8px" : 2,
+        py: "10px",
+        backgroundColor: ACCENT,
+        flexShrink: 0,
+      }}
+    >
+      <a
+        href="https://integradoor.com/app"
+        target="_blank"
+        rel="noopener noreferrer"
+        style={{ display: "flex", alignItems: "center" }}
+      >
+        <img
+          src={isCollapsed ? iconIntegradoor : Integrador}
+          alt="Integradoor"
+          style={{ maxHeight: 40, objectFit: "contain" }}
+        />
+      </a>
     </Box>
+
+    {/* Navegación */}
+    <Box
+      sx={{
+        pt: "10px",
+        px: isCollapsed ? 0 : "2%",
+        flexGrow: 1,
+        overflowY: "auto",
+        overflowX: "hidden",
+      }}
+    >
+      <List dense disablePadding>
+        {/* Inicio */}
+        <Item
+          title="Inicio"
+          to="/inicio"
+          icon={<HomeIcon />}
+          isCollapsed={isCollapsed}
+          setIsCollapsed={setIsCollapsed}
+          closeOnClick={closeOnItemClick}
+        />
+
+        {/* Clientes */}
+        <Item
+          title="Clientes"
+          to="/clientes"
+          icon={<AccountCircleIcon />}
+          isCollapsed={isCollapsed}
+          setIsCollapsed={setIsCollapsed}
+          closeOnClick={closeOnItemClick}
+        />
+
+        {/* Registro de Póliza */}
+        <Item
+          title="Registro de Póliza"
+          to="/polizas/registro"
+          icon={<SafetyCheck />}
+          isCollapsed={isCollapsed}
+          setIsCollapsed={setIsCollapsed}
+          closeOnClick={closeOnItemClick}
+        />
+
+        {/* Liquidación de comisiones — submenú */}
+        <SubMenuGroup
+          title="Liquidación de comisiones"
+          icon={<FaCalculator size={19} />}
+          isCollapsed={isCollapsed}
+        >
+          <Item
+            title="Liquidar Usuario SGA"
+            to="/comisiones/liquidacion/internos"
+            // icon={<FaCalculator size={17} />}
+            isCollapsed={isCollapsed}
+            setIsCollapsed={setIsCollapsed}
+            closeOnClick={closeOnItemClick}
+          />
+          <Item
+            title="Liquidar Freelance"
+            to="/comisiones/liquidacion/externos"
+            // icon={<FaCalculator size={17} />}
+            isCollapsed={isCollapsed}
+            setIsCollapsed={setIsCollapsed}
+            closeOnClick={closeOnItemClick}
+          />
+          <Item
+            title="Configuración"
+            to="/comisiones/configuracion"
+            // icon={<FaCalculator size={17} />}
+            isCollapsed={isCollapsed}
+            setIsCollapsed={setIsCollapsed}
+            closeOnClick={closeOnItemClick}
+          />
+        </SubMenuGroup>
+
+        {/* Conciliación aseguradoras */}
+        <Item
+          title="Conciliación aseguradoras"
+          to="/conciliacion/"
+          icon={<FaCircleCheck size={20} />}
+          isCollapsed={isCollapsed}
+          setIsCollapsed={setIsCollapsed}
+          closeOnClick={closeOnItemClick}
+        />
+
+        {/* Registro de pagos */}
+        <Item
+          title="Registro de pagos"
+          to="/comisiones/registro/pagos"
+          icon={<HiCurrencyDollar size={23} />}
+          isCollapsed={isCollapsed}
+          setIsCollapsed={setIsCollapsed}
+          closeOnClick={closeOnItemClick}
+        />
+
+        {/* Administrador de negocios */}
+        <Item
+          title="Administrador de negocios"
+          to="/polizas/consulta"
+          icon={<MdBusinessCenter size={20} />}
+          isCollapsed={isCollapsed}
+          setIsCollapsed={setIsCollapsed}
+          closeOnClick={closeOnItemClick}
+        />
+      </List>
+    </Box>
+  </Box>
+);
+
+// ── Sidebar principal ─────────────────────────────────────────────────────────
+export const Sidebar = ({ isCollapsed, setIsCollapsed, loggedDataInfo }) => {
+  const theme = useTheme();
+  const colors = tokens(theme.palette.mode);
+  const isMobile = useMediaQuery(theme.breakpoints.down("md"));
+
+  const paperSx = {
+    boxSizing: "border-box",
+    backgroundColor: colors.primary[400],
+    borderRight: "none",
+    overflowX: "hidden",
+    zIndex: drawerZIndex,
+  };
+
+  // Mobile: drawer temporal (slide desde la izquierda)
+  if (isMobile) {
+    return (
+      <Drawer
+        variant="temporary"
+        open={!isCollapsed}
+        onClose={() => setIsCollapsed(true)}
+        ModalProps={{ keepMounted: true }}
+        sx={{
+          zIndex: drawerZIndex,
+          "& .MuiDrawer-paper": { ...paperSx, width: EXPANDED_WIDTH },
+        }}
+      >
+        <SidebarContent
+          isCollapsed={false}
+          setIsCollapsed={setIsCollapsed}
+          colors={colors}
+          closeOnItemClick
+        />
+      </Drawer>
+    );
+  }
+
+  // Desktop: drawer permanente que colapsa/expande
+  return (
+    <Drawer
+      variant="permanent"
+      sx={{
+        zIndex: drawerZIndex,
+        width: isCollapsed ? COLLAPSED_WIDTH : EXPANDED_WIDTH,
+        flexShrink: 0,
+        transition: "width 0.25s ease",
+        "& .MuiDrawer-paper": {
+          ...paperSx,
+          width: isCollapsed ? COLLAPSED_WIDTH : EXPANDED_WIDTH,
+          transition: "width 0.25s ease",
+          overflowY: "auto",
+        },
+      }}
+    >
+      <SidebarContent
+        isCollapsed={isCollapsed}
+        setIsCollapsed={setIsCollapsed}
+        colors={colors}
+      />
+    </Drawer>
   );
 };

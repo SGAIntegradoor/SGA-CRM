@@ -3,7 +3,7 @@ import { Topbar } from "../views/Global/Topbar";
 import { Sidebar } from "../views/Global/Sidebar";
 import { Footer } from "../views/Global/Footer";
 import { Outlet } from "react-router-dom";
-import { useContext, useState } from "react";
+import { useContext } from "react";
 import { AuthContext } from "../context/AuthContext";
 
 const MainLayout = ({ isCollapsed, setIsCollapsed }) => {
@@ -18,7 +18,7 @@ const MainLayout = ({ isCollapsed, setIsCollapsed }) => {
         setIsCollapsed={setIsCollapsed}
         loggedDataInfo={loggedDataInfo}
       />
-      <div className="flex flex-col w-3/4 flex-1">
+      <div className="flex flex-col flex-1 min-w-0">
         <main className="content">
           <Topbar
             isCollapsed={isCollapsed}

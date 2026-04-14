@@ -367,7 +367,7 @@ export const MovimientoModal = ({
       display: "flex",
       justifyContent: "center",
       alignItems: "flex-start",
-      zIndex: 1011,
+      zIndex: 9999,
       overflowY: "auto",
     },
     modal: {

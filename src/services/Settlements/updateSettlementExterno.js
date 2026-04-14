@@ -1,10 +1,11 @@
 import axios from "axios";
 
-export const getSettlement = async (id_liquidacion) => {
+export const updateSettlementExterno = async (data) => {
   try {
     const response = await axios.post(
-      `/Settlements/getSettlement`,
-      { id_liquidacion }  // 👈 aquí sí viaja como { "id_liquidacion": 7 }
+      "/SettlementsExterno/updateSettlementExterno",
+      data,
+      { headers: { "Content-Type": "application/json" } }
     );
     const payload = response?.data ?? {};
     return payload?.data ?? payload;

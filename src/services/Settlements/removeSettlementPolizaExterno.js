@@ -1,10 +1,14 @@
 import axios from "axios";
 
-export const getSettlement = async (id_liquidacion) => {
+export const removeSettlementPolizaExterno = async (
+  id_liquidacion,
+  id_anexo_poliza,
+  tipo_usuario
+) => {
   try {
     const response = await axios.post(
-      `/Settlements/getSettlement`,
-      { id_liquidacion }  // 👈 aquí sí viaja como { "id_liquidacion": 7 }
+      "/SettlementsExterno/removeSettlementPolizaExterno",
+      { id_liquidacion, id_anexo_poliza, tipo_usuario }
     );
     const payload = response?.data ?? {};
     return payload?.data ?? payload;

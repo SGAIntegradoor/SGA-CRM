@@ -7,12 +7,16 @@ import BtnGeneral from "../../components/BtnGeneral/BtnGeneral";
 import { TableComisiones } from "../../components/Comisiones/TablaComisiones";
 import { getPolizas } from "../../services/Polizas/getPolizas";
 import { selectPoliza } from "../../services/Comisiones/selectPoliza";
+import { selectPolizaBatch } from "../../services/Comisiones/selectPolizaBatch";
 import Swal from "sweetalert2";
+import { FiChevronDown, FiChevronUp } from "react-icons/fi"; // <<< NUEVO
 import ModalLiquidaciones from "../../components/Comisiones/Components/Modal/ModalLiquidaciones";
 import { getUnidadesNegocio } from "../../services/Polizas/getUnidadNegocio";
 import { getAsesoresSGA } from "../../services/Users/getAsesoresSGA";
 import { obtenerAseguradoras, obtenerRamo } from "../../utils/aseguradoras";
 import { getTiposPoliza } from "../../services/Polizas/getTiposPoliza";
+import { TableAdminLiq } from "../../components/Comisiones/Components/Tables/TableAdminLiq";
+import { getPreSettlements } from "../../services/Settlements/getPreSettlements";
 
 export const Comisiones = ({ setLoading, loading }) => {
   const initialState = {
@@ -28,88 +32,75 @@ export const Comisiones = ({ setLoading, loading }) => {
   };
 
   const [polizas, setPolizas] = useState([]);
+  const [appersBox, setAppersBox] = useState(false);
   const [formStates, setFormStates] = useState(initialState);
 
-  const { isModalOpenCliente, setIsModalOpenCliente } = useContext(NavContext);
-  const userData = JSON.parse(localStorage.getItem("userData"));
   const [reloadScreen, setReloadScreen] = useState(false);
   const [selectedPolizas, setSelectedPolizas] = useState([]);
   const [liquidacionModal, setLiquidacionModal] = useState(false);
   const [unidadesNegocio, setUnidadesNegocio] = useState([]);
   const [aseguradoras, setAseguradoras] = useState([]);
+  const [liqAdminData, setLiqAdminData] = useState([]);
   const [usuariosInput, setUsuariosInput] = useState([]);
   const [ramos, setRamos] = useState([]);
   const [tiposExpedicion, setTiposExpedicion] = useState([]);
 
   const handlerLoadUnidadesNegocio = async () => {
-    setLoading(!loading);
-    getUnidadesNegocio()
-      .then((rows) => {
-        setUnidadesNegocio(Array.isArray(rows) ? rows : []);
-      })
-      .catch((e) => console.error("Error en el fetch", e))
-      .finally(() => setLoading(false));
-  };
-
-  const handlerLoadPolizas = async () => {
-    setLoading(!loading);
-    getPolizas()
-      .then((rows) => {
-        setPolizas(Array.isArray(rows) ? rows : []);
-      })
-      .catch((e) => console.error("Error en el fetch", e))
-      .finally(() => setLoading(false));
+    try {
+      const rows = await getUnidadesNegocio();
+      setUnidadesNegocio(Array.isArray(rows) ? rows : []);
+    } catch (e) {
+      console.error("Error en la carga de unidades de negocio", e);
+    }
   };
 
   const handlerLoadFilterUsuarios = async () => {
-    setLoading(!loading);
-
-    getAsesoresSGA(formStates.unidadnegocio)
-      .then((data) => {
-        // TODO Manejar los datos del cliente aquí
-        setUsuariosInput(data);
-      })
-      .catch((e) => console.error("Error en el fetch", e))
-      .finally(() => setLoading(false));
+    try {
+      const data = await getAsesoresSGA(formStates.unidadnegocio);
+      setUsuariosInput(Array.isArray(data) ? data : []);
+    } catch (e) {
+      console.error("Error en la carga de usuarios", e);
+    }
   };
 
   const handlerLoaderAseguradoras = async () => {
-    setLoading(!loading);
-
-    obtenerAseguradoras()
-      .then((data) => {
-        // TODO Manejar los datos del cliente aquí
-        setAseguradoras(data);
-      })
-      .catch((e) => console.error("Error en el fetch", e))
-      .finally(() => setLoading(false));
+    try {
+      const data = await obtenerAseguradoras();
+      setAseguradoras(Array.isArray(data) ? data : []);
+    } catch (e) {
+      console.error("Error en la carga de aseguradoras", e);
+    }
   };
 
   const handlerLoadTiposExpedicion = async () => {
-    // Function to load other concepts data
-    // This is a placeholder for the actual implementation
-    getTiposPoliza()
-      .then((data) => {
-        // TODO Manejar los datos del cliente aquí
-        setTiposExpedicion(data);
-      })
-      .catch((e) => console.error("Error en el fetch", e))
-      .finally(() => setLoading(false));
+    try {
+      const data = await getTiposPoliza();
+      setTiposExpedicion(Array.isArray(data) ? data : []);
+    } catch (e) {
+      console.error("Error en la carga de tipos de expedicion", e);
+    }
   };
 
   const handlerLoadRamo = async () => {
-    setLoading(!loading);
-
-    obtenerRamo()
-      .then((data) => {
-        // TODO Manejar los datos del cliente aquí
-        setRamos(data);
-      })
-      .catch((e) => console.error("Error en el fetch", e))
-      .finally(() => setLoading(false));
+    try {
+      const data = await obtenerRamo();
+      setRamos(Array.isArray(data) ? data : []);
+    } catch (e) {
+      console.error("Error en la carga de ramo", e);
+    }
   };
 
-  const handlerLoadPolizasUser = () => {
+  const handlerGetLiqAdmin = async () => {
+    try {
+      const data = await getPreSettlements();
+      setLiqAdminData(Array.isArray(data) ? data : []);
+    } catch (e) {
+      console.error("Error en la carga de liquidaciones", e);
+      setLiqAdminData([]);
+    }
+  };
+
+  const handlerLoadPolizasUser = async () => {
     // if (formStates.unidadnegocio === "") {
     //   // Swal.fire("Error", "Debe seleccionar una unidad de negocio", "error");
     //   // return;
@@ -118,60 +109,51 @@ export const Comisiones = ({ setLoading, loading }) => {
       Swal.fire("Error", "Debe seleccionar un usuario", "error");
       return;
     }
-    setLoading(!loading);
-    getPolizas(formStates)
-      .then((data) => {
-        if (data.length === 0) {
-          setLoading(!loading);
-          Swal.fire(
-            "Error",
-            "No se encontraron pólizas para el usuario",
-            "error"
-          );
-          return;
-        }
-        setPolizas(data);
-        console.log(data)
-      })
-      .catch((e) => {
-        console.error("Error en el fetch", e);
-      })
-      .finally(() => setLoading(false));
+    setLoading(true);
+    try {
+      const data = await getPolizas(formStates);
+      const rows = Array.isArray(data) ? data : [];
+
+      if (rows.length === 0) {
+        setPolizas([]);
+        Swal.fire(
+          "Error",
+          "No se encontraron polizas para el usuario",
+          "error",
+        );
+        return;
+      }
+
+      setPolizas(rows);
+    } catch (e) {
+      console.error("Error en la consulta de polizas", e);
+      Swal.fire("Error", "No fue posible consultar las polizas", "error");
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => {
-    // if (formStates.unidadnegocio === "") {
-    //   return;
-    // }
-    handlerLoaderAseguradoras()
-      .then(() => {})
-      .catch((error) => {
-        console.error("Error loading aseguradoras:", error);
+    const initData = async () => {
+      setLoading(true);
+      try {
+        await Promise.all([
+          handlerLoadUnidadesNegocio(),
+          handlerLoaderAseguradoras(),
+          handlerLoadFilterUsuarios(),
+          handlerLoadRamo(),
+          handlerLoadTiposExpedicion(),
+          handlerGetLiqAdmin(),
+        ]);
+      } catch (error) {
+        console.error("Error en la carga inicial", error);
+      } finally {
         setLoading(false);
-      });
-    handlerLoadFilterUsuarios()
-      .then(() => {})
-      .catch((error) => {
-        console.error("Error loading usuarios:", error);
-        setLoading(false);
-      });
-    handlerLoadRamo()
-      .then(() => {
-        // setLoading(false);
-      })
-      .catch((error) => {
-        console.error("Error loading ramo:", error);
-        setLoading(false);
-      });
-    handlerLoadTiposExpedicion()
-      .then(() => {})
-      .catch((error) => {
-        console.error("Error loading tipos de expedición:", error);
-        setLoading(false);
-      });
+      }
+    };
 
-    setLoading(false);
-  }, [formStates.unidadnegocio]);
+    initData();
+  }, []);
 
   useEffect(() => {
     handlerLoadUnidadesNegocio();
@@ -197,13 +179,13 @@ export const Comisiones = ({ setLoading, loading }) => {
     });
   }, [polizas]);
 
-  const handleToggleSelect = async (row) => {
+  const handleToggleSelect = async (row, checked) => {
     const id = row.id_anexo_poliza;
-    const next = !row.seleccionado;
+    const next = typeof checked === "boolean" ? checked : !row.seleccionado;
     setPolizas((prev) =>
       prev.map((p) =>
-        p.id_anexo_poliza === id ? { ...p, seleccionado: next } : p
-      )
+        p.id_anexo_poliza === id ? { ...p, seleccionado: next } : p,
+      ),
     );
     setSelectedPolizas((prev) =>
       next
@@ -214,7 +196,7 @@ export const Comisiones = ({ setLoading, loading }) => {
               ...row,
             },
           ]
-        : prev.filter((p) => p.id !== id)
+        : prev.filter((p) => p.id !== id),
     );
 
     try {
@@ -227,16 +209,79 @@ export const Comisiones = ({ setLoading, loading }) => {
       // Si falla → revertir
       setPolizas((prev) =>
         prev.map((p) =>
-          p.id_anexo_poliza === id ? { ...p, seleccionado: !next } : p
-        )
+          p.id_anexo_poliza === id ? { ...p, seleccionado: !next } : p,
+        ),
       );
       Swal.fire(
         "Error",
         err.message || "No se pudo actualizar la selección",
-        "error"
+        "error",
       );
     }
   };
+
+  const handleTogglePageSelect = async (rowsPage = [], checked) => {
+    const ids = rowsPage
+      .map((row) => row.id_anexo_poliza)
+      .filter((id) => id !== undefined && id !== null);
+
+    if (!ids.length) return;
+
+    const idsSet = new Set(ids);
+    const prevPolizas = polizas;
+    const prevSelected = selectedPolizas;
+
+    setPolizas((prev) =>
+      prev.map((p) =>
+        idsSet.has(p.id_anexo_poliza) ? { ...p, seleccionado: checked } : p,
+      ),
+    );
+
+    setSelectedPolizas((prev) => {
+      if (checked) {
+        const byId = new Map(prev.map((x) => [x.id, x]));
+        rowsPage.forEach((row) => {
+          byId.set(row.id_anexo_poliza, {
+            id: row.id_anexo_poliza,
+            ...row,
+            seleccionado: true,
+          });
+        });
+        return Array.from(byId.values());
+      }
+
+      return prev.filter((p) => !idsSet.has(p.id));
+    });
+
+    try {
+      const res = await selectPolizaBatch(ids, checked);
+      if (res?.status !== "Ok") {
+        throw new Error(res?.message || "Error actualizando selección por página");
+      }
+    } catch (err) {
+      setPolizas(prevPolizas);
+      setSelectedPolizas(prevSelected);
+      Swal.fire(
+        "Error",
+        err?.message || "No se pudo actualizar la selección por página",
+        "error",
+      );
+      throw err;
+    }
+  };
+
+  const headersAdminLiq = [
+    { field: "id_liquidacion", header: "ID Liquidacion" },
+    { field: "doc_usuario", header: "Doc Usuario" },
+    { field: "nombre_usuario", header: "Usuario SGA" },
+    { field: "fecha", header: "Fecha liquidacion" },
+    { field: "estado", header: "Estado" },
+    { field: "valor_total_comision", header: "Valor total comision" },
+    { field: "doc_liquidador", header: "Doc Liquidador" },
+    { field: "nombre_emisor_liq", header: "Nombre emisor" },
+    { field: "ids_anexos", header: "Anexos liquidados" },
+    { field: "accion", header: "Accion" }
+  ];
 
   const headers = [
     { field: "id_remision", header: "ID Remisión" },
@@ -269,7 +314,7 @@ export const Comisiones = ({ setLoading, loading }) => {
     { field: "seleccionado", header: "Seleccionar" },
   ];
 
-    const headersDirectos = [
+  const headersDirectos = [
     { field: "id_remision", header: "ID Remisión" },
     { field: "fecha_expedicion", header: "Fecha Exp" },
     { field: "ramo", header: "Ramo" },
@@ -299,13 +344,6 @@ export const Comisiones = ({ setLoading, loading }) => {
     { field: "seleccionado", header: "Seleccionar" },
   ];
 
-
-  const TIPO_EXP_OPTS = [
-    { value: "1", label: "Unidad 1" },
-    { value: "2", label: "Unidad 2" },
-    { value: "3", label: "Unidad 3" },
-    { value: "4", label: "Unidad 4" },
-  ];
   const customNewStyles = {
     indicatorSeparator: () => ({
       display: "none",
@@ -398,12 +436,53 @@ export const Comisiones = ({ setLoading, loading }) => {
         />
       )}
       <Box padding={3}>
+        <section className="shadow-sm rounded-xl border border-gray-200 bg-gray-100 px-4 py-3 mb-10">
+          <h1 className="text-lg font-semibold text-gray-900">
+            Liquidacion de Comisiones Internos
+          </h1>
+        </section>
+        <section>
+          <div className="shadow-sm rounded-xl border border-gray-200 bg-gray-100 px-4 py-3 mb-4 flex flex-row justify-between">
+            <span className="text-lg font-semibold">Administrador de liquidaciónes</span>
+            <button
+              type="button"
+              onClick={() => setAppersBox((v) => !v)}
+              className="inline-flex items-center gap-2 px-3 py-1.5 rounded bg-gray-200 hover:bg-gray-300 text-gray-700"
+              aria-expanded={appersBox}
+              aria-controls="panelAdminLiq"
+              title={appersBox ? "Ver menos" : "Ver más"}
+            >
+              {appersBox ? (
+                <>
+                  <FiChevronUp size={18} /> <>Ver menos</>
+                </>
+              ) : (
+                <>
+                  <FiChevronDown size={18} /> <>Ver más</>
+                </>
+              )}
+            </button>
+          </div>
+          <div
+            id="panelFiltros"
+            className={`${appersBox ? "mb-10" : ""} transition-all duration-1000 ${
+              appersBox ? "max-h-[5000px] opacity-100" : "max-h-0 opacity-0"
+            } overflow-hidden`}
+          >
+            <TableAdminLiq
+              data={liqAdminData}
+              headers={headersAdminLiq}
+              setIsLoading={setLoading}
+              loading={loading}
+            />
+          </div>
+        </section>
         <section className="shadow-lg rounded-3xl xl:w-full lg:w-full">
-          <div className="flex flex-row gap-3 items-center bg-gray-200 p-3 rounded-t-3xl border-gray-400 border">
-            <p className="text-lg pl-3">Consulta Avanzada</p>
+          <div className="flex flex-row gap-3 items-center bg-gray-100 p-3 rounded-t-3xl border-gray-200 border">
+            <p className="text-lg pl-3 font-semibold">Consulta Avanzada</p>
           </div>
 
-          <div className="flex flex-col gap-3 items-center justify-between pl-14 pr-14 pt-5 pb-8 rounded-b-3xl border-l border-r border-b border-gray-400 h-auto">
+          <div className="flex flex-col gap-3 items-center justify-between pl-14 pr-14 pt-5 pb-8 rounded-b-3xl border-l border-r border-b border-gray-200  h-auto">
             <div className="flex flex-row gap-3 items-center w-full">
               <div className="flex flex-col w-auto flex-1">
                 <label htmlFor="unidadnegocio" className="text-sm">
@@ -415,7 +494,7 @@ export const Comisiones = ({ setLoading, loading }) => {
                   options={unidadesNegocio}
                   value={
                     unidadesNegocio.find(
-                      (opt) => opt.value === formStates.unidadnegocio
+                      (opt) => opt.value === formStates.unidadnegocio,
                     ) || ""
                   }
                   onChange={(selectedOption, meta) => {
@@ -441,7 +520,7 @@ export const Comisiones = ({ setLoading, loading }) => {
                   value={
                     (usuariosInput.length > 0 &&
                       usuariosInput?.find(
-                        (opt) => opt.value === formStates.usuario
+                        (opt) => opt.value === formStates.usuario,
                       )) ||
                     ""
                   }
@@ -467,7 +546,7 @@ export const Comisiones = ({ setLoading, loading }) => {
                   options={aseguradoras || ""}
                   value={
                     aseguradoras.find(
-                      (opt) => opt.value === formStates.aseguradora
+                      (opt) => opt.value === formStates.aseguradora,
                     ) || ""
                   }
                   onChange={(selectedOption, meta) => {
@@ -512,10 +591,12 @@ export const Comisiones = ({ setLoading, loading }) => {
                 <Select
                   name="tiponegocio"
                   className="text-sm"
-                  options={[
-                    { value: "1", label: "Unidad 1" },
-                    { value: "2", label: "Unidad 2" },
-                  ] || ""}
+                  options={
+                    [
+                      { value: "1", label: "Unidad 1" },
+                      { value: "2", label: "Unidad 2" },
+                    ] || ""
+                  }
                   value={
                     [
                       { value: "1", label: "Unidad 1" },
@@ -544,9 +625,11 @@ export const Comisiones = ({ setLoading, loading }) => {
                   name="tipoexpedicion"
                   options={tiposExpedicion}
                   isMulti
-                  value={tiposExpedicion.filter((opt) =>
-                    formStates.tipoexpedicion?.includes(opt.value)
-                  ) || ""}
+                  value={
+                    tiposExpedicion.filter((opt) =>
+                      formStates.tipoexpedicion?.includes(opt.value),
+                    ) || ""
+                  }
                   onChange={(selected) => {
                     const values = (selected ?? []).map((o) => o.value);
                     setFormStates((prev) => ({
@@ -603,18 +686,20 @@ export const Comisiones = ({ setLoading, loading }) => {
                 <Select
                   name="estadoliquidacion"
                   className="text-sm"
-                  options={[
-                    { value: "1", label: "Por liquidar" },
-                    { value: "2", label: "Liquidada" },
-                    // { value: "3", label: "Cancelada" },
-                  ] || ""}
+                  options={
+                    [
+                      { value: "1", label: "Por liquidar" },
+                      { value: "2", label: "Liquidada" },
+                      // { value: "3", label: "Cancelada" },
+                    ] || ""
+                  }
                   value={
                     [
                       { value: "1", label: "Por liquidar" },
                       { value: "2", label: "Liquidada" },
                       // { value: "3", label: "Cancelada" },
                     ].find(
-                      (opt) => opt.value === formStates.estadoliquidacion
+                      (opt) => opt.value === formStates.estadoliquidacion,
                     ) || ""
                   }
                   onChange={(selectedOption, meta) => {
@@ -665,10 +750,13 @@ export const Comisiones = ({ setLoading, loading }) => {
             <section className="shadow-lg rounded-3xl xl:w-full lg:w-full mt-7">
               <TableComisiones
                 data={polizas ?? []}
-                headers={formStates.unidadnegocio == '2' ? headersDirectos : headers}
+                headers={
+                  formStates.unidadnegocio == "2" ? headersDirectos : headers
+                }
                 from="" // o cualquier otro string si no quieres paginación/acciones
                 onRowAction={() => {}}
                 onToggleSelect={handleToggleSelect}
+                onTogglePageSelect={handleTogglePageSelect}
                 setIsLoading={setLoading}
                 loading={loading}
               />
@@ -681,7 +769,7 @@ export const Comisiones = ({ setLoading, loading }) => {
                 }
                 funct={() => setLiquidacionModal(true)}
               >
-                <span>Liquidar</span>
+                <span>Liquidar Borrador</span>
               </BtnGeneral>
             </section>
           </>

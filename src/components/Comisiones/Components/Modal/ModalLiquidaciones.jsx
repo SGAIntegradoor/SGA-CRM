@@ -1,4 +1,4 @@
-import { useContext, useEffect, useState } from "react";
+import { useContext, useEffect, useRef, useState } from "react";
 import ReactDOM from "react-dom";
 import Swal from "sweetalert2";
 import { GeneralBox } from "../../../GeneralBox/GeneralBox";
@@ -7,6 +7,7 @@ import BtnGeneral from "../../../BtnGeneral/BtnGeneral";
 import { useNavigate } from "react-router-dom";
 import { TableDirectos } from "../Tables/TableDirectos";
 import { createSettlement } from "../../../../services/Settlements/createSettlement";
+import { updateSettlement } from "../../../../services/Settlements/updateSettlement";
 
 const ModalLiquidaciones = ({
   show,
@@ -15,6 +16,11 @@ const ModalLiquidaciones = ({
   setIsLoading,
   handleReloadPolizas,
   handlerCleanModal,
+  mode = "create",
+  settlementId = null,
+  settlementData = null,
+  onRemovePoliza = () => {},
+  onSuccess = () => {},
 }) => {
   const cmpPolizaAnexo = (a, b) => {
     const s = (v) => (v == null ? "" : String(v).trim());
@@ -31,6 +37,7 @@ const ModalLiquidaciones = ({
 
   const {} = useContext(NavContext);
   const nav = useNavigate();
+  const hadSelectedPolizasRef = useRef(selectedPolizas.length > 0);
   const [id, setId] = useState(0);
   useEffect(() => {
     document.body.style.overflow = "hidden";
@@ -44,13 +51,22 @@ const ModalLiquidaciones = ({
   }, [show, onClose]);
 
   useEffect(() => {
-    if (selectedPolizas.length === 0) {
+    if (selectedPolizas.length > 0) {
+      hadSelectedPolizasRef.current = true;
+      return;
+    }
+
+    if (hadSelectedPolizasRef.current) {
+      onClose?.();
+      return;
+    }
+
+    if (show !== false) {
       Swal.fire("Error", "No hay pólizas seleccionadas", "error").then(() => {
         onClose?.();
       });
     }
-  }, [selectedPolizas, onClose]);
-  if (selectedPolizas.length === 0) return null;
+  }, [selectedPolizas, onClose, show]);
 
   const backdropStyle = {
     position: "fixed",
@@ -61,7 +77,7 @@ const ModalLiquidaciones = ({
     alignItems: "flex-start",
     overflowY: "auto",
     padding: "24px",
-    zIndex: 6000,
+    zIndex: "110 !important",
   };
 
   const panelStyle = {
@@ -85,6 +101,7 @@ const ModalLiquidaciones = ({
     "Tipo expedición",
     "% Comisión",
     "Total Comisión",
+    "Accion",
   ];
 
   const headersDirectos = [
@@ -102,6 +119,7 @@ const ModalLiquidaciones = ({
     "Tipo expedición",
     "% Comisión",
     "Total Comisión",
+    "Accion",
   ];
 
   const [tablesPolizas, setTablesPolizas] = useState({
@@ -126,6 +144,8 @@ const ModalLiquidaciones = ({
  useEffect(() => {
   if (selectedPolizas.length === 0) return;
 
+  const sourcePolizas = selectedPolizas;
+
   const newTables = {
     directos: [],
     asesor10: [],
@@ -139,7 +159,7 @@ const ModalLiquidaciones = ({
   // contador local para asignar ID de fila de forma determinista
   let localId = 1;
 
-  selectedPolizas.forEach((poliza) => {
+  sourcePolizas.forEach((poliza) => {
     if (poliza.tipo === "directo") {
       newTables.directos.push({
         id: localId++,
@@ -354,6 +374,13 @@ const ModalLiquidaciones = ({
   setId(localId - 1);
 }, [selectedPolizas]);
 
+  const handleRemoveFromModal = async (poliza) => {
+    const removed = await onRemovePoliza?.(poliza);
+    if (removed === false) {
+      return;
+    }
+  };
+
   const nombresTablas = {
     asesor10: "Asesor 10",
     asesorGanador: "Asesor Ganador",
@@ -376,16 +403,21 @@ const ModalLiquidaciones = ({
   };
 
   const userData = JSON.parse(localStorage.getItem("userData"));
+  const hasSelectedPolizas = selectedPolizas.length > 0;
 
-  const handleSaveSettlement = async () => {
+  if (!hasSelectedPolizas) return null;
+
+  const handleSaveSettlement = async (estado = "Por pagar") => {
     const liquidacion = {
+      id_liquidacion: settlementId,
       usuario_sga: selectedPolizas[0]?.usuario_sga || "Sistema",
       identificacion_usuario_sga:
         selectedPolizas[0]?.usuario_sga_documento || "N/A",
-      observaciones: "Liquidación generada desde frontend",
-      nombre_emisor_liq: userData?.usu_nombre + " " + userData?.usu_apellido,
-      cc_emisor_liq: userData?.usu_documento,
-      estado: "Por pagar",
+      observaciones:
+        settlementData?.observaciones || "Liquidación generada desde frontend",
+      nombre_emisor_liq: userData?.nombre + " " + userData?.apellido,
+      cc_emisor_liq: userData?.documento,
+      estado: estado,
     };
 
     // Filas editadas si existen; si no, usa originales
@@ -441,8 +473,6 @@ const ModalLiquidaciones = ({
       return limpio;
     });
 
-    const body = { ...liquidacion, detalles };
-
     liquidacion.valor_liquidacion_total = Math.round(
       detalles.reduce((acc, r) => {
         const v =
@@ -453,8 +483,23 @@ const ModalLiquidaciones = ({
       }, 0)
     );
 
-    const response = await createSettlement(body);
-    if (response?.id_liquidacion) return response.id_liquidacion;
+    const body = {
+      ...liquidacion,
+      detalles,
+    };
+
+    const response =
+      mode === "update"
+        ? await updateSettlement(body)
+        : await createSettlement(body);
+
+    const idLiquidacion =
+      response?.id_liquidacion ??
+      response?.data?.id_liquidacion ??
+      response?.liquidacion?.id_liquidacion ??
+      null;
+
+    if (idLiquidacion) return idLiquidacion;
     return null;
   };
 
@@ -500,6 +545,7 @@ const ModalLiquidaciones = ({
                     headers={headersTables[table] || headersAsesorFreelance}
                     data={tablesPolizas[table]}
                     from="modal"
+                    onRemoveRow={handleRemoveFromModal}
                     onRowsChange={(rowsActualizadas) => {
                       setEditedTables((prev) => {
                         const prevRows = prev[table];
@@ -530,27 +576,31 @@ const ModalLiquidaciones = ({
               </BtnGeneral>
               <BtnGeneral
                 funct={async () => {
-                  // abre la pestaña inmediatamente (gesto del usuario)
-                  const win = window.open("", "_blank"); // sin features para que no sea null
+                  const win = window.open("", "_blank");
                   try {
                     const id = await handleSaveSettlement();
                     if (id && win) {
                       const url = new URL(
-                        `crm/comisiones/liquidacion/impresion?id_liquidacion=${encodeURIComponent(
+                        `crm1/comisiones/liquidacion/impresion?id_liquidacion=${encodeURIComponent(
                           id
                         )}`,
                         window.location.origin
                       ).href;
-                      // seguridad básica
-                      handlerCleanModal();
-                      handleReloadPolizas();
+                      handlerCleanModal?.();
+                      await handleReloadPolizas?.();
+                      await onSuccess?.(id);
                       onClose();
                       win.opener = null;
-                      // navega la nueva pestaña
                       win.location.href = url;
                     } else {
-                      // si no hubo ID, cierra la pestaña vacía
                       win && win.close();
+                      Swal.fire(
+                        "Error",
+                        mode === "update"
+                          ? "No se pudo actualizar la liquidación. Intente nuevamente."
+                          : "No se pudo generar la liquidación. Intente nuevamente.",
+                        "error",
+                      );
                     }
                   } catch (err) {
                     win && win.close();
@@ -561,7 +611,35 @@ const ModalLiquidaciones = ({
                   "bg-lime-9000 text-white px-10 h-[35px] m-[2px] rounded hover:bg-lime-600 transition duration-300 ease-in-out"
                 }
               >
-                Generar Liquidación
+                {mode === "update" ? "Actualizar Liquidación" : "Generar Liquidación"}
+              </BtnGeneral>
+              <BtnGeneral
+                funct={async () => {
+                  try {
+                    const id = await handleSaveSettlement("Borrador");
+                    if (id) {
+                      handlerCleanModal?.();
+                      await handleReloadPolizas?.();
+                      await onSuccess?.(id);
+                      onClose();
+                    } else {
+                      Swal.fire(
+                        "Error",
+                        mode === "update"
+                          ? "No se pudo actualizar el borrador. Intente nuevamente."
+                          : "No se pudo generar el borrador. Intente nuevamente.",
+                        "error",
+                      );
+                    }
+                  } catch (err) {
+                    console.error(err);
+                  }
+                }}
+                className={
+                  "bg-black text-white px-10 h-[35px] m-[2px] rounded hover:bg-gray-800 transition duration-300 ease-in-out"
+                }
+              >
+                {mode === "update" ? "Guardar Borrador" : "Generar Borrador"}
               </BtnGeneral>
             </section>
           </div>

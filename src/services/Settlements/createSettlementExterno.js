@@ -1,15 +1,11 @@
 import axios from "axios";
 
-export const createSettlement = async (data) => {
+export const createSettlementExterno = async (data) => {
   try {
     const response = await axios.post(
-      "/Settlements/createSettlement",
-      data, 
-      {
-        headers: {
-          "Content-Type": "application/json",
-        },
-      }
+      "/SettlementsExterno/createSettlementExterno",
+      data,
+      { headers: { "Content-Type": "application/json" } }
     );
     const payload = response?.data ?? {};
     return payload?.data ?? payload;

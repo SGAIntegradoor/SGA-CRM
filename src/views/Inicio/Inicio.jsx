@@ -35,17 +35,18 @@ export const Inicio = () => {
             transition={{ duration: 4 }}
           >
             <motion.h1
-              className="text-white text-5xl font-bold"
+              className="text-white text-3xl font-bold text-center"
               initial={{ scale: 0.5, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               transition={{ duration: 1, ease: "easeOut" }}
             >
-              Bienvenido al CRM ✨
               <Image
                 src={ImagenGA}
-                alt="Logo Grupo ASI"
+                alt="Logo SAN"
                 width={200}
-              />
+                />
+              <br />
+              Bienvenido a SAN - Sistema de Administración de Negocios 💼
             </motion.h1>
           </motion.div>
         )}

@@ -26,6 +26,8 @@ export const TableComisiones = ({
   headers = [],
   from = "",
   onToggleSelect = () => {},
+  onTogglePageSelect = () => {},
+  onRowAction = () => {},
   setIsLoading = () => {},
   loading,
 }) => {
@@ -48,7 +50,7 @@ export const TableComisiones = ({
       const id = p.id_anexo_poliza;
       if (id !== undefined) map[id] = p.seleccionado === true || p.seleccionado === 1 || p.seleccionado === "1";
     });
-    setSelectedMap((prev) => ({ ...map, ...prev })); // priorizar prev (evita perder selecciones optimistas)
+    setSelectedMap((prev) => ({ ...prev, ...map })); // prioriza data actual para evitar estados pegados
   }, [data]);
 
   // Mantener selectedRows como array de ids cada vez que selectedMap cambie
@@ -58,11 +60,6 @@ export const TableComisiones = ({
       .map(([k]) => parseInt(k, 10));
     setSelectedRows(ids);
   }, [selectedMap]);
-
-  // Debug
-  useEffect(() => {
-    console.log("selectedRows:", selectedRows);
-  }, [selectedRows]);
 
   // Campos a buscar (dinámicos desde headers)
   const searchFields = useMemo(() => headers.map((h) => h.field), [headers]);
@@ -113,27 +110,15 @@ export const TableComisiones = ({
       .filter((id) => id !== undefined && id !== null);
   };
 
-  // Petición batch al backend (ajusta URL según tu API)
-  const selectPolizasBatch = async (ids = [], selected = true) => {
-    // Endpoint de ejemplo: POST /api/comisiones/select-polizas
-    const url = "/api/comisiones/select-polizas";
-    const body = { ids, selected };
-    const res = await fetch(url, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-    });
-    const json = await res.json().catch(() => ({}));
-    if (!res.ok) {
-      const msg = json?.message || `Error ${res.status}`;
-      throw new Error(msg);
-    }
-    return json;
-  };
-
   // SELECT PAGE (batch)
   const selectPageRows = async () => {
-    const ids = getPageIds();
+    const pageRows = filtered
+      .slice(first, first + rows)
+      .filter((r) => !isWasSettled(r.ya_liquidada_para_usuario));
+    const ids = pageRows
+      .map((r) => r.id_anexo_poliza)
+      .filter((id) => id !== undefined && id !== null);
+
     if (!ids.length) {
       return;
     }
@@ -147,10 +132,10 @@ export const TableComisiones = ({
     // show loader
     try {
       setIsLoading(true);
-      // llamar batch
-      // await selectPolizasBatch(ids, true);
-      // si backend responde OK, dejamos optimistic state como está
-      // (opcional: podrías refrescar data desde padre)
+      const maybePromise = onTogglePageSelect(pageRows, true);
+      if (maybePromise && typeof maybePromise.then === "function") {
+        await maybePromise;
+      }
     } catch (err) {
       console.error("Error batch select:", err);
       // rollback
@@ -163,7 +148,13 @@ export const TableComisiones = ({
 
   // DESELECT PAGE (batch)
   const deselectPageRows = async () => {
-    const ids = getPageIds();
+    const pageRows = filtered
+      .slice(first, first + rows)
+      .filter((r) => !isWasSettled(r.ya_liquidada_para_usuario));
+    const ids = pageRows
+      .map((r) => r.id_anexo_poliza)
+      .filter((id) => id !== undefined && id !== null);
+
     if (!ids.length) {
       return;
     }
@@ -175,7 +166,10 @@ export const TableComisiones = ({
 
     try {
       setIsLoading(true);
-      await selectPolizasBatch(ids, false);
+      const maybePromise = onTogglePageSelect(pageRows, false);
+      if (maybePromise && typeof maybePromise.then === "function") {
+        await maybePromise;
+      }
     } catch (err) {
       console.error("Error batch deselect:", err);
       setSelectedMap(prevSelectedMap);
@@ -239,14 +233,14 @@ export const TableComisiones = ({
           icon="pi pi-check-square"
           className="!text-[10px] h-[32px] bg-lime-9000 border-lime-9000 hover:border-lime-600 hover:bg-lime-600 ml-1 !p-2"
           onClick={selectPageRows}
-          disabled
+          disabled={Boolean(loading) || getPageIds().length === 0}
         />
         <Button
           label="Deseleccionar página"
           icon="pi pi-times"
           className="!text-[10px] h-[32px] bg-lime-9000 border-lime-9000 hover:border-lime-600 hover:bg-lime-600 ml-1 !p-2"
           onClick={deselectPageRows}
-          disabled
+          disabled={Boolean(loading) || getPageIds().length === 0}
         />
         <IconField iconPosition="right">
           <InputIcon className="pi pi-search xs:block xxs:hidden !p-1 !text-[11px]" />
@@ -320,6 +314,27 @@ export const TableComisiones = ({
         }}
       >
         {headers.map((col) => {
+          if (col.field === "accion") {
+            return (
+              <Column
+                key={col.field}
+                field={col.field}
+                header={col.header}
+                body={(row) => (
+                  <button
+                    type="button"
+                    className="bg-red-600 text-white px-2 py-1 rounded hover:bg-red-700 text-[11px]"
+                    onClick={() => onRowAction(row)}
+                  >
+                    Quitar
+                  </button>
+                )}
+                style={{ textAlign: "center", width: 120 }}
+                headerStyle={{ textAlign: "center" }}
+              />
+            );
+          }
+
           // Columna de selección (checkbox)
           if (col.field === "seleccionado") {
             return (
