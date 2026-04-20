@@ -20,6 +20,7 @@ import { AdminNegocios } from "./views/AdminNegocios/AdminNegocios";
 import PdfServicesImpresion from "./views/Comisiones/Impresion/PdfPhp";
 import { ConfigComisiones } from "./views/Comisiones/Configuracion";
 import { Conciliacion } from "./views/Conciliaciones/Consulta/Conciliacion";
+import { RegistroConciliacion } from "./views/Conciliaciones/Registro/RegistroConciliacion";
 
 function App() {
   const [theme, colorMode] = useMode();
@@ -210,10 +211,7 @@ function App() {
                   <Route
                     path="registro"
                     element={
-                      <Comisiones
-                        setLoading={setIsLoading}
-                        loading={isLoading}
-                      />
+                      <RegistroConciliacion />
                     }
                   />
                 </Route>

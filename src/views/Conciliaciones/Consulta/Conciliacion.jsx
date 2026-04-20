@@ -1,44 +1,59 @@
 import { useState, useEffect } from "react";
 import { Box } from "@mui/material";
 import Select from "react-select";
-import { TableComisiones } from "../../../components/Comisiones/TablaComisiones";
-import { getPolizas } from "../../../services/Polizas/getPolizas";
-import { selectPoliza } from "../../../services/Comisiones/selectPoliza";
-import { selectPolizaBatch } from "../../../services/Comisiones/selectPolizaBatch";
 import Swal from "sweetalert2";
-import { getAsesoresSGA } from "../../../services/Users/getAsesoresSGA";
 import { obtenerAseguradoras, obtenerRamo } from "../../../utils/aseguradoras";
 import { getTiposPoliza } from "../../../services/Polizas/getTiposPoliza";
 import Loader from "../../../components/LoaderFullScreen/Loader";
 import BtnGeneral from "../../../components/BtnGeneral/BtnGeneral";
+import { getFinancieras } from "../../../services/Polizas/getFinancieras";
+import { TablaConciliacion } from "../../../components/Conciliaciones/TablaConciliacion";
+import { getConciliacionPolizas } from "../../../services/Conciliaciones/getConciliacionPolizas";
+import { saveConciliacion } from "../../../services/Conciliaciones/saveConciliacion";
+import { saveComentarioConciliacion } from "../../../services/Conciliaciones/saveComentarioConciliacion";
+import { updateComentarioConciliacion } from "../../../services/Conciliaciones/updateComentarioConciliacion";
+import { updateConciliacion } from "../../../services/Conciliaciones/updateConciliacion";
+import { RegistroConciliacion } from "../Registro/RegistroConciliacion";
+import { CancelacionConciliacion } from "../Registro/CancelacionesConciliacion";
 
 export const Conciliacion = ({ setLoading, loading }) => {
   const initialState = {
     poliza: "",
-    tomador: "",
-    usuario: "",
     aseguradora: "",
     ramo: "",
+    nombreAsegurado: "",
     tipoexpedicion: "",
     fechainiciovigdesde: "",
     fechafinvighasta: "",
-    estadoliquidacion: "",
+    estadoconciliacion: "",
+    financieras: "",
   };
 
   const [polizas, setPolizas] = useState([]);
   const [formStates, setFormStates] = useState(initialState);
-  const [selectedPolizas, setSelectedPolizas] = useState([]);
+  const [financieras, setFinancieras] = useState([]);
   const [aseguradoras, setAseguradoras] = useState([]);
-  const [usuariosInput, setUsuariosInput] = useState([]);
   const [ramos, setRamos] = useState([]);
   const [tiposExpedicion, setTiposExpedicion] = useState([]);
+  const [selectedPoliza, setSelectedPoliza] = useState(null);
+  const [selectedPolizaCancelacion, setSelectedPolizaCancelacion] = useState(null);
+  const [userData, setUserData] = useState(null);
 
-  const handlerLoadFilterUsuarios = async () => {
+  const isCancellationPolicy = (row) => {
+    const tipoCertificado = String(row?.tipo_certificado ?? "").trim();
+    const tipoExpedicion = String(row?.tipo ?? row?.tipo_expedicion ?? "")
+      .trim()
+      .toLowerCase();
+
+    return tipoCertificado === "4" || tipoExpedicion === "cancelacion";
+  };
+
+  const handlerLoadFinancieras = async () => {
     try {
-      const data = await getAsesoresSGA("");
-      setUsuariosInput(Array.isArray(data) ? data : []);
+      const data = await getFinancieras();
+      setFinancieras(Array.isArray(data) ? data : []);
     } catch (e) {
-      console.error("Error en la carga de usuarios", e);
+      console.error("Error en la carga de financieras", e);
     }
   };
 
@@ -72,7 +87,7 @@ export const Conciliacion = ({ setLoading, loading }) => {
   const handlerLoadPolizasUser = async () => {
     setLoading(true);
     try {
-      const data = await getPolizas(formStates);
+      const data = await getConciliacionPolizas(formStates);
       const rows = Array.isArray(data) ? data : [];
 
       if (rows.length === 0) {
@@ -94,15 +109,30 @@ export const Conciliacion = ({ setLoading, loading }) => {
     }
   };
 
+  const handleUserData = () => {
+    const storedData = localStorage.getItem("userData");
+    if (storedData) {
+      try {
+        const parsedData = JSON.parse(storedData);
+        setUserData(parsedData);
+      } catch (e) {
+        console.error("Error al parsear los datos del usuario", e);
+      }
+    } else {
+      console.warn("No se encontraron datos del usuario en localStorage");
+    }
+  };
+
   useEffect(() => {
     const initData = async () => {
       setLoading(true);
       try {
         await Promise.all([
           handlerLoaderAseguradoras(),
-          handlerLoadFilterUsuarios(),
+          handlerLoadFinancieras(),
           handlerLoadRamo(),
           handlerLoadTiposExpedicion(),
+          handleUserData(),
         ]);
       } catch (error) {
         console.error("Error en la carga inicial", error);
@@ -114,176 +144,42 @@ export const Conciliacion = ({ setLoading, loading }) => {
     initData();
   }, []);
 
-  // cargar objeto con las polizas seleccionadas actualmente en la BD y asi renderizar el objeto o colocarlo cada que se carge la vista
-  useEffect(() => {
-    if (!Array.isArray(polizas) || polizas.length === 0) return;
-
-    const isSelected = (v) => v === true || v === 1 || v === "1";
-
-    const preselected = polizas
-      .filter((p) => isSelected(p.seleccionado) || isSelected(p.seleccionada))
-      .map((p) => ({
-        id: p.id_anexo_poliza,
-        ...p,
-      }));
-
-    setSelectedPolizas((prev) => {
-      const byId = new Map(prev.map((x) => [x.id, x]));
-      preselected.forEach((x) => byId.set(x.id, x));
-      return Array.from(byId.values());
-    });
-  }, [polizas]);
-
-  const handleToggleSelect = async (row, checked) => {
-    const id = row.id_anexo_poliza;
-    const next = typeof checked === "boolean" ? checked : !row.seleccionado;
-    setPolizas((prev) =>
-      prev.map((p) =>
-        p.id_anexo_poliza === id ? { ...p, seleccionado: next } : p,
-      ),
-    );
-    setSelectedPolizas((prev) =>
-      next
-        ? [
-            ...prev,
-            {
-              id,
-              ...row,
-            },
-          ]
-        : prev.filter((p) => p.id !== id),
-    );
-
-    try {
-      const res = await selectPoliza(id, next);
-      if (res?.status !== "Ok") {
-        throw new Error(res?.message || "Error al actualizar");
-      } else {
-      }
-    } catch (err) {
-      // Si falla → revertir
-      setPolizas((prev) =>
-        prev.map((p) =>
-          p.id_anexo_poliza === id ? { ...p, seleccionado: !next } : p,
-        ),
-      );
-      Swal.fire(
-        "Error",
-        err.message || "No se pudo actualizar la selección",
-        "error",
-      );
-    }
-  };
-
-  const handleTogglePageSelect = async (rowsPage = [], checked) => {
-    const ids = rowsPage
-      .map((row) => row.id_anexo_poliza)
-      .filter((id) => id !== undefined && id !== null);
-
-    if (!ids.length) return;
-
-    const idsSet = new Set(ids);
-    const prevPolizas = polizas;
-    const prevSelected = selectedPolizas;
-
-    setPolizas((prev) =>
-      prev.map((p) =>
-        idsSet.has(p.id_anexo_poliza) ? { ...p, seleccionado: checked } : p,
-      ),
-    );
-
-    setSelectedPolizas((prev) => {
-      if (checked) {
-        const byId = new Map(prev.map((x) => [x.id, x]));
-        rowsPage.forEach((row) => {
-          byId.set(row.id_anexo_poliza, {
-            id: row.id_anexo_poliza,
-            ...row,
-            seleccionado: true,
-          });
-        });
-        return Array.from(byId.values());
-      }
-
-      return prev.filter((p) => !idsSet.has(p.id));
-    });
-
-    try {
-      const res = await selectPolizaBatch(ids, checked);
-      if (res?.status !== "Ok") {
-        throw new Error(res?.message || "Error actualizando selección por página");
-      }
-    } catch (err) {
-      setPolizas(prevPolizas);
-      setSelectedPolizas(prevSelected);
-      Swal.fire(
-        "Error",
-        err?.message || "No se pudo actualizar la selección por página",
-        "error",
-      );
-      throw err;
-    }
-  };
-
   const headers = [
     { field: "id_remision", header: "ID Remisión" },
     { field: "fecha_expedicion", header: "Fecha Exp" },
     { field: "ramo", header: "Ramo" },
     { field: "poliza", header: "# Póliza" },
-    { field: "nombre_tomador", header: "Tomador" },
+    { field: "certificado", header: "Certif" },
+    { field: "tomador", header: "Tomador" },
     { field: "documento_tomador", header: "Doc Tomador" },
     { field: "placa", header: "Placa" },
-    { field: "asistencia", header: "Asist" },
-    { field: "prima_neta", header: "Prima" },
-    { field: "gastos_expedicion", header: "Gastos" },
+    { field: "asistencia", header: "Asistencia" },
+    { field: "prima_sin_iva", header: "Prima sin IVA" },
+    { field: "gastos", header: "Gastos" },
     { field: "iva", header: "IVA" },
     { field: "valor_total", header: "Valor Total" },
-    { field: "fecha_inicio_vigencia", header: "Inicio Vig" },
-    { field: "aseguradora", header: "Compañía" },
-    {
-      field: "tipo_expedicion",
-      header: "Tipo",
-      style: { color: "red" },
-    },
-    { field: "asesor_freelance", header: "Freelance" },
-    { field: "usuario_sga", header: "Asesor SGA" },
-    { field: "unidad_negocio", header: "Unidad Negocio" },
-    { field: "forma_de_pago", header: "Forma Pago" },
+    { field: "inicio_vig", header: "Inicio Vig" },
+    { field: "compania", header: "Compañía" },
+    { field: "tipo", header: "Tipo" },
+    { field: "asesor_freelance", header: "Asesor Freelance" },
+    { field: "asesor_ganador", header: "Asesor Ganador" },
+    { field: "asesor_10", header: "Asesor 10" },
+    { field: "unidad_negocio", header: "Unidad de negocio" },
+    { field: "forma_pago", header: "Forma de pago" },
     { field: "financiera", header: "Financiera" },
     { field: "cuotas", header: "Cuotas" },
     { field: "estado_cartera", header: "Estado Cartera" },
-    { field: "observaciones", header: "Observaciones" },
-    { field: "seleccionado", header: "Seleccionar" },
-  ];
-
-  const headersDirectos = [
-    { field: "id_remision", header: "ID Remisión" },
-    { field: "fecha_expedicion", header: "Fecha Exp" },
-    { field: "ramo", header: "Ramo" },
-    { field: "poliza", header: "# Póliza" },
-    { field: "nombre_tomador", header: "Tomador" },
-    { field: "documento_tomador", header: "Doc Tomador" },
-    { field: "placa", header: "Placa" },
-    { field: "asistencia", header: "Asist" },
-    { field: "prima_neta", header: "Prima" },
-    { field: "gastos_expedicion", header: "Gastos" },
-    { field: "iva", header: "IVA" },
-    { field: "valor_total", header: "Valor Total" },
-    { field: "fecha_inicio_vigencia", header: "Inicio Vig" },
-    { field: "aseguradora", header: "Compañía" },
-    {
-      field: "tipo_expedicion",
-      header: "Tipo",
-      style: { color: "red" },
-    },
-    { field: "usuario_sga", header: "Asesor SGA" },
-    { field: "unidad_negocio", header: "Unidad Negocio" },
-    { field: "forma_de_pago", header: "Forma Pago" },
-    { field: "financiera", header: "Financiera" },
-    { field: "cuotas", header: "Cuotas" },
-    { field: "estado_cartera", header: "Estado Cartera" },
-    { field: "observaciones", header: "Observaciones" },
-    { field: "seleccionado", header: "Seleccionar" },
+    { field: "estado_conciliacion", header: "Estado Conciliación" },
+    { field: "numero_factura", header: "# Factura" },
+    { field: "porcentaje_comision", header: "% comisión" },
+    { field: "prima_planilla", header: "Prima planilla" },
+    { field: "fecha_conciliacion", header: "Fecha conciliación" },
+    { field: "saldo", header: "Saldo" },
+    { field: "comision_recibida", header: "Comisión recibida" },
+    { field: "valor_cancelacion", header: "Valor Cancelación" },
+    { field: "porcentaje_cancelacion", header: "% cancelación" },
+    { field: "pago_financieras", header: "Pago financieras" },
+    { field: "accion", header: "Acción" },
   ];
 
   const customNewStyles = {
@@ -324,25 +220,213 @@ export const Conciliacion = ({ setLoading, loading }) => {
 
   const cleanTableAndFilters = () => {
     setFormStates(initialState);
-    setSelectedPolizas([]);
     setPolizas([]);
+    setSelectedPoliza(null);
+    setSelectedPolizaCancelacion(null);
+  };
+
+  const handleOpenRegistro = (row) => {
+    if (!row) {
+      setSelectedPoliza(null);
+      setSelectedPolizaCancelacion(null);
+      return;
+    }
+
+    if (isCancellationPolicy(row)) {
+      setSelectedPoliza(null);
+      setSelectedPolizaCancelacion(row);
+      return;
+    }
+
+    setSelectedPolizaCancelacion(null);
+    setSelectedPoliza(row);
+  };
+
+  const handleCloseRegistro = () => {
+    setSelectedPoliza(null);
+    setSelectedPolizaCancelacion(null);
+  };
+
+  const activeSelectedPoliza = selectedPolizaCancelacion || selectedPoliza;
+
+  const getCurrentUserId = () => {
+    const value = Number(userData?.id_usuario ?? 0);
+    return Number.isFinite(value) && value > 0 ? value : null;
+  };
+
+  const applyPolizaUpdate = (updatedPoliza) => {
+    if (!updatedPoliza?.id_anexo_poliza) {
+      return;
+    }
+
+    setPolizas((prev) =>
+      prev.map((item) =>
+        String(item.id_anexo_poliza) === String(updatedPoliza.id_anexo_poliza)
+          ? { ...item, ...updatedPoliza }
+          : item,
+      ),
+    );
+
+    setSelectedPoliza((prev) => {
+      if (!prev) {
+        return prev;
+      }
+
+      if (String(prev.id_anexo_poliza) !== String(updatedPoliza.id_anexo_poliza)) {
+        return prev;
+      }
+
+      return { ...prev, ...updatedPoliza };
+    });
+
+    setSelectedPolizaCancelacion((prev) => {
+      if (!prev) {
+        return prev;
+      }
+
+      if (String(prev.id_anexo_poliza) !== String(updatedPoliza.id_anexo_poliza)) {
+        return prev;
+      }
+
+      return { ...prev, ...updatedPoliza };
+    });
+  };
+
+  const handleSubmitRegistro = async (payload) => {
+    if (!activeSelectedPoliza?.id_poliza || !activeSelectedPoliza?.id_anexo_poliza) {
+      Swal.fire("Error", "No se encontro la poliza para registrar la conciliacion", "error");
+      return false;
+    }
+
+    const response = await saveConciliacion({
+      ...payload,
+      id_poliza: activeSelectedPoliza.id_poliza,
+      id_anexo_poliza: activeSelectedPoliza.id_anexo_poliza,
+      id_usuario: getCurrentUserId(),
+    });
+
+    if (response?.status !== "Ok") {
+      Swal.fire(
+        "Error",
+        response?.message || "No fue posible registrar la conciliacion",
+        "error",
+      );
+      return false;
+    }
+
+    if (response?.data?.poliza) {
+      applyPolizaUpdate(response.data.poliza);
+    }
+
+    return response?.data?.conciliacion || true;
+  };
+
+  const handleSaveComentario = async (payload) => {
+    if (!activeSelectedPoliza?.id_poliza || !activeSelectedPoliza?.id_anexo_poliza) {
+      return false;
+    }
+
+    const response = await saveComentarioConciliacion({
+      ...payload,
+      id_poliza: activeSelectedPoliza.id_poliza,
+      id_anexo_poliza: activeSelectedPoliza.id_anexo_poliza,
+      id_usuario: getCurrentUserId(),
+    });
+
+    if (response?.status !== "Ok") {
+      Swal.fire(
+        "Error",
+        response?.message || "No fue posible guardar el comentario",
+        "error",
+      );
+      return false;
+    }
+
+    return response?.data || true;
+  };
+
+  const handleUpdateComentario = async (payload) => {
+    const response = await updateComentarioConciliacion({
+      ...payload,
+      id_usuario: getCurrentUserId(),
+    });
+
+    if (response?.status !== "Ok") {
+      Swal.fire(
+        "Error",
+        response?.message || "No fue posible actualizar el comentario",
+        "error",
+      );
+      return false;
+    }
+
+    return response?.data || true;
+  };
+
+  const handleUpdateConciliacion = async (payload) => {
+    const response = await updateConciliacion({
+      ...payload,
+      id_usuario: getCurrentUserId(),
+    });
+
+    if (response?.status !== "Ok") {
+      Swal.fire(
+        "Error",
+        response?.message || "No fue posible actualizar la conciliacion",
+        "error",
+      );
+      return false;
+    }
+
+    if (response?.data?.poliza) {
+      applyPolizaUpdate(response.data.poliza);
+    }
+
+    return response?.data?.conciliacion || true;
   };
 
   return (
     <div className="w-full">
       <Loader isLoading={loading} />
+      <RegistroConciliacion
+        open={Boolean(selectedPoliza)}
+        onClose={handleCloseRegistro}
+        onSubmit={handleSubmitRegistro}
+        onSaveComentario={handleSaveComentario}
+        onUpdateComentario={handleUpdateComentario}
+        onUpdateConciliacion={handleUpdateConciliacion}
+        poliza={selectedPoliza}
+        userData={userData}
+        setLoading={setLoading}
+      />
+      <CancelacionConciliacion
+        open={Boolean(selectedPolizaCancelacion)}
+        onClose={handleCloseRegistro}
+        onSubmit={handleSubmitRegistro}
+        onSaveComentario={handleSaveComentario}
+        onUpdateComentario={handleUpdateComentario}
+        onUpdateConciliacion={handleUpdateConciliacion}
+        poliza={selectedPolizaCancelacion}
+        userData={userData}
+        setLoading={setLoading}
+      />
       <Box padding={3}>
         <section className="shadow-sm rounded-xl border border-gray-200 bg-gray-100 px-4 py-3 mb-6">
-          <h1 className="text-lg font-semibold text-gray-900">Conciliación aseguradoras</h1>
+          <h1 className="text-lg font-semibold text-gray-900">
+            Conciliación aseguradoras
+          </h1>
         </section>
-        <section className="shadow-lg rounded-3xl xl:w-full lg:w-full">
+        <section className="shadow-lg rounded-3xl xl:w-full lg:w-full relative z-[50]">
           <div className="flex flex-row gap-3 items-center bg-gray-100 p-3 rounded-t-3xl border-gray-200 border">
             <p className="text-lg pl-3 font-semibold">Consulta Avanzada</p>
           </div>
 
           <div className="grid grid-cols-1 gap-4 rounded-b-3xl border-l border-r border-b border-gray-200 bg-white px-8 py-6 md:grid-cols-2 lg:grid-cols-4">
             <div className="flex flex-col w-full">
-              <label htmlFor="poliza" className="text-sm font-medium text-gray-800">
+              <label
+                htmlFor="poliza"
+                className="text-sm font-medium text-gray-800"
+              >
                 # póliza
               </label>
               <input
@@ -360,7 +444,10 @@ export const Conciliacion = ({ setLoading, loading }) => {
             </div>
 
             <div className="flex flex-col w-full">
-              <label htmlFor="aseguradora" className="text-sm font-medium text-gray-800">
+              <label
+                htmlFor="aseguradora"
+                className="text-sm font-medium text-gray-800"
+              >
                 Compañía
               </label>
               <Select
@@ -368,7 +455,9 @@ export const Conciliacion = ({ setLoading, loading }) => {
                 className="text-sm"
                 options={aseguradoras}
                 value={
-                  aseguradoras.find((opt) => opt.value === formStates.aseguradora) || null
+                  aseguradoras.find(
+                    (opt) => opt.value === formStates.aseguradora,
+                  ) || null
                 }
                 onChange={(selectedOption, meta) => {
                   const value = selectedOption?.value || "";
@@ -384,14 +473,19 @@ export const Conciliacion = ({ setLoading, loading }) => {
             </div>
 
             <div className="flex flex-col w-full">
-              <label htmlFor="ramo" className="text-sm font-medium text-gray-800">
+              <label
+                htmlFor="ramo"
+                className="text-sm font-medium text-gray-800"
+              >
                 Ramo
               </label>
               <Select
                 name="ramo"
                 className="text-sm"
                 options={ramos}
-                value={ramos.find((opt) => opt.value === formStates.ramo) || null}
+                value={
+                  ramos.find((opt) => opt.value === formStates.ramo) || null
+                }
                 onChange={(selectedOption, meta) => {
                   const value = selectedOption?.value || "";
                   setFormStates((prev) => ({
@@ -406,14 +500,17 @@ export const Conciliacion = ({ setLoading, loading }) => {
             </div>
 
             <div className="flex flex-col w-full">
-              <label htmlFor="tomador" className="text-sm font-medium text-gray-800">
+              <label
+                htmlFor="nombreAsegurado"
+                className="text-sm font-medium text-gray-800"
+              >
                 Nombre asegurado
               </label>
               <input
                 type="text"
-                name="tomador"
+                name="nombreAsegurado"
                 className="h-[35px] w-full rounded-md border border-gray-300 px-2 text-sm text-gray-900 focus:outline-none"
-                value={formStates.tomador}
+                value={formStates.nombreAsegurado}
                 onChange={(e) =>
                   setFormStates((prev) => ({
                     ...prev,
@@ -424,7 +521,10 @@ export const Conciliacion = ({ setLoading, loading }) => {
             </div>
 
             <div className="flex flex-col w-full">
-              <label htmlFor="tipoexpedicion" className="text-sm font-medium text-gray-800">
+              <label
+                htmlFor="tipoexpedicion"
+                className="text-sm font-medium text-gray-800"
+              >
                 Tipo de expedición
               </label>
               <Select
@@ -432,8 +532,9 @@ export const Conciliacion = ({ setLoading, loading }) => {
                 className="text-sm"
                 options={tiposExpedicion}
                 value={
-                  tiposExpedicion.find((opt) => opt.value === formStates.tipoexpedicion) ||
-                  null
+                  tiposExpedicion.find(
+                    (opt) => opt.value === formStates.tipoexpedicion,
+                  ) || null
                 }
                 onChange={(selectedOption, meta) => {
                   const value = selectedOption?.value || "";
@@ -449,7 +550,10 @@ export const Conciliacion = ({ setLoading, loading }) => {
             </div>
 
             <div className="flex flex-col w-full">
-              <label htmlFor="fechainiciovigdesde" className="text-sm font-medium text-gray-800">
+              <label
+                htmlFor="fechainiciovigdesde"
+                className="text-sm font-medium text-gray-800"
+              >
                 Fecha inicio de vigencia desde
               </label>
               <input
@@ -467,7 +571,10 @@ export const Conciliacion = ({ setLoading, loading }) => {
             </div>
 
             <div className="flex flex-col w-full">
-              <label htmlFor="fechafinvighasta" className="text-sm font-medium text-gray-800">
+              <label
+                htmlFor="fechafinvighasta"
+                className="text-sm font-medium text-gray-800"
+              >
                 Fecha inicio de vigencia hasta
               </label>
               <input
@@ -485,16 +592,19 @@ export const Conciliacion = ({ setLoading, loading }) => {
             </div>
 
             <div className="flex flex-col w-full">
-              <label htmlFor="estadoliquidacion" className="text-sm font-medium text-gray-800">
+              <label
+                htmlFor="estadoliquidacion"
+                className="text-sm font-medium text-gray-800"
+              >
                 Estado conciliación
               </label>
               <Select
-                name="estadoliquidacion"
+                name="estadoconciliacion"
                 className="text-sm"
                 options={estadoConciliacionOptions}
                 value={
                   estadoConciliacionOptions.find(
-                    (opt) => opt.value === formStates.estadoliquidacion,
+                    (opt) => opt.value === formStates.estadoconciliacion,
                   ) || null
                 }
                 onChange={(selectedOption, meta) => {
@@ -511,14 +621,21 @@ export const Conciliacion = ({ setLoading, loading }) => {
             </div>
 
             <div className="flex flex-col w-full">
-              <label htmlFor="usuario" className="text-sm font-medium text-gray-800">
-                Intermediario
+              <label
+                htmlFor="financieras"
+                className="text-sm font-medium text-gray-800"
+              >
+                Financiera
               </label>
               <Select
-                name="usuario"
+                name="financieras"
                 className="text-sm"
-                options={usuariosInput}
-                value={usuariosInput.find((opt) => opt.value === formStates.usuario) || null}
+                options={financieras}
+                value={
+                  financieras.find(
+                    (opt) => opt.value === formStates.financieras,
+                  ) || null
+                }
                 onChange={(selectedOption, meta) => {
                   const value = selectedOption?.value || "";
                   setFormStates((prev) => ({
@@ -561,27 +678,15 @@ export const Conciliacion = ({ setLoading, loading }) => {
           </div>
         </section>
 
-        <section className="mt-4 flex justify-center">
-          <input
-            type="text"
-            placeholder="Buscar"
-            className="h-6 w-32 rounded border border-gray-300 px-2 text-center text-xs text-gray-700 focus:outline-none"
-            readOnly
-          />
-        </section>
-
-        <section className="mt-3 rounded border border-gray-200 bg-white">
-          <TableComisiones
-            data={polizas ?? []}
-            headers={headersDirectos}
-            from=""
-            onRowAction={() => {}}
-            onToggleSelect={handleToggleSelect}
-            onTogglePageSelect={handleTogglePageSelect}
-            setIsLoading={setLoading}
-            loading={loading}
-          />
-        </section>
+        {polizas.length > 0 && (
+          <section className="mt-3 rounded border border-gray-200 bg-white">
+            <TablaConciliacion
+              data={polizas ?? []}
+              headers={headers}
+              onRowAction={handleOpenRegistro}
+            />
+          </section>
+        )}
       </Box>
     </div>
   );
