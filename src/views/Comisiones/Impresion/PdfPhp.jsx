@@ -208,7 +208,7 @@ export default function PdfServicesImpresion() {
     
 
     pageStyle: `
-    @page { size: A3 landscape; margin-top: 10mm; margin-left: 0mm; margin-right: 0mm; margin-bottom: 0mm; }
+    @page { size: A3 landscape; margin-top: 11.176mm; margin-left: 0mm; margin-right: 0mm; margin-bottom: 0mm; }
     @media print {
         .no-print { display: none !important; }
                 .page-break-dynamic {
