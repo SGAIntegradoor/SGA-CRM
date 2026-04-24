@@ -55,6 +55,62 @@ const normalizeText = (value) =>
     .toLowerCase()
     .trim();
 
+const toInputDate = (value) => {
+  const raw = String(value ?? "").trim();
+  if (!raw) return "";
+
+  const isoMatch = raw.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (isoMatch) {
+    const [, y, m, d] = isoMatch;
+    return `${y}-${m}-${d}`;
+  }
+
+  const latamMatch = raw.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+  if (latamMatch) {
+    const [, d, m, y] = latamMatch;
+    return `${y}-${m}-${d}`;
+  }
+
+  const parsed = new Date(raw);
+  if (Number.isNaN(parsed.getTime())) return "";
+  return parsed.toISOString().slice(0, 10);
+};
+
+const getExpeditionDateRange = (rows = []) => {
+  const dates = rows
+    .map((row) => toInputDate(row?.fecha_expedicion))
+    .filter(Boolean)
+    .sort();
+
+  if (!dates.length) {
+    return { from: "", to: "" };
+  }
+
+  const toStartOfMonth = (dateStr) => {
+    const [yearStr, monthStr] = String(dateStr).split("-");
+    const year = Number(yearStr);
+    const month = Number(monthStr);
+    if (!year || !month) return dateStr;
+    return `${yearStr}-${monthStr}-01`;
+  };
+
+  const toEndOfMonth = (dateStr) => {
+    const [yearStr, monthStr] = String(dateStr).split("-");
+    const year = Number(yearStr);
+    const month = Number(monthStr);
+    if (!year || !month) return dateStr;
+
+    const endDate = new Date(year, month, 0);
+    const endDay = String(endDate.getDate()).padStart(2, "0");
+    return `${yearStr}-${monthStr}-${endDay}`;
+  };
+
+  return {
+    from: toStartOfMonth(dates[0]),
+    to: toEndOfMonth(dates[dates.length - 1]),
+  };
+};
+
 const isCancellation = (row) =>
   normalizeText(row.tipo_expedicion) === "cancelacion";
 const isNewBusiness = (row) => normalizeText(row.tipo_expedicion) === "nueva";
@@ -389,7 +445,11 @@ export const RetomaLiquidacion = ({ setLoading, loading, variant = "sga" }) => {
     return null;
   };
 
+  console.log(liquidacionHeader)
+  console.log(polizasIncluidas)
   const advisorType = resolveAdvisorType(liquidacionHeader);
+
+
   const advisorTypeLabel =
     advisorType === "freelance"
       ? "Asesor Freelance"
@@ -398,6 +458,15 @@ export const RetomaLiquidacion = ({ setLoading, loading, variant = "sga" }) => {
         : advisorType === "asesorGanador"
           ? "Asesor Ganador"
           : "Actor liquidado";
+
+  const advisorUnitLabel =
+    advisorType === "freelance"
+      ? "Freelance"
+      : advisorType === "asesor10"
+        ? "Asesor 10"
+        : advisorType === "asesorGanador"
+          ? "Asesor Ganador"
+          : "N/A";
 
   const polizasIncluidasWithCalc = useMemo(() => {
     if (!isFreelanceVariant || polizasIncluidas.length === 0)
@@ -586,6 +655,7 @@ export const RetomaLiquidacion = ({ setLoading, loading, variant = "sga" }) => {
 
     setLiquidacionHeader(response.liquidacion || null);
     const details = normalizeSettlementDetails(response.detalles || []);
+    const { from, to } = getExpeditionDateRange(details);
     setPolizasIncluidas(details);
     setInitialIncludedIds(details.map((detail) => detail.id_anexo_poliza));
     setRemovedAnexosIds([]);
@@ -594,12 +664,21 @@ export const RetomaLiquidacion = ({ setLoading, loading, variant = "sga" }) => {
       response?.liquidacion?.identificacion_usuario_sga ||
       response?.liquidacion?.usuario_sga ||
       "";
-    setFormStates((prev) => ({ ...prev, usuario }));
+    setFormStates((prev) => ({
+      ...prev,
+      usuario,
+      unidadnegocio: details[0]?.unidad_negocio || "",
+      fechainiciovigdesde: from,
+      fechafinvighasta: to,
+      consultafecha: "fecha_expedicion",
+    }));
+
+    console.log("Settlement details:", response);
   };
 
   const handlerLoadPolizasUser = async () => {
-    if (formStates.usuario === "") {
-      Swal.fire("Error", "Debe seleccionar un usuario", "error");
+    if (formStates.usuario === "" || formStates.fechafinvighasta === "" || formStates.fechainiciovigdesde === "") {
+      Swal.fire("Error", "Debe seleccionar un usuario y un periodo válido", "error");
       return;
     }
 
@@ -609,6 +688,13 @@ export const RetomaLiquidacion = ({ setLoading, loading, variant = "sga" }) => {
         ? await getPolizasExternos(formStates)
         : await getPolizas(formStates);
       const rows = Array.isArray(data) ? data : [];
+      if (data.codStatus == 401) {
+        Swal.fire("Info", "Debe enviarse la unidad de negocio y el periodo a liquidar", "info");
+      }
+      else if (data.codStatus == 404) {
+        Swal.fire("Info", "No se encontraron pólizas para el usuario seleccionado", "info");
+      }
+
       setPolizasDisponibles(rows);
     } catch (e) {
       console.error("Error en la consulta de polizas", e);
@@ -911,11 +997,14 @@ export const RetomaLiquidacion = ({ setLoading, loading, variant = "sga" }) => {
       } finally {
         setLoading(false);
         console.log(smmlv)
+        console.log(formStates)
       }
     };
 
     initData();
   }, [idLiquidacion]);
+
+
 
   return (
     <div className="flex flex-col">
@@ -928,6 +1017,7 @@ export const RetomaLiquidacion = ({ setLoading, loading, variant = "sga" }) => {
           setIsLoading={setLoading}
           handleReloadPolizas={handleReloadRetoma}
           handlerCleanModal={() => {}}
+          smmlv={smmlv}
           mode="update"
           settlementId={idLiquidacion}
           settlementData={liquidacionHeader}
@@ -935,7 +1025,7 @@ export const RetomaLiquidacion = ({ setLoading, loading, variant = "sga" }) => {
           onSuccess={handleReloadRetoma}
           context={{
             unitRole: advisorType || "freelance",
-            unitLabel: advisorTypeLabel || "",
+            unitLabel: advisorUnitLabel,
             advisorName: liquidacionHeader?.usuario_sga || "",
             advisorDocument:
               liquidacionHeader?.identificacion_usuario_sga || "",
@@ -1291,6 +1381,7 @@ export const RetomaLiquidacion = ({ setLoading, loading, variant = "sga" }) => {
                       styles={customNewStyles}
                       placeholder=""
                       isClearable
+                      isDisabled
                     />
                   </div>
                   <div className="flex flex-col">
@@ -1461,6 +1552,7 @@ export const RetomaLiquidacion = ({ setLoading, loading, variant = "sga" }) => {
                       styles={customNewStyles}
                       placeholder=""
                       isClearable
+                      isDisabled
                     />
                   </div>
                   <div className="flex flex-col">
@@ -1500,6 +1592,7 @@ export const RetomaLiquidacion = ({ setLoading, loading, variant = "sga" }) => {
                       name="fechainiciovigdesde"
                       className="text-md border-[1px] w-full border-gray-300 text-gray-900 focus:outline-none h-[35px] rounded-md p-2"
                       value={formStates.fechainiciovigdesde}
+                      disabled
                       onChange={(e) =>
                         setFormStates((prev) => ({
                           ...prev,
@@ -1517,6 +1610,7 @@ export const RetomaLiquidacion = ({ setLoading, loading, variant = "sga" }) => {
                       name="fechafinvighasta"
                       className="text-md border-[1px] w-full border-gray-300 text-gray-900 focus:outline-none h-[35px] rounded-md p-2"
                       value={formStates.fechafinvighasta}
+                      disabled
                       onChange={(e) =>
                         setFormStates((prev) => ({
                           ...prev,
@@ -1579,7 +1673,7 @@ export const RetomaLiquidacion = ({ setLoading, loading, variant = "sga" }) => {
                       isClearable
                     />
                   </div>
-                  <div className="flex flex-row gap-3 xl:justify-end mt-5 xl:mt-0">
+                  <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-3 w-full mt-2">
                     <BtnGeneral
                       id="btnConsultarRetoma"
                       className="bg-lime-9000 text-white px-10 h-[35px] m-[2px] rounded hover:bg-lime-600 transition duration-300 ease-in-out"
@@ -1624,6 +1718,7 @@ export const RetomaLiquidacion = ({ setLoading, loading, variant = "sga" }) => {
                       styles={customNewStyles}
                       placeholder=""
                       isClearable
+                      isDisabled
                     />
                   </div>
                   <div className="flex flex-col w-auto flex-1">
@@ -1759,6 +1854,7 @@ export const RetomaLiquidacion = ({ setLoading, loading, variant = "sga" }) => {
                       name="fechainiciovigdesde"
                       className="text-md border-[1px] w-full border-gray-300 text-gray-900 focus:outline-none h-[35px] rounded-md p-2"
                       value={formStates.fechainiciovigdesde}
+                      disabled
                       onChange={(e) =>
                         setFormStates((prev) => ({
                           ...prev,
@@ -1776,6 +1872,7 @@ export const RetomaLiquidacion = ({ setLoading, loading, variant = "sga" }) => {
                       name="fechafinvighasta"
                       className="text-md border-[1px] w-full border-gray-300 text-gray-900 focus:outline-none h-[35px] rounded-md p-2"
                       value={formStates.fechafinvighasta}
+                      disabled
                       onChange={(e) =>
                         setFormStates((prev) => ({
                           ...prev,

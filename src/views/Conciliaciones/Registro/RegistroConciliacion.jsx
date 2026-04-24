@@ -45,7 +45,10 @@ const sanitizeMoneyDigits = (value = "") => {
     return "";
   }
 
-  const cleaned = raw.replace(/\$/g, "").replace(/\s/g, "").replace(/[^\d,.-]/g, "");
+  const cleaned = raw
+    .replace(/\$/g, "")
+    .replace(/\s/g, "")
+    .replace(/[^\d,.-]/g, "");
   const hasDot = cleaned.includes(".");
   const hasComma = cleaned.includes(",");
 
@@ -56,10 +59,7 @@ const sanitizeMoneyDigits = (value = "") => {
     const lastComma = cleaned.lastIndexOf(",");
     const decimalSep = lastDot > lastComma ? "." : ",";
     const thousandSep = decimalSep === "." ? "," : ".";
-    normalized = cleaned
-      .split(thousandSep)
-      .join("")
-      .replace(decimalSep, ".");
+    normalized = cleaned.split(thousandSep).join("").replace(decimalSep, ".");
   } else if (hasDot || hasComma) {
     const sep = hasDot ? "." : ",";
     if (new RegExp(`\\${sep}\\d{1,2}$`).test(cleaned)) {
@@ -265,9 +265,13 @@ export const RegistroConciliacion = ({
   const [conciliacionesTabla, setConciliacionesTabla] = useState(() =>
     getConciliacionesFromPoliza(poliza),
   );
-  const [editingConciliacionIndex, setEditingConciliacionIndex] = useState(null);
-  const [editingConciliacionDraft, setEditingConciliacionDraft] = useState(null);
-  const [editingConciliacionErrors, setEditingConciliacionErrors] = useState({});
+  const [editingConciliacionIndex, setEditingConciliacionIndex] =
+    useState(null);
+  const [editingConciliacionDraft, setEditingConciliacionDraft] =
+    useState(null);
+  const [editingConciliacionErrors, setEditingConciliacionErrors] = useState(
+    {},
+  );
   const [comentarios, setComentarios] = useState(() =>
     getComentariosFromPoliza(poliza),
   );
@@ -368,12 +372,47 @@ export const RegistroConciliacion = ({
   // };
 
   const calcSaldo = (row) => {
-    if (!row?.total_pagos || !row?.valor_total) {
-      return 0;
+    const totalPagosRaw = row?.conciliaciones.map((c => c?.prima_planilla || 0)).reduce((acc, val) => acc + Number(val), 0);
+    let valorTotalRaw = row?.prima_sin_iva;
+    const isNA = (value) => {
+      const text = String(value ?? "")
+        .trim()
+        .toUpperCase();
+      return text === "" || text === "N/A";
+    };
+
+    if (row?.compania == "Axa Colpatria") {
+      const gastos = isNA(row?.gastos)
+        ? 0
+        : Number(
+            String(row?.gastos)
+              .replace(/\$/g, "")
+              .replace(/\s/g, "")
+              .replace(/\./g, "")
+              .replace(/,/g, "."),
+          );
+    
+      valorTotalRaw = isNA(valorTotalRaw)
+        ? 0
+        : Number(
+            String(valorTotalRaw)
+              .replace(/\$/g, "")
+              .replace(/\s/g, "")
+              .replace(/\./g, "")
+              .replace(/,/g, "."),
+          ) + gastos;
+    }
+
+    if (isNA(valorTotalRaw)) {
+      return "N/A";
+    }
+
+    if (isNA(totalPagosRaw)) {
+      return formatCurrency(valorTotalRaw);
     }
 
     const totalPagos = Number(
-      String(row?.total_pagos)
+      String(totalPagosRaw)
         .replace(/\$/g, "")
         .replace(/\s/g, "")
         .replace(/\./g, "")
@@ -381,7 +420,7 @@ export const RegistroConciliacion = ({
     );
 
     const primaSinIva = Number(
-      String(row?.valor_total)
+      String(valorTotalRaw)
         .replace(/\$/g, "")
         .replace(/\s/g, "")
         .replace(/\./g, "")
@@ -706,10 +745,16 @@ export const RegistroConciliacion = ({
     setEditingConciliacionIndex(index);
     setEditingConciliacionDraft({
       factura: sanitizeFacturaValue(String(row.factura ?? "")),
-      porcentaje_comision: normalizePercentValue(String(row.porcentaje_comision ?? "")),
+      porcentaje_comision: normalizePercentValue(
+        String(row.porcentaje_comision ?? ""),
+      ),
       prima_planilla: sanitizeMoneyDigits(String(row.prima_planilla ?? "")),
-      fecha_conciliacion: normalizeDateValue(String(row.fecha_conciliacion ?? "")),
-      comision_recibida: sanitizeMoneyDigits(String(row.comision_recibida ?? "")),
+      fecha_conciliacion: normalizeDateValue(
+        String(row.fecha_conciliacion ?? ""),
+      ),
+      comision_recibida: sanitizeMoneyDigits(
+        String(row.comision_recibida ?? ""),
+      ),
     });
     setEditingConciliacionErrors({});
   };
@@ -812,7 +857,8 @@ export const RegistroConciliacion = ({
           ? {
               ...row,
               factura:
-                persistedConciliacion?.factura ?? editingConciliacionDraft.factura,
+                persistedConciliacion?.factura ??
+                editingConciliacionDraft.factura,
               porcentaje_comision: normalizePercentValue(
                 persistedConciliacion?.porcentaje_comision ??
                   editingConciliacionDraft.porcentaje_comision,
@@ -900,7 +946,8 @@ export const RegistroConciliacion = ({
               texto: updatedComment?.comentario || textoActualizado,
               timestamp:
                 formatCommentTimestamp(
-                  updatedComment?.fecha_edicion || updatedComment?.fecha_creacion,
+                  updatedComment?.fecha_edicion ||
+                    updatedComment?.fecha_creacion,
                 ) || timestamp,
               edit: Number(updatedComment?.editado ?? 1),
             }
@@ -1136,151 +1183,160 @@ export const RegistroConciliacion = ({
                 <tbody>
                   {conciliacionesTabla.map((row, index) => {
                     const isEditing = editingConciliacionIndex === index;
-                    const rowDraft = isEditing ? editingConciliacionDraft : null;
+                    const rowDraft = isEditing
+                      ? editingConciliacionDraft
+                      : null;
 
                     return (
-                    <tr key={row.id}>
-                      <td className="border border-gray-300 px-3 py-2 text-center">
-                        {row.cuota}
-                      </td>
-                      <td className="border border-gray-300 px-3 py-2 text-center">
-                        {isEditing ? (
-                          <input
-                            type="text"
-                            value={rowDraft?.factura ?? ""}
-                            onChange={(event) =>
-                              handleEditConciliacionDraftField("factura", event.target.value)
-                            }
-                            className={`h-8 w-full rounded border px-2 text-xs focus:outline-none ${
-                              editingConciliacionErrors.factura
-                                ? "border-red-500"
-                                : "border-gray-300"
-                            }`}
-                          />
-                        ) : (
-                          row.factura || "-"
-                        )}
-                      </td>
-                      <td className="border border-gray-300 px-3 py-2 text-center">
-                        {isEditing ? (
-                          <div className="relative">
+                      <tr key={row.id}>
+                        <td className="border border-gray-300 px-3 py-2 text-center">
+                          {row.cuota}
+                        </td>
+                        <td className="border border-gray-300 px-3 py-2 text-center">
+                          {isEditing ? (
                             <input
                               type="text"
-                              value={rowDraft?.porcentaje_comision ?? ""}
+                              value={rowDraft?.factura ?? ""}
                               onChange={(event) =>
                                 handleEditConciliacionDraftField(
-                                  "porcentaje_comision",
+                                  "factura",
                                   event.target.value,
                                 )
                               }
-                              className={`h-8 w-full rounded border px-2 pr-6 text-xs focus:outline-none ${
-                                editingConciliacionErrors.porcentaje_comision
+                              className={`h-8 w-full rounded border px-2 text-xs focus:outline-none ${
+                                editingConciliacionErrors.factura
                                   ? "border-red-500"
                                   : "border-gray-300"
                               }`}
                             />
-                            <span className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-gray-500">
-                              %
-                            </span>
-                          </div>
-                        ) : row.porcentaje_comision ? (
-                          `${row.porcentaje_comision} %`
-                        ) : (
-                          "-"
-                        )}
-                      </td>
-                      <td className="border border-gray-300 px-3 py-2 text-center">
-                        {isEditing ? (
-                          <input
-                            type="text"
-                            value={formatMoneyInput(rowDraft?.prima_planilla ?? "")}
-                            onChange={(event) =>
-                              handleEditConciliacionDraftField(
-                                "prima_planilla",
-                                event.target.value,
-                              )
-                            }
-                            className={`h-8 w-full rounded border px-2 text-xs focus:outline-none ${
-                              editingConciliacionErrors.prima_planilla
-                                ? "border-red-500"
-                                : "border-gray-300"
-                            }`}
-                          />
-                        ) : (
-                          formatMoneyTable(row.prima_planilla)
-                        )}
-                      </td>
-                      <td className="border border-gray-300 px-3 py-2 text-center">
-                        {isEditing ? (
-                          <input
-                            type="date"
-                            value={rowDraft?.fecha_conciliacion ?? ""}
-                            onChange={(event) =>
-                              handleEditConciliacionDraftField(
-                                "fecha_conciliacion",
-                                event.target.value,
-                              )
-                            }
-                            className={`h-8 w-full rounded border px-2 text-xs focus:outline-none ${
-                              editingConciliacionErrors.fecha_conciliacion
-                                ? "border-red-500"
-                                : "border-gray-300"
-                            }`}
-                          />
-                        ) : (
-                          row.fecha_conciliacion
-                        )}
-                      </td>
-                      <td className="border border-gray-300 px-3 py-2 text-center">
-                        {isEditing ? (
-                          <input
-                            type="text"
-                            value={formatMoneyInput(rowDraft?.comision_recibida ?? "")}
-                            onChange={(event) =>
-                              handleEditConciliacionDraftField(
-                                "comision_recibida",
-                                event.target.value,
-                              )
-                            }
-                            className={`h-8 w-full rounded border px-2 text-xs focus:outline-none ${
-                              editingConciliacionErrors.comision_recibida
-                                ? "border-red-500"
-                                : "border-gray-300"
-                            }`}
-                          />
-                        ) : (
-                          formatMoneyTable(row.comision_recibida)
-                        )}
-                      </td>
-                      <td className="border border-gray-300 px-3 py-2 text-center">
-                        {isEditing ? (
-                          <div className="flex items-center justify-center gap-2">
+                          ) : (
+                            row.factura || "-"
+                          )}
+                        </td>
+                        <td className="border border-gray-300 px-3 py-2 text-center">
+                          {isEditing ? (
+                            <div className="relative">
+                              <input
+                                type="text"
+                                value={rowDraft?.porcentaje_comision ?? ""}
+                                onChange={(event) =>
+                                  handleEditConciliacionDraftField(
+                                    "porcentaje_comision",
+                                    event.target.value,
+                                  )
+                                }
+                                className={`h-8 w-full rounded border px-2 pr-6 text-xs focus:outline-none ${
+                                  editingConciliacionErrors.porcentaje_comision
+                                    ? "border-red-500"
+                                    : "border-gray-300"
+                                }`}
+                              />
+                              <span className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-gray-500">
+                                %
+                              </span>
+                            </div>
+                          ) : row.porcentaje_comision ? (
+                            `${row.porcentaje_comision} %`
+                          ) : (
+                            "-"
+                          )}
+                        </td>
+                        <td className="border border-gray-300 px-3 py-2 text-center">
+                          {isEditing ? (
+                            <input
+                              type="text"
+                              value={formatMoneyInput(
+                                rowDraft?.prima_planilla ?? "",
+                              )}
+                              onChange={(event) =>
+                                handleEditConciliacionDraftField(
+                                  "prima_planilla",
+                                  event.target.value,
+                                )
+                              }
+                              className={`h-8 w-full rounded border px-2 text-xs focus:outline-none ${
+                                editingConciliacionErrors.prima_planilla
+                                  ? "border-red-500"
+                                  : "border-gray-300"
+                              }`}
+                            />
+                          ) : (
+                            formatMoneyTable(row.prima_planilla)
+                          )}
+                        </td>
+                        <td className="border border-gray-300 px-3 py-2 text-center">
+                          {isEditing ? (
+                            <input
+                              type="date"
+                              value={rowDraft?.fecha_conciliacion ?? ""}
+                              onChange={(event) =>
+                                handleEditConciliacionDraftField(
+                                  "fecha_conciliacion",
+                                  event.target.value,
+                                )
+                              }
+                              className={`h-8 w-full rounded border px-2 text-xs focus:outline-none ${
+                                editingConciliacionErrors.fecha_conciliacion
+                                  ? "border-red-500"
+                                  : "border-gray-300"
+                              }`}
+                            />
+                          ) : (
+                            row.fecha_conciliacion
+                          )}
+                        </td>
+                        <td className="border border-gray-300 px-3 py-2 text-center">
+                          {isEditing ? (
+                            <input
+                              type="text"
+                              value={formatMoneyInput(
+                                rowDraft?.comision_recibida ?? "",
+                              )}
+                              onChange={(event) =>
+                                handleEditConciliacionDraftField(
+                                  "comision_recibida",
+                                  event.target.value,
+                                )
+                              }
+                              className={`h-8 w-full rounded border px-2 text-xs focus:outline-none ${
+                                editingConciliacionErrors.comision_recibida
+                                  ? "border-red-500"
+                                  : "border-gray-300"
+                              }`}
+                            />
+                          ) : (
+                            formatMoneyTable(row.comision_recibida)
+                          )}
+                        </td>
+                        <td className="border border-gray-300 px-3 py-2 text-center">
+                          {isEditing ? (
+                            <div className="flex items-center justify-center gap-2">
+                              <button
+                                type="button"
+                                className="rounded bg-lime-600 px-2 py-1 text-xs font-semibold text-white hover:bg-lime-700"
+                                onClick={saveEditConciliacionRow}
+                              >
+                                Guardar
+                              </button>
+                              <button
+                                type="button"
+                                className="rounded border border-gray-300 px-2 py-1 text-xs font-semibold text-gray-700 hover:bg-gray-100"
+                                onClick={cancelEditConciliacionRow}
+                              >
+                                Cancelar
+                              </button>
+                            </div>
+                          ) : (
                             <button
                               type="button"
-                              className="rounded bg-lime-600 px-2 py-1 text-xs font-semibold text-white hover:bg-lime-700"
-                              onClick={saveEditConciliacionRow}
+                              className="rounded bg-lime-500 px-3 py-1 text-xs font-semibold text-white hover:bg-lime-600"
+                              onClick={() => startEditConciliacionRow(index)}
                             >
-                              Guardar
+                              Editar
                             </button>
-                            <button
-                              type="button"
-                              className="rounded border border-gray-300 px-2 py-1 text-xs font-semibold text-gray-700 hover:bg-gray-100"
-                              onClick={cancelEditConciliacionRow}
-                            >
-                              Cancelar
-                            </button>
-                          </div>
-                        ) : (
-                          <button
-                            type="button"
-                            className="rounded bg-lime-500 px-3 py-1 text-xs font-semibold text-white hover:bg-lime-600"
-                            onClick={() => startEditConciliacionRow(index)}
-                          >
-                            Editar
-                          </button>
-                        )}
-                      </td>
-                    </tr>
+                          )}
+                        </td>
+                      </tr>
                     );
                   })}
                 </tbody>
@@ -1310,13 +1366,10 @@ export const RegistroConciliacion = ({
             </div>
 
             <section id="secComentarios" className="mt-10">
-                  <label htmlFor="agregarComentario">
-                    <b>Agregar seguimiento:</b>
-                  </label>
-              <div
-                className="flex flex-row gap-6 mt-2"
-                id="divComentarios"
-              >
+              <label htmlFor="agregarComentario">
+                <b>Agregar seguimiento:</b>
+              </label>
+              <div className="flex flex-row gap-6 mt-2" id="divComentarios">
                 <div className="flex flex-col" style={{ width: "50%" }}>
                   <input
                     type="text"
@@ -1346,53 +1399,61 @@ export const RegistroConciliacion = ({
                       </p>
                     ) : (
                       comentarios.map((comentario, index) => (
-                        <div key={index} className="mb-2 flex flex-row items-start justify-between rounded-md border border-gray-300 p-3">
-                        
-                        <p className="min-w-0 flex-1 pr-3 text-gray-900">
-                          <textarea
-                            id={`comentario-${index}`}
-                            ref={(element) => {
-                              if (element) {
-                                comentarioInputRefs.current[index] = element;
-                              } else {
-                                delete comentarioInputRefs.current[index];
-                              }
-                            }}
-                            type="text"
-                            value={
-                              editingComentarioIndex === index
-                                ? editingComentarioTexto
-                                : comentario.texto
-                            }
-                            readOnly={editingComentarioIndex !== index}
-                            onChange={(event) => {
-                              if (editingComentarioIndex === index) {
-                                setEditingComentarioTexto(event.target.value);
-                              }
-                            }}
-                            rows={editingComentarioIndex === index ? 2 : 2}
-                            className={`w-full resize-none rounded-md bg-transparent px-2 py-1 text-sm leading-5 whitespace-pre-wrap break-words ${
-                              editingComentarioIndex === index
-                                ? "border border-lime-500"
-                                : "border-none"
-                            }`}
-                          />
-                          <br />
-                          <span className="text-xs text-gray-500">
-                            {comentario.usuario} - {comentario.timestamp}
-                          </span>
-                        </p>
-                        <BtnGeneral
-                          id={`btnEditarComentario-${index}`}
-                          className="mt-2 flex items-center justify-center rounded-md bg-lime-9000 h-8 w-8 text-xs font-semibold text-white transition duration-300 ease-in-out hover:bg-lime-600"
-                          funct={() => handleEditComentarioClick(index)}
+                        <div
+                          key={index}
+                          className="mb-2 flex flex-row items-start justify-between rounded-md border border-gray-300 p-3"
                         >
-                          {editingComentarioIndex === index ? (
-                            <BsFloppy2Fill className="h-4 w-4" aria-hidden="true" />
-                          ) : (
-                            <FaPen className="h-3.5 w-3.5" aria-hidden="true" />
-                          )}
-                        </BtnGeneral>
+                          <p className="min-w-0 flex-1 pr-3 text-gray-900">
+                            <textarea
+                              id={`comentario-${index}`}
+                              ref={(element) => {
+                                if (element) {
+                                  comentarioInputRefs.current[index] = element;
+                                } else {
+                                  delete comentarioInputRefs.current[index];
+                                }
+                              }}
+                              type="text"
+                              value={
+                                editingComentarioIndex === index
+                                  ? editingComentarioTexto
+                                  : comentario.texto
+                              }
+                              readOnly={editingComentarioIndex !== index}
+                              onChange={(event) => {
+                                if (editingComentarioIndex === index) {
+                                  setEditingComentarioTexto(event.target.value);
+                                }
+                              }}
+                              rows={editingComentarioIndex === index ? 2 : 2}
+                              className={`w-full resize-none rounded-md bg-transparent px-2 py-1 text-sm leading-5 whitespace-pre-wrap break-words ${
+                                editingComentarioIndex === index
+                                  ? "border border-lime-500"
+                                  : "border-none"
+                              }`}
+                            />
+                            <br />
+                            <span className="text-xs text-gray-500">
+                              {comentario.usuario} - {comentario.timestamp}
+                            </span>
+                          </p>
+                          <BtnGeneral
+                            id={`btnEditarComentario-${index}`}
+                            className="mt-2 flex items-center justify-center rounded-md bg-lime-9000 h-8 w-8 text-xs font-semibold text-white transition duration-300 ease-in-out hover:bg-lime-600"
+                            funct={() => handleEditComentarioClick(index)}
+                          >
+                            {editingComentarioIndex === index ? (
+                              <BsFloppy2Fill
+                                className="h-4 w-4"
+                                aria-hidden="true"
+                              />
+                            ) : (
+                              <FaPen
+                                className="h-3.5 w-3.5"
+                                aria-hidden="true"
+                              />
+                            )}
+                          </BtnGeneral>
                         </div>
                       ))
                     )}

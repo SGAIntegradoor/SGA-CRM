@@ -209,6 +209,15 @@ export const getPolizas = async (dataFilters) => {
 
     const lista = Array.isArray(data?.data) ? data.data : [];
 
+    if (lista.length === 0) {
+      return {
+        codStatus: 404,
+        message: "No se encontraron polizas",
+        error: true,
+        data: [],
+      };
+    }
+
     // ====== Mapa del anexo 0 (NUEVA) por póliza, con % realmente usado ======
     const basePorPoliza = new Map();
     for (const p of lista) {

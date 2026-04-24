@@ -8,6 +8,7 @@ import { useNavigate } from "react-router-dom";
 import { TableDirectos } from "../Tables/TableDirectos";
 import { createSettlement } from "../../../../services/Settlements/createSettlement";
 import { updateSettlement } from "../../../../services/Settlements/updateSettlement";
+import { Padding } from "@mui/icons-material";
 
 const ModalLiquidaciones = ({
   show,
@@ -70,20 +71,24 @@ const ModalLiquidaciones = ({
 
   const backdropStyle = {
     position: "fixed",
+    top: 0,
     inset: 0,
     background: "rgba(0,0,0,0.5)",
     display: "flex",
     justifyContent: "center",
     alignItems: "flex-start",
     overflowY: "auto",
-    padding: "24px",
-    zIndex: "110 !important",
+    // padding: "24px",
+    zIndex: "9999 !important",
+    
   };
 
   const panelStyle = {
-    position: "relative",
-    maxWidth: "1300px",
+    // position: "relative",
+    maxWidth: "1100px",
     width: "100%",
+    // padding: "0px !important",
+    // margin: "0px !important",
   };
 
   const headersAsesorFreelance = [
@@ -511,7 +516,7 @@ const ModalLiquidaciones = ({
           textButton={["X"]}
           width={"w-full"}
           onClose={onClose}
-          classname={"shadow-lg"}
+          classname={"shadow-lg max-h-[500px]"}
         >
           <div className="bg-white rounded-b-xl pl-4 pr-7 pb-6 pt-3 w-full">
             {/* Usuario */}

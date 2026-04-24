@@ -105,7 +105,7 @@ export const TablePagosLiq = ({
 
 
   const navigateToLiquidacion = (id_liquidacion) => {
-    const url = `/crm/comisiones/liquidacion/impresion?id_liquidacion=${id_liquidacion}`;
+    const url = `/crm1/comisiones/liquidacion/impresion?id_liquidacion=${id_liquidacion}`;
     window.open(url, "_blank");
   }
 
@@ -170,14 +170,14 @@ export const TablePagosLiq = ({
                 field={col.field}
                 header={col.header}
                 body={(row) => {
-                  console.log(row)
                   const checked = isChecked(row.seleccionada_liq);
+                  console.log(row)
                   return (
                     <div className="flex flex-row items-center justify-between">
-                      <button onClick={() => navigateToLiquidacion(row.id_liquidacion)}>
+                      <button onClick={() => row.estado != "Borrador" ? navigateToLiquidacion(row.id_liquidacion): ""} disabled={row.estado === "Borrador"}>
                         <TiDocumentText size={20} />
                       </button>
-                      <button className="mb-[1px]" onClick={() => onAnulation(row.id_liquidacion, row.identificacion_usuario_sga)}>
+                      <button className="mb-[1px]" onClick={() => onAnulation(row.id_liquidacion, row.identificacion_usuario_sga)} disabled={row.estado === "Anulada"}>
                         <FaTrashAlt size={15} color="red" />
                       </button>
                       <input
@@ -185,7 +185,7 @@ export const TablePagosLiq = ({
                         className="h-[15px] w-[15px]"
                         checked={checked}
                         onChange={(e) => onToggleSelect(row, e.target.checked)}
-                        // disabled={isWasSettled(row.ya_liquidada_para_usuario)}
+                        disabled={row.estado === "Borrador"}
                       />
                     </div>
                   );

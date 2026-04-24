@@ -17,6 +17,11 @@ const nfCOP = new Intl.NumberFormat("es-CO", {
 
 const formatCOP = (value) => nfCOP.format(Number(value || 0));
 
+const toSafeNumber = (value) => {
+  const n = Number(value);
+  return Number.isFinite(n) ? n : 0;
+};
+
 const toNumberCOP = (value) => {
   if (typeof value === "number" && Number.isFinite(value)) return value;
 
@@ -39,6 +44,54 @@ const normalizeText = (value) =>
     .replace(/[\u0300-\u036f]/g, "")
     .toLowerCase()
     .trim();
+
+const hasBusinessValue = (value) => {
+  const text = normalizeText(value);
+  return (
+    text !== "" &&
+    text !== "n/a" &&
+    text !== "na" &&
+    text !== "null" &&
+    text !== "undefined"
+  );
+};
+
+const resolveUnitFromPolizas = (rows = []) => {
+  const source = Array.isArray(rows)
+    ? rows.find(
+        (row) =>
+          hasBusinessValue(row?.asesor_10) ||
+          hasBusinessValue(row?.asesor_ganador) ||
+          hasBusinessValue(row?.asesor_freelance),
+      )
+    : null;
+
+  if (!source) {
+    return { unitRole: null, unitLabel: "N/A", advisorName: "" };
+  }
+
+  if (hasBusinessValue(source.asesor_10)) {
+    return {
+      unitRole: "asesor10",
+      unitLabel: "Asesor 10",
+      advisorName: String(source.asesor_10).trim(),
+    };
+  }
+
+  if (hasBusinessValue(source.asesor_ganador)) {
+    return {
+      unitRole: "asesorGanador",
+      unitLabel: "Asesor Ganador",
+      advisorName: String(source.asesor_ganador).trim(),
+    };
+  }
+
+  return {
+    unitRole: "freelance",
+    unitLabel: "Freelance",
+    advisorName: String(source.asesor_freelance || "").trim(),
+  };
+};
 
 const isCancellation = (row) =>
   normalizeText(row.tipo_expedicion) === "cancelacion";
@@ -210,6 +263,37 @@ const sortRows = (rows = []) =>
     );
   });
 
+const toInputDate = (value) => {
+  const raw = String(value ?? "").trim();
+  if (!raw) return "";
+
+  const isoMatch = raw.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (isoMatch) {
+    const [, year, month, day] = isoMatch;
+    return `${year}-${month}-${day}`;
+  }
+
+  const latamMatch = raw.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+  if (latamMatch) {
+    const [, day, month, year] = latamMatch;
+    return `${year}-${month}-${day}`;
+  }
+
+  const parsed = new Date(raw);
+  if (Number.isNaN(parsed.getTime())) return "";
+  return parsed.toISOString().slice(0, 10);
+};
+
+const formatPeriodMonthYear = (dateStr) => {
+  if (!dateStr) return "N/A";
+  const [year, month, day] = String(dateStr).split("-").map(Number);
+  const date = new Date(year, (month || 1) - 1, day || 1);
+  if (Number.isNaN(date.getTime())) return "N/A";
+
+  const monthName = date.toLocaleDateString("es-CO", { month: "long" });
+  return `${monthName} del ${date.getFullYear()}`;
+};
+
 const ModalLiquidacionesFreelance = ({
   retenciones,
   show,
@@ -231,8 +315,21 @@ const ModalLiquidacionesFreelance = ({
   const [rows, setRows] = useState([]);
   const [globalParticipationPct, setGlobalParticipationPct] = useState(70);
 
+  const detectedUnit = useMemo(
+    () => resolveUnitFromPolizas(selectedPolizas),
+    [selectedPolizas],
+  );
+
+  const effectiveUnitRole =
+    detectedUnit.unitRole || context.unitRole || "freelance";
+  const effectiveUnitLabel =
+    detectedUnit.unitLabel !== "N/A"
+      ? detectedUnit.unitLabel
+      : context.unitLabel || "Unidad no definida";
+  const effectiveAdvisorName =
+    detectedUnit.advisorName || context.advisorName || "Asesor";
+
   useEffect(() => {
-    console.log(settlementData);
     document.body.style.overflow = "hidden";
     return () => {
       document.body.style.overflow = "";
@@ -282,11 +379,11 @@ const ModalLiquidacionesFreelance = ({
     setGlobalParticipationPct(defaultPct);
     setRows(
       sortRows(selectedPolizas).map((row, index) =>
-        buildFreelanceRow(row, index, context.unitRole, defaultPct),
+        buildFreelanceRow(row, index, effectiveUnitRole, defaultPct),
       ),
     );
     rowsInitializedRef.current = true;
-  }, [selectedPolizas, context.unitRole]);
+  }, [selectedPolizas, effectiveUnitRole]);
 
   useEffect(() => {
     if (!rowsInitializedRef.current) {
@@ -313,44 +410,45 @@ const ModalLiquidacionesFreelance = ({
 
   const summary = useMemo(() => {
     const totalPrimas = activeRows.reduce(
-      (acc, row) => acc + row.prima_sin_iva_num,
+      (acc, row) => acc + toSafeNumber(row.prima_sin_iva_num),
       0,
     );
     const negociosNuevos = activeRows.filter(isNewBusiness).length;
     const negociosCancelados = cancelledRows.length;
     const totalComisionGA = rows.reduce(
-      (acc, row) => acc + row.ga_commission_value,
+      (acc, row) => acc + toSafeNumber(row.ga_commission_value),
       0,
     );
     const totalImpuestos = rows.reduce(
-      (acc, row) => acc + row.impuestos_value,
+      (acc, row) => acc + toSafeNumber(row.impuestos_value),
       0,
     );
     const totalComisionNeta = rows.reduce(
-      (acc, row) => acc + row.comision_neta_value,
+      (acc, row) => acc + toSafeNumber(row.comision_neta_value),
       0,
     );
     const totalComisionFreelance = rows.reduce(
-      (acc, row) => acc + row.total_comision_value,
+      (acc, row) => acc + toSafeNumber(row.total_comision_value),
       0,
     );
 
     // Total antes de impuestos = total comision freelance (cancelaciones ya restan)
-    const totalAntesImpuestos = totalComisionFreelance;
+    const totalAntesImpuestos = toSafeNumber(totalComisionFreelance);
+
     // IVA 19% solo si responsable de IVA
-    let iva19 =
-      rows[0]?.usu_freelance?.responsable_iva == "1"
-        ? totalAntesImpuestos * 0.19
-        : 0;
+    const responsableIva =
+      rows[0]?.usu_freelance?.responsable_iva ?? settlementData?.responsable_iva;
+    const iva19 = String(responsableIva) === "1" ? totalAntesImpuestos * 0.19 : 0;
+
     // Retenciones
-    const ret = retenciones.find(
-      (r) => r.id === rows[0]?.usu_freelance?.u_retencion,
+    const retencionesList = Array.isArray(retenciones) ? retenciones : [];
+    const retencionId =
+      rows[0]?.usu_freelance?.u_retencion ?? settlementData?.usu_retencion;
+    const ret = retencionesList.find(
+      (r) => String(r?.id) === String(retencionId),
     );
-    const retencionesPorcentaje =
-      ret?.id == rows[0]?.usu_freelance?.u_retencion
-        ? parseInt(ret?.porc_ret, 10)
-        : 0;
-    let retencionesValue = (retencionesPorcentaje * totalAntesImpuestos) / 100;
+    const retencionesPorcentaje = toSafeNumber(ret?.porc_ret);
+    const retencionesValue = (retencionesPorcentaje * totalAntesImpuestos) / 100;
 
     const totalAPagar = totalAntesImpuestos + iva19 - retencionesValue;
 
@@ -368,10 +466,23 @@ const ModalLiquidacionesFreelance = ({
       retencionesPorcentaje,
       totalAPagar,
     };
-  }, [activeRows, cancelledRows, rows]);
+  }, [activeRows, cancelledRows, rows, retenciones, settlementData]);
 
-  const actorLabel = context.advisorName || "Asesor";
-  const unidadLabel = context.unitLabel || "Unidad no definida";
+  const actorLabel = effectiveAdvisorName;
+  const unidadLabel = effectiveUnitLabel;
+
+  const periodLabel = useMemo(() => {
+    const dates = rows
+      .map((row) => toInputDate(row?.fecha_expedicion))
+      .filter(Boolean)
+      .sort();
+
+    if (!dates.length) {
+      return "N/A";
+    }
+
+    return formatPeriodMonthYear(dates[0]);
+  }, [rows]);
 
   const handleGlobalParticipationChange = (value) => {
     const nextPct = Number(value);
@@ -445,7 +556,7 @@ const ModalLiquidacionesFreelance = ({
         usuario_sga: actorLabel,
         identificacion_usuario_sga: context.advisorDocument || "N/A",
         usuario: context.advisorDocument || "N/A",
-        tipo_usuario: context.unitRole || "freelance",
+        tipo_usuario: effectiveUnitRole,
         observaciones:
           settlementData?.observaciones ||
           `Liquidacion freelance ${unidadLabel} generada desde frontend`,
@@ -749,10 +860,7 @@ const ModalLiquidacionesFreelance = ({
                 <input
                   type="text"
                   className="h-[36px] rounded border border-gray-300 bg-gray-100 px-3 text-sm"
-                  value={new Date().toLocaleDateString("es-CO", {
-                    month: "long",
-                    year: "numeric",
-                  })}
+                  value={periodLabel}
                   disabled
                 />
               </div>
@@ -906,51 +1014,18 @@ const ModalLiquidacionesFreelance = ({
               </span>
               <span className="font-medium text-gray-600">
                 Retenciones (
-                {summary?.retencionesPorcentaje ||
-                  retenciones.filter(
-                    (item) => item.id === settlementData?.usu_retencion,
-                  )[0]?.porc_ret}
+                {summary.retencionesPorcentaje}
                 %)
               </span>
               <span className="text-right font-semibold text-gray-900">
-                {/* {console.log(parseInt(retenciones.filter(
-                      (item) => item.id == settlementData?.usu_retencion,
-                    )[0]?.porc_ret, 10))} */}
-                {!isNaN(summary?.retencionesValue)
-                  ? formatCOP(summary?.retencionesValue)
-                  : formatCOP(
-                      (parseInt(
-                        retenciones.filter(
-                          (item) => item.id == settlementData?.usu_retencion,
-                        )[0]?.porc_ret,
-                        10,
-                      ) *
-                        (summary?.totalComisionFreelance || 0)) /
-                        100,
-                    )}
+                {formatCOP(summary.retencionesValue)}
               </span>
 
               <hr className="col-span-2 border-gray-300" />
 
               <span className="font-semibold text-gray-800">Total a pagar</span>
               <span className="text-right text-base font-bold text-gray-900">
-                {isNaN(summary?.totalAPagar)
-                  ? summary?.totalComisionFreelance * 1.19 -
-                    Number(
-                      (parseInt(
-                        retenciones.filter(
-                          (item) => item.id == settlementData?.usu_retencion,
-                        )[0]?.porc_ret,
-                        10,
-                      ) *
-                        (summary?.totalComisionFreelance || 0)) /
-                        100,
-                      10,
-                    ).toLocaleString("en-US", {
-                        style: "currency",
-                        currency: "USD",
-                      })
-                  : formatCOP(summary?.totalAPagar)}
+                {formatCOP(summary.totalAPagar)}
               </span>
             </div>
           </div>
