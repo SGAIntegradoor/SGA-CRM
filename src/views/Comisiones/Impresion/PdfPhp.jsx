@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
-import { useReactToPrint } from "react-to-print";
 import { pdfServices } from "../../../services/PDF/PdfService";
 import { useLocation } from "react-router-dom";
+import html2pdf from "html2pdf.js";
 
 export default function PdfServicesImpresion() {
   const path = useLocation();
@@ -9,7 +9,6 @@ export default function PdfServicesImpresion() {
 
   const [liquidacion, setLiquidacion] = useState(null);
   const pdfRef = useRef(null);
-  const hasAutoPrintedRef = useRef(false);
 
     const addDynamicPageBreaks = (htmlString) => {
         if (!htmlString || typeof htmlString !== "string") return htmlString;
@@ -189,43 +188,43 @@ export default function PdfServicesImpresion() {
         return doc.body.innerHTML;
     };
 
-  const closeAfterPrint = () => {
-    window.close();
+    const openPdfPreviewWindow = async () => {
+        if (!liquidacion || !pdfRef.current) return;
 
-    setTimeout(() => {
-      if (!window.closed) {
-        window.history.back();
-      }
-    }, 300);
-  };
+        const previewWindow = window.open("", "_blank");
+        if (!previewWindow) return;
 
-  const handlePrint = useReactToPrint({
-    contentRef: pdfRef,
-    documentTitle: "",
-    // removeAfterPrint: true,
-    ignoreGlobalStyles: true,
-    // onAfterPrint: closeAfterPrint,
-    
+        previewWindow.document.write(
+            '<html><head><title>Vista previa PDF</title></head><body style="font-family: sans-serif; margin: 16px;">Generando vista previa...</body></html>'
+        );
+        previewWindow.document.close();
 
-    pageStyle: `
-    @page { size: A3 landscape; margin-top: 11.176mm; margin-left: 0mm; margin-right: 0mm; margin-bottom: 0mm; }
-    @media print {
-        .no-print { display: none !important; }
-                .page-break-dynamic {
-                    break-before: page;
-                    page-break-before: always;
-                }
-      }
-      * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
-      thead { display: table-header-group; }
-      tfoot { display: table-footer-group; }
-            .page-break-dynamic {
-                display: block;
-                width: 100%;
-                height: 0;
-            }
-      `,
-  });
+        try {
+            const pdfBlob = await html2pdf()
+                .set({
+                    margin: [11.176, 0, 0, 0],
+                    html2canvas: { scale: 1.5, useCORS: true, allowTaint: true },
+                    jsPDF: { unit: "mm", format: "a3", orientation: "landscape" },
+                    pagebreak: { mode: ["css", "legacy"] },
+                })
+                .from(pdfRef.current)
+                .toPdf()
+                .outputPdf("blob");
+
+            const blobUrl = URL.createObjectURL(pdfBlob);
+            previewWindow.location.href = blobUrl;
+            previewWindow.addEventListener("beforeunload", () => URL.revokeObjectURL(blobUrl), {
+                once: true,
+            });
+        } catch (error) {
+            previewWindow.document.body.innerHTML = "No se pudo generar la vista previa del PDF.";
+            console.error("Error generando vista previa con html2pdf:", error);
+        }
+    };
+
+    const handlePrintClick = async () => {
+        await openPdfPreviewWindow();
+    };
   // table, tr, td, th, section { break-inside: avoid; page-break-inside: avoid; }
 
   useEffect(() => {
@@ -237,22 +236,11 @@ export default function PdfServicesImpresion() {
     })();
   }, []);
 
-  useEffect(() => {
-    if (!liquidacion || hasAutoPrintedRef.current) return;
-    hasAutoPrintedRef.current = true;
-
-    const frame = requestAnimationFrame(() => {
-      handlePrint();
-    });
-
-    return () => cancelAnimationFrame(frame);
-  }, [liquidacion, handlePrint]);
-
   return (
     <div>
       <button
         className="no-print"
-        onClick={() => handlePrint()}
+                onClick={handlePrintClick}
         disabled={!liquidacion}
       >
         Imprimir
