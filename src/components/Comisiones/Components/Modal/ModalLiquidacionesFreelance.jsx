@@ -472,7 +472,7 @@ const ModalLiquidacionesFreelance = ({
   const unidadLabel = effectiveUnitLabel;
 
   const periodLabel = useMemo(() => {
-    const dates = rows
+    const dates = activeRows
       .map((row) => toInputDate(row?.fecha_expedicion))
       .filter(Boolean)
       .sort();
@@ -482,7 +482,7 @@ const ModalLiquidacionesFreelance = ({
     }
 
     return formatPeriodMonthYear(dates[0]);
-  }, [rows]);
+  }, [activeRows]);
 
   const handleGlobalParticipationChange = (value) => {
     const nextPct = Number(value);

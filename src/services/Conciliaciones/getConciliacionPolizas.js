@@ -192,7 +192,15 @@ export const getConciliacionPolizas = async (filters) => {
       {};
 
     const estadoConciliacion = getEstadoConciliacionLabel(queryRow);
-    const isCancellation = normalizeText(row.tipo_expedicion) === "cancelacion";
+    const isCancellation =
+      normalizeText(row.tipo_expedicion) === "cancelacion" ||
+      String(row.tipo_certificado ?? "").trim() === "4" ||
+      normalizeText(queryRow.tipo_certificado_desc) === "cancelacion";
+
+    const lastConciliacion = (() => {
+      const concs = normalizeArrayField(queryRow.conciliaciones);
+      return concs.length > 0 ? concs[concs.length - 1] : null;
+    })();
 
     return {
       id: row.id_anexo_poliza,
@@ -293,16 +301,27 @@ export const getConciliacionPolizas = async (filters) => {
           row.valor_comision,
         ]),
       ),
-      valor_cancelacion: formatCurrency(
-        pickFirstValue([
-          queryRow.valor_cancelacion,
-          isCancellation ? row.valor_total : null,
-        ]),
-      ),
-      porcentaje_cancelacion: pickFirstValue([
-        formatPercent(queryRow.porcentaje_cancelacion),
-        isCancellation ? formatPercent(row.porcentaje_comision_pct) : null,
-      ]),
+      valor_cancelacion: (() => {
+        if (isCancellation && lastConciliacion?.prima_planilla != null) {
+          const raw = Math.abs(
+            Number(String(lastConciliacion.prima_planilla).replace(/[^\d.]/g, "")),
+          );
+          return Number.isFinite(raw) && raw > 0 ? formatCurrency(-raw) : "N/A";
+        }
+        return formatCurrency(
+          pickFirstValue([queryRow.valor_cancelacion, isCancellation ? row.valor_total : null]),
+        );
+      })(),
+      porcentaje_cancelacion: (() => {
+        if (isCancellation && lastConciliacion?.porcentaje_comision != null) {
+          const raw = Math.abs(Number(lastConciliacion.porcentaje_comision));
+          return Number.isFinite(raw) ? `-${raw}%` : "N/A";
+        }
+        return pickFirstValue([
+          formatPercent(queryRow.porcentaje_cancelacion),
+          isCancellation ? formatPercent(row.porcentaje_comision_pct) : null,
+        ]);
+      })(),
       pago_financieras: formatCurrency(
         pickFirstValue([
           queryRow.pago_financieras,

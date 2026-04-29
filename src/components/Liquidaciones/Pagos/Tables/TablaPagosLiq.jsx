@@ -171,13 +171,12 @@ export const TablePagosLiq = ({
                 header={col.header}
                 body={(row) => {
                   const checked = isChecked(row.seleccionada_liq);
-                  console.log(row)
                   return (
                     <div className="flex flex-row items-center justify-between">
-                      <button onClick={() => row.estado != "Borrador" ? navigateToLiquidacion(row.id_liquidacion): ""} disabled={row.estado === "Borrador"}>
+                      <button onClick={() => row.estado != "Borrador" ? navigateToLiquidacion(row.id_liquidacion): ""} disabled={row.estado == "Borrador"}>
                         <TiDocumentText size={20} />
                       </button>
-                      <button className="mb-[1px]" onClick={() => onAnulation(row.id_liquidacion, row.identificacion_usuario_sga)} disabled={row.estado === "Anulada"}>
+                      <button className="mb-[1px]" onClick={() => onAnulation(row.id_liquidacion, row.identificacion_usuario_sga)} disabled={row.estado === "Anulada" || row.estado === "Borrador" || isWasSettled(row.pagada) || row.estado === "Pagada"}>
                         <FaTrashAlt size={15} color="red" />
                       </button>
                       <input
@@ -185,7 +184,7 @@ export const TablePagosLiq = ({
                         className="h-[15px] w-[15px]"
                         checked={checked}
                         onChange={(e) => onToggleSelect(row, e.target.checked)}
-                        disabled={row.estado === "Borrador"}
+                        disabled={row.estado === "Borrador" || row.estado === "Anulada" || isWasSettled(row.pagada) || row.estado === "Pagada"}
                       />
                     </div>
                   );

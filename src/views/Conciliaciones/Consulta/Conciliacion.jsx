@@ -254,17 +254,49 @@ export const Conciliacion = ({ setLoading, loading }) => {
     return Number.isFinite(value) && value > 0 ? value : null;
   };
 
+  const computeNegativeCancelacionFields = (merged) => {
+    if (!isCancellationPolicy(merged)) {
+      return {};
+    }
+    const concs = Array.isArray(merged.conciliaciones) ? merged.conciliaciones : [];
+    const last = concs.length > 0 ? concs[concs.length - 1] : null;
+    if (!last) {
+      return {};
+    }
+    const rawPrima = Math.abs(
+      Number(String(last.prima_planilla ?? "").replace(/[^\d.]/g, "")),
+    );
+    const rawPct = Math.abs(Number(last.porcentaje_comision ?? 0));
+    return {
+      valor_cancelacion:
+        Number.isFinite(rawPrima) && rawPrima > 0
+          ? (-rawPrima).toLocaleString("es-CO", {
+              style: "currency",
+              currency: "COP",
+              minimumFractionDigits: 0,
+              maximumFractionDigits: 0,
+            })
+          : merged.valor_cancelacion,
+      porcentaje_cancelacion:
+        Number.isFinite(rawPct) && rawPct > 0
+          ? `-${rawPct}%`
+          : merged.porcentaje_cancelacion,
+    };
+  };
+
   const applyPolizaUpdate = (updatedPoliza) => {
     if (!updatedPoliza?.id_anexo_poliza) {
       return;
     }
 
     setPolizas((prev) =>
-      prev.map((item) =>
-        String(item.id_anexo_poliza) === String(updatedPoliza.id_anexo_poliza)
-          ? { ...item, ...updatedPoliza }
-          : item,
-      ),
+      prev.map((item) => {
+        if (String(item.id_anexo_poliza) !== String(updatedPoliza.id_anexo_poliza)) {
+          return item;
+        }
+        const merged = { ...item, ...updatedPoliza };
+        return { ...merged, ...computeNegativeCancelacionFields(merged) };
+      }),
     );
 
     setSelectedPoliza((prev) => {
@@ -276,7 +308,8 @@ export const Conciliacion = ({ setLoading, loading }) => {
         return prev;
       }
 
-      return { ...prev, ...updatedPoliza };
+      const merged = { ...prev, ...updatedPoliza };
+      return { ...merged, ...computeNegativeCancelacionFields(merged) };
     });
 
     setSelectedPolizaCancelacion((prev) => {
@@ -288,7 +321,8 @@ export const Conciliacion = ({ setLoading, loading }) => {
         return prev;
       }
 
-      return { ...prev, ...updatedPoliza };
+      const merged = { ...prev, ...updatedPoliza };
+      return { ...merged, ...computeNegativeCancelacionFields(merged) };
     });
   };
 

@@ -443,7 +443,7 @@ export const RegistroConciliacion = ({
 
   const formatMoneyTable = (digits) => {
     const parsed = Number(digits || 0);
-    return `$ ${parsed.toLocaleString("es-CO")}`;
+    return `$ ${parsed.toLocaleString("es-CO", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
   };
 
   const displayPrimaPlanilla = useMemo(

@@ -75,7 +75,7 @@ const sanitizeMoneyDigits = (value = "") => {
     return "";
   }
 
-  return String(Math.round(numeric));
+  return String(Math.abs(Math.round(numeric)));
 };
 
 const sanitizePercentValue = (value = "") => {
@@ -448,7 +448,12 @@ export const CancelacionConciliacion = ({
 
   const formatMoneyTable = (digits) => {
     const parsed = Number(digits || 0);
-    return `$ ${parsed.toLocaleString("es-CO")}`;
+    return `$ ${parsed.toLocaleString("es-CO", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
+  };
+
+  const formatNegativeMoneyTable = (digits) => {
+    const parsed = Math.abs(Number(digits || 0));
+    return `$ -${parsed.toLocaleString("es-CO", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
   };
 
   const displayPrimaPlanilla = useMemo(
@@ -1280,7 +1285,7 @@ export const CancelacionConciliacion = ({
                               }`}
                             />
                           ) : (
-                            formatMoneyTable(row.prima_planilla)
+                            formatNegativeMoneyTable(row.prima_planilla)
                           )}
                         </td>
                         <td className="border border-gray-300 px-3 py-2 text-center">
@@ -1324,7 +1329,7 @@ export const CancelacionConciliacion = ({
                               }`}
                             />
                           ) : (
-                            formatMoneyTable(row.comision_recibida)
+                            formatNegativeMoneyTable(row.comision_recibida)
                           )}
                         </td>
                         <td className="border border-gray-300 px-3 py-2 text-center">
@@ -1368,13 +1373,13 @@ export const CancelacionConciliacion = ({
                       Total
                     </td>
                     <td className="border border-gray-300 px-3 py-2 text-center">
-                      {formatMoneyTable(totals.primaPlanilla)}
+                      {formatNegativeMoneyTable(totals.primaPlanilla)}
                     </td>
                     <td className="border border-gray-300 px-3 py-2 text-center">
                       -
                     </td>
                     <td className="border border-gray-300 px-3 py-2 text-center">
-                      {formatMoneyTable(totals.comisionRecibida)}
+                      {formatNegativeMoneyTable(totals.comisionRecibida)}
                     </td>
                     <td className="border border-gray-300 px-3 py-2 text-center">
                       -

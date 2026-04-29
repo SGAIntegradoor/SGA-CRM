@@ -11,6 +11,11 @@ import Loader from "../../components/LoaderFullScreen/Loader";
 import ModalRegistroPago from "./Modal/ModalRegistroPago";
 import { createPaymentsLiquidacion } from "../../services/Settlements/createPaymentsLiquidacion";
 import { anularPaymentLiquidacion } from "../../services/Settlements/anularPaymentLiquidacion";
+import { getUnidadesNegocio } from "../../services/Polizas/getUnidadNegocio";
+import { getAsesoresSGA } from "../../services/Users/getAsesoresSGA";
+import { getAsesoresGanadores } from "../../services/Users/getAsesoresGanadores";
+import { getAsesores10 } from "../../services/Users/getAsesores10";
+import { getFreelances } from "../../services/Users/getFreelance";
 
 export const Pagos = ({ loading, setLoading, isCollapsed }) => {
   const [liquidaciones, setLiquidaciones] = useState([]);
@@ -26,9 +31,166 @@ export const Pagos = ({ loading, setLoading, isCollapsed }) => {
     estadoliquidacion: "",
   });
   const [usuarios, setUsuarios] = useState([]);
+  const [asesoresGanadores, setAsesoresGanadores] = useState([]);
+  const [asesores10, setAsesores10] = useState([]);
+  const [freelances, setFreelances] = useState([]);
   const [selectedLiquidaciones, setSelectedLiquidaciones] = useState([]);
+  const [unidadesNegocio, setUnidadesNegocio] = useState([]);
   const [pagoLiqModal, setPagoLiqModal] = useState(false);
   const userData = JSON.parse(localStorage.getItem("userData"));
+
+  const handlerLoadUnidadesNegocio = async () => {
+    try {
+      const rows = await getUnidadesNegocio();
+      setUnidadesNegocio(Array.isArray(rows) ? rows : []);
+    } catch (e) {
+      console.error("Error en la carga de unidades de negocio", e);
+    }
+  };
+
+  const handlerLoadAsesoresGanadores = async () => {
+    try {
+      const data = await getAsesoresGanadores();
+      setAsesoresGanadores(Array.isArray(data) ? data : []);
+    } catch (e) {
+      console.error("Error en la carga de asesores ganadores", e);
+    }
+  };
+
+  const handlerLoadAsesores10 = async () => {
+    try {
+      const data = await getAsesores10();
+      setAsesores10(Array.isArray(data) ? data : []);
+    } catch (e) {
+      console.error("Error en la carga de asesores 10", e);
+    }
+  };
+
+  const handlerLoadFreelances = async () => {
+    try {
+      const data = await getFreelances();
+      setFreelances(Array.isArray(data) ? data : []);
+    } catch (e) {
+      console.error("Error en la carga de freelances", e);
+    }
+  };
+
+  console.log(unidadesNegocio);
+
+  const handlerLoadFilterInternos = async (type) => {
+    try {
+      type = filtros.unidad_negocio === "1" ? "unidades" : "usuarios";
+      const data = await getAsesoresSGA(filtros.unidad_negocio || null);
+      setUsuarios(Array.isArray(data) ? data : []);
+    } catch (e) {
+      console.error("Error en la carga de usuarios", e);
+    }
+  };
+
+  // Cargos que SÍ se deben incluir en el selector
+  const INCLUDED_CARGOS = [
+    "Director Comercial",
+    "Analista Comercial",
+    "Asistente Comercial",
+    "Asistente Tecnico",
+    "Asistente Tecnico Emision",
+    "Asesor Comercial Interno",
+    "Analista Tecnico", // si a veces viene “Técnico”, lo cubrimos con normalización
+    "Coordinador Tecnico Emision",
+  ];
+
+  const norm = (s) =>
+    (s ?? "")
+      .toString()
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "") // quita acentos
+      .trim();
+
+  const includedSet = new Set(INCLUDED_CARGOS.map(norm));
+
+  // Cargos internos permitidos por unidad de negocio
+  const CARGOS_POR_UNIDAD = {
+    freelance: [
+      "Director Comercial", "Analista Comercial", "Asistente Comercial",
+      "Asistente Tecnico", "Asistente Tecnico Emision",
+      "Analista Tecnico", "Coordinador Tecnico Emision",
+    ],
+    ganador: [
+      "Asistente Tecnico", "Asistente Tecnico Emision",
+      "Asesor Comercial Interno", "Analista Tecnico", "Coordinador Tecnico Emision",
+    ],
+    asesor10: [
+      "Asistente Tecnico", "Asistente Tecnico Emision",
+      "Asesor Comercial Interno", "Analista Tecnico", "Coordinador Tecnico Emision",
+    ],
+    directo: ["Asesor Comercial Interno"],
+  };
+
+  // Tipo de unidad de negocio seleccionada (basado en id_unidad: 1=Freelance, 2=Negocio Directo, 3=Asesor 10, 4=Asesor Ganador)
+  const tipoUnidad = (() => {
+    const v = String(filtros.unidad_negocio ?? "");
+    if (v === "1") return "freelance";
+    if (v === "2") return "directo";
+    if (v === "3") return "asesor10";
+    if (v === "4") return "ganador";
+    return null;
+  })();
+
+  // Usuarios internos filtrados según la unidad de negocio seleccionada
+  const usuariosFiltrados = (() => {
+    if (!tipoUnidad || !CARGOS_POR_UNIDAD[tipoUnidad]) return usuarios;
+    const cargosSet = new Set(CARGOS_POR_UNIDAD[tipoUnidad].map(norm));
+    return usuarios.filter((u) => cargosSet.has(norm(u.cargo)));
+  })();
+
+  // Visibilidad de selectores de usuarios externos
+  const showFreelance = !filtros.unidad_negocio || tipoUnidad === "freelance";
+  const showGanador   = !filtros.unidad_negocio || tipoUnidad === "ganador";
+  const showAsesor10  = !filtros.unidad_negocio || tipoUnidad === "asesor10";
+
+  console.log(usuarios);
+
+  const handlerLoadUsuariosInternos = async () => {
+    setLoading?.(true);
+    try {
+      const userLiq = await getUserLiquidaciones();
+
+      const filteredUsers = userLiq
+        .filter((u) => includedSet.has(norm(u.cargo))) // incluir solo estos cargos
+        .map((u) => ({ value: u.value, label: u.label, cargo: u.cargo }));
+
+      setUsuarios(filteredUsers.sort((a, b) => a.label.localeCompare(b.label)));
+
+      setLoading(false);
+    } catch (error) {
+      console.error(error);
+      setLoading(false);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    const initData = async () => {
+      setLoading(true);
+      try {
+        await Promise.all([
+          handlerLoadUnidadesNegocio(),
+          handlerLoadUsuariosInternos(),
+          handlerLoadAsesoresGanadores(),
+          handlerLoadAsesores10(),
+          handlerLoadFreelances(),
+        ]);
+      } catch (error) {
+        console.error("Error en la carga inicial", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    initData();
+  }, []);
 
   const customNewStyles = {
     indicatorSeparator: () => ({ display: "none" }),
@@ -75,10 +237,12 @@ export const Pagos = ({ loading, setLoading, isCollapsed }) => {
     // setLoading(true);
     if (
       !filtros.estadoliquidacion &&
-      (!filtros.usuario_interno || !filtros.asesor_freelance || !filtros.asesor_10 || !filtros.asesor_ganador) &&
+      (!filtros.usuario_interno ||
+        !filtros.asesor_freelance ||
+        !filtros.asesor_10 ||
+        !filtros.asesor_ganador) &&
       (!filtros.fechagendesde || !filtros.fechagenhasta) &&
       !filtros.unidad_negocio &&
-
       !filtros.no_liquidacion
     ) {
       Swal.fire({
@@ -134,7 +298,8 @@ export const Pagos = ({ loading, setLoading, isCollapsed }) => {
 
     const preselected = liquidaciones
       .filter(
-        (p) => isSelected(p?.seleccionada_liq) || isSelected(p?.seleccionada_liq),
+        (p) =>
+          isSelected(p?.seleccionada_liq) || isSelected(p?.seleccionada_liq),
       )
       .map((p) => ({
         id: p?.id_liquidacion,
@@ -151,7 +316,7 @@ export const Pagos = ({ loading, setLoading, isCollapsed }) => {
   const headers = [
     { field: "id_liquidacion", header: "No. liquidación" },
     { field: "fecha_liquidacion", header: "Fecha generación liquidación" },
-    { field: "mes_expedicion", header: "Mes Expedición" },
+    { field: "periodo_liquidacion", header: "Periodo liquidación" },
     { field: "usuario_sga", header: "Usuario" },
     { field: "pct_comision", header: "% Comisión" },
     { field: "valor_total_liquidacion", header: "Valor liquidación" },
@@ -159,46 +324,6 @@ export const Pagos = ({ loading, setLoading, isCollapsed }) => {
     { field: "fecha_pago", header: "Fecha pago" },
     { field: "acciones", header: "Acciones" },
   ];
-
-  // Cargos que SÍ se deben incluir en el selector
-  const INCLUDED_CARGOS = [
-    "Director Comercial",
-    "Analista Comercial",
-    "Asistente Comercial",
-    "Asesor Comercial Interno",
-    "Analista Tecnico", // si a veces viene “Técnico”, lo cubrimos con normalización
-    "Coordinador Tecnico Emision",
-  ];
-
-  const norm = (s) =>
-    (s ?? "")
-      .toString()
-      .toLowerCase()
-      .normalize("NFD")
-      .replace(/[\u0300-\u036f]/g, "") // quita acentos
-      .trim();
-
-  const includedSet = new Set(INCLUDED_CARGOS.map(norm));
-
-  const handlerLoadUsuarios = async () => {
-    setLoading?.(true);
-    try {
-      const userLiq = await getUserLiquidaciones();
-
-      const filteredUsers = userLiq
-        .filter((u) => includedSet.has(norm(u.cargo))) // incluir solo estos cargos
-        .map((u) => ({ value: u.value, label: u.label, cargo: u.cargo }));
-
-      setUsuarios(filteredUsers.sort((a, b) => a.label.localeCompare(b.label)));
-
-      setLoading(false);
-    } catch (error) {
-      console.error(error);
-      setLoading(false);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   // Validador de fechas: evita rangos inválidos al escribir manualmente
   const handleDateChange = (name, value) => {
@@ -252,12 +377,12 @@ export const Pagos = ({ loading, setLoading, isCollapsed }) => {
     }
   };
 
-  useEffect(() => {
-    handlerLoadUsuarios();
-    return () => {
-      setUsuarios([]);
-    };
-  }, []);
+  // useEffect(() => {
+  //   handlerLoadUsuarios();
+  //   return () => {
+  //     setUsuarios([]);
+  //   };
+  // }, []);
 
   const handlerRegistarPago = async (fecha_pago) => {
     setLoading(true);
@@ -272,7 +397,7 @@ export const Pagos = ({ loading, setLoading, isCollapsed }) => {
     }));
 
     const save_data = {
-      id_usuario: userData.usu_documento, // quien ejecuta/crea el pago (usuario del sistema)
+      id_usuario: userData.documento, // quien ejecuta/crea el pago (usuario del sistema)
       debug: true,
       liquidaciones: liquidaciones,
     };
@@ -291,9 +416,13 @@ export const Pagos = ({ loading, setLoading, isCollapsed }) => {
       setFiltros({
         fechagendesde: "",
         fechagenhasta: "",
+        unidad_negocio: "",
+        asesor_freelance: "",
+        asesor_10: "",
+        asesor_ganador: "",
+        usuario_interno: "",
         no_liquidacion: "",
         estadoliquidacion: "",
-        usuario: "",
       });
     } else {
       setLoading(false);
@@ -305,6 +434,8 @@ export const Pagos = ({ loading, setLoading, isCollapsed }) => {
       return;
     }
   };
+
+  console.log(filtros);
 
   const handlerAnularPago = async (id_liquidacion, id_usuario_liq) => {
     const body = {
@@ -343,9 +474,13 @@ export const Pagos = ({ loading, setLoading, isCollapsed }) => {
           setFiltros({
             fechagendesde: "",
             fechagenhasta: "",
+            unidad_negocio: "",
+            asesor_freelance: "",
+            asesor_10: "",
+            asesor_ganador: "",
+            usuario_interno: "",
             no_liquidacion: "",
             estadoliquidacion: "",
-            usuario: "",
           });
         } else {
           setLoading(false);
@@ -394,9 +529,14 @@ export const Pagos = ({ loading, setLoading, isCollapsed }) => {
 
           <div className="flex flex-col gap-3 items-center justify-between pl-14 pr-14 pt-5 pb-8 rounded-b-3xl border-l border-r border-b border-gray-200 h-auto">
             <div className="flex flex-row gap-3 items-center w-full">
-              <div className={`flex flex-row gap-3 ${isCollapsed ? "flex-nowrap" : "flex-wrap"}`}>
+              <div
+                className={`flex flex-row gap-3 ${isCollapsed ? "flex-nowrap" : "flex-wrap"}`}
+              >
                 <div className={filterFieldWrapperClass}>
-                  <label htmlFor="fechagendesde" className="text-sm text-gray-700">
+                  <label
+                    htmlFor="fechagendesde"
+                    className="text-sm text-gray-700"
+                  >
                     Fecha generación desde:
                   </label>
                   <input
@@ -414,7 +554,10 @@ export const Pagos = ({ loading, setLoading, isCollapsed }) => {
                 </div>
 
                 <div className={filterFieldWrapperClass}>
-                  <label htmlFor="fechagenhasta" className="text-sm text-gray-700">
+                  <label
+                    htmlFor="fechagenhasta"
+                    className="text-sm text-gray-700"
+                  >
                     Fecha generación hasta:
                   </label>
                   <input
@@ -430,25 +573,31 @@ export const Pagos = ({ loading, setLoading, isCollapsed }) => {
                     }
                   />
                 </div>
-
                 <div className={filterFieldWrapperClass}>
-                  <label htmlFor="asesor_freelance" className="text-sm text-gray-700">
-                    Asesor freelance:
+                  <label
+                    htmlFor="unidad_negocio"
+                    className="text-sm text-gray-700"
+                  >
+                    Unidad de negocio:
                   </label>
                   <Select
-                    name="asesor_freelance"
+                    name="unidad_negocio"
                     className="text-sm"
-                    options={usuarios}
+                    options={unidadesNegocio}
                     isClearable
                     value={
-                      usuarios.find(
-                        (u) => u.value === filtros.asesor_freelance,
+                      unidadesNegocio.find(
+                        (u) => u.value === filtros.unidad_negocio,
                       ) || null
                     }
                     onChange={(selectedOption, meta) => {
                       setFiltros((prev) => ({
                         ...prev,
                         [meta.name]: selectedOption ? selectedOption.value : "",
+                        asesor_freelance: "",
+                        asesor_ganador: "",
+                        asesor_10: "",
+                        usuario_interno: "",
                       }));
                     }}
                     styles={customNewStyles}
@@ -457,21 +606,58 @@ export const Pagos = ({ loading, setLoading, isCollapsed }) => {
                 </div>
 
                 <div className={filterFieldWrapperClass}>
-                  <label htmlFor="asesor_ganador" className="text-sm text-gray-700">
-                    Asesor ganador:
+                  <label
+                    htmlFor="asesor_freelance"
+                    className="text-sm text-gray-700"
+                  >
+                    Asesor freelance:
                   </label>
                   <Select
-                    name="asesor_ganador"
+                    name="asesor_freelance"
                     className="text-sm"
-                    options={usuarios}
+                    options={freelances}
                     isClearable
+                    isDisabled={!showFreelance}
                     value={
-                      usuarios.find((u) => u.value === filtros.asesor_ganador) || null
+                      freelances.find(
+                        (u) => u.value === filtros.asesor_freelance,
+                      ) || null
                     }
                     onChange={(selectedOption, meta) => {
                       setFiltros((prev) => ({
                         ...prev,
                         [meta.name]: selectedOption ? selectedOption.value : "",
+                        usuario_interno: "",
+                      }));
+                    }}
+                    styles={customNewStyles}
+                    placeholder=""
+                  />
+                </div>
+
+                <div className={filterFieldWrapperClass}>
+                  <label
+                    htmlFor="asesor_ganador"
+                    className="text-sm text-gray-700"
+                  >
+                    Asesor ganador:
+                  </label>
+                  <Select
+                    name="asesor_ganador"
+                    className="text-sm"
+                    options={asesoresGanadores}
+                    isClearable
+                    isDisabled={!showGanador}
+                    value={
+                      asesoresGanadores.find(
+                        (u) => u.value === filtros.asesor_ganador,
+                      ) || null
+                    }
+                    onChange={(selectedOption, meta) => {
+                      setFiltros((prev) => ({
+                        ...prev,
+                        [meta.name]: selectedOption ? selectedOption.value : "",
+                        usuario_interno: "",
                       }));
                     }}
                     styles={customNewStyles}
@@ -486,16 +672,18 @@ export const Pagos = ({ loading, setLoading, isCollapsed }) => {
                   <Select
                     name="asesor_10"
                     className="text-sm"
-                    options={usuarios}
+                    options={asesores10}
                     isClearable
+                    isDisabled={!showAsesor10}
                     value={
-                      usuarios.find((u) => u.value === filtros.asesor_10) ||
+                      asesores10.find((u) => u.value === filtros.asesor_10) ||
                       null
                     }
                     onChange={(selectedOption, meta) => {
                       setFiltros((prev) => ({
                         ...prev,
                         [meta.name]: selectedOption ? selectedOption.value : "",
+                        usuario_interno: "",
                       }));
                     }}
                     styles={customNewStyles}
@@ -506,32 +694,44 @@ export const Pagos = ({ loading, setLoading, isCollapsed }) => {
             </div>
 
             <div className="flex flex-row gap-3 items-center w-full mt-2">
-              <div className={`flex flex-row gap-3 ${isCollapsed ? "flex-nowrap" : "flex-wrap"}`}>
+              <div
+                className={`flex flex-row gap-3 ${isCollapsed ? "flex-nowrap" : "flex-wrap"}`}
+              >
                 <div className={filterFieldWrapperClass}>
-                  <label htmlFor="usuario_interno" className="text-sm text-gray-700">
+                  <label
+                    htmlFor="usuario_interno"
+                    className="text-sm text-gray-700"
+                  >
                     Usuario interno:
                   </label>
                   <Select
                     name="usuario_interno"
                     className="text-sm"
-                    options={usuarios}
+                    options={usuariosFiltrados}
                     isClearable
                     value={
-                      usuarios.find((u) => u.value === filtros.usuario_interno) || null
+                      usuariosFiltrados.find(
+                        (u) => u.value === filtros.usuario_interno,
+                      ) || null
                     }
                     onChange={(selectedOption, meta) => {
                       setFiltros((prev) => ({
                         ...prev,
                         [meta.name]: selectedOption ? selectedOption.value : "",
+                        asesor_freelance: "",
+                        asesor_ganador: "",
+                        asesor_10: "",
                       }));
                     }}
                     styles={customNewStyles}
                     placeholder=""
                   />
                 </div>
-
                 <div className={filterFieldWrapperClass}>
-                  <label htmlFor="no_liquidacion" className="text-sm text-gray-700">
+                  <label
+                    htmlFor="no_liquidacion"
+                    className="text-sm text-gray-700"
+                  >
                     No. liquidación:
                   </label>
                   <input
@@ -549,7 +749,10 @@ export const Pagos = ({ loading, setLoading, isCollapsed }) => {
                 </div>
 
                 <div className={filterFieldWrapperClass}>
-                  <label htmlFor="estadoliquidacion" className="text-sm text-gray-700">
+                  <label
+                    htmlFor="estadoliquidacion"
+                    className="text-sm text-gray-700"
+                  >
                     Estado liquidación:
                   </label>
                   <Select

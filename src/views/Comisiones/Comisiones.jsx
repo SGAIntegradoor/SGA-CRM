@@ -106,9 +106,45 @@ export const Comisiones = ({ setLoading, loading }) => {
     //   // return;
     // }
     if (formStates.usuario === "") {
-      Swal.fire("Error", "Debe seleccionar un usuario", "error");
+      Swal.fire("Error", "Debe seleccionar un usuario", "warning");
       return;
     }
+
+    if (formStates.unidadnegocio === "") {
+      Swal.fire("Aviso", "Debe seleccionar una unidad de negocio", "warning");
+      return;
+    }
+
+    if (
+      formStates.fechainiciovigdesde &&
+      formStates.fechafinvighasta &&
+      formStates.fechainiciovigdesde > formStates.fechafinvighasta
+    ) {
+      Swal.fire(
+        "Aviso",
+        "La fecha de inicio no puede ser mayor a la fecha de fin",
+        "warning",
+      );
+      return;
+    } else if (
+      formStates.fechainiciovigdesde &&
+      formStates.fechafinvighasta &&
+      formStates.fechafinvighasta < formStates.fechainiciovigdesde
+    ) {
+      Swal.fire(
+        "Aviso",
+        "La fecha de fin no puede ser menor a la fecha de inicio",
+        "warning",
+      );
+      return;
+    } else if (
+      formStates.fechainiciovigdesde == "" ||
+      formStates.fechafinvighasta == ""
+    ) {
+      Swal.fire("Aviso", "Se debe indicar el periodo a liquidar", "warning");
+      return;
+    }
+
     setLoading(true);
     try {
       const data = await getPolizas(formStates);
@@ -256,7 +292,9 @@ export const Comisiones = ({ setLoading, loading }) => {
     try {
       const res = await selectPolizaBatch(ids, checked);
       if (res?.status !== "Ok") {
-        throw new Error(res?.message || "Error actualizando selección por página");
+        throw new Error(
+          res?.message || "Error actualizando selección por página",
+        );
       }
     } catch (err) {
       setPolizas(prevPolizas);
@@ -280,7 +318,7 @@ export const Comisiones = ({ setLoading, loading }) => {
     { field: "doc_liquidador", header: "Doc Liquidador" },
     { field: "nombre_emisor_liq", header: "Nombre emisor" },
     { field: "ids_anexos", header: "Anexos liquidados" },
-    { field: "accion", header: "Accion" }
+    { field: "accion", header: "Accion" },
   ];
 
   const headers = [
@@ -443,7 +481,9 @@ export const Comisiones = ({ setLoading, loading }) => {
         </section>
         <section>
           <div className="shadow-sm rounded-xl border border-gray-200 bg-gray-100 px-4 py-3 mb-4 flex flex-row justify-between">
-            <span className="text-lg font-semibold">Administrador de liquidaciónes</span>
+            <span className="text-lg font-semibold">
+              Administrador de liquidaciónes
+            </span>
             <button
               type="button"
               onClick={() => setAppersBox((v) => !v)}
@@ -654,12 +694,24 @@ export const Comisiones = ({ setLoading, loading }) => {
                   name="fechainiciovigdesde"
                   className="text-md border-[1px] w-full border-gray-300 text-gray-900 focus:outline-none h-[35px] rounded-md p-2"
                   value={formStates.fechainiciovigdesde}
-                  onChange={(e) =>
-                    setFormStates((prev) => ({
-                      ...prev,
-                      [e.target.name]: e.target.value,
-                    }))
-                  }
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    if (value) {
+                      const [year, month] = value.split("-").map(Number);
+                      const lastDay = new Date(year, month, 0).getDate();
+                      const lastDayStr = `${year}-${String(month).padStart(2, "0")}-${String(lastDay).padStart(2, "0")}`;
+                      setFormStates((prev) => ({
+                        ...prev,
+                        fechainiciovigdesde: value,
+                        fechafinvighasta: lastDayStr,
+                      }));
+                    } else {
+                      setFormStates((prev) => ({
+                        ...prev,
+                        fechainiciovigdesde: value,
+                      }));
+                    }
+                  }}
                 />
               </div>
               <div className="flex flex-col w-1/5">
@@ -671,12 +723,25 @@ export const Comisiones = ({ setLoading, loading }) => {
                   name="fechafinvighasta"
                   className="text-md border-[1px] w-full border-gray-300 text-gray-900 focus:outline-none h-[35px] rounded-md p-2"
                   value={formStates.fechafinvighasta}
-                  onChange={(e) =>
-                    setFormStates((prev) => ({
-                      ...prev,
-                      [e.target.name]: e.target.value,
-                    }))
-                  }
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    if (value) {
+                      const [year, month] = value.split("-").map(Number);
+                      const lastDay = new Date(year, month, 0).getDate();
+                      const lastDayStr = `${year}-${String(month).padStart(2, "0")}-${String(lastDay).padStart(2, "0")}`;
+                      const firstDayStr = `${year}-${String(month).padStart(2, "0")}-01`;
+                      setFormStates((prev) => ({
+                        ...prev,
+                        fechafinvighasta: lastDayStr,
+                        fechainiciovigdesde: firstDayStr,
+                      }));
+                    } else {
+                      setFormStates((prev) => ({
+                        ...prev,
+                        fechafinvighasta: "",
+                      }));
+                    }
+                  }}
                 />
               </div>
               <div className="flex flex-col w-1/5">
