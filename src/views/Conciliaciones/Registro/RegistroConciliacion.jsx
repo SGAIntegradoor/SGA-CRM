@@ -456,6 +456,11 @@ export const RegistroConciliacion = ({
     [formData.comisionRecibida],
   );
 
+  // const displayPagoFinanciera = useMemo(
+  //   () => formData.financiera,
+  //   [formData.financiera],
+  // );
+
   const validateField = (field, value) => {
     if (field === "factura") {
       if (!value) {
@@ -960,6 +965,8 @@ export const RegistroConciliacion = ({
     closeSaveDialog();
   };
 
+  console.log(poliza)
+
   return (
     <Modal open={open} onClose={handleModalClose}>
       <Box
@@ -1363,6 +1370,24 @@ export const RegistroConciliacion = ({
                   </tr>
                 </tfoot>
               </table>
+              <div>
+                <p className="text-xs font-semibold tracking-wide text-gray-500 mb-1 mt-4">
+                  Pagos financieras:
+                </p>
+                <input
+                  id="pagoFinancieras"
+                  className={`${getInputClassName("pagoFinancieras")} w-[30%]`}
+                  value={displayPrimaPlanilla}
+                  onChange={handleMoneyChange("pagoFinancieras")}
+                  onBlur={() => markTouched("pagoFinancieras")}
+                  autoComplete="off"
+                />
+                {hasError("pagoFinancieras") ? (
+                  <p className="mt-1 text-[11px] text-red-600">
+                    {errors.pagoFinancieras}
+                  </p>
+                ) : null}
+              </div>
             </div>
 
             <section id="secComentarios" className="mt-10">

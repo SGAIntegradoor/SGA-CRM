@@ -429,15 +429,40 @@ export const getPolizasExternos = async (dataFilters) => {
 
         valor_a_reversar: valorAReversarStr,
         valor_comision: valorComisionStr,
-        id_liquidacion: poliza.id_liquidacion || "N/A",
+        id_liquidacion:
+          Number(poliza.ya_liquidada_para_usuario) === 1 && poliza.id_liquidacion
+            ? poliza.id_liquidacion
+            : "N/A",
         valor_comision_freelance: poliza.pal_valor_usuario ? formatCOP(poliza.pal_valor_usuario) : "N/A",
-        fecha_pago_liquidacion: poliza.pal_fecha_usuario || "N/A",
+        fecha_generacion_liquidacion:
+          poliza.estado_liquidacion_real === "Anulada"
+            ? "-"
+            : poliza.pal_fecha_usuario || "-",
+        fecha_pago_liquidacion:
+          poliza.estado_liquidacion_real === "Anulada"
+            ? "-"
+            : poliza.pal_fecha_pago_usuario || "-",
         estado_liquidacion:
-          estados_por_liquidar[Number(poliza.ya_liquidada_para_usuario)] ||
-          "Desconocido",
-        seleccionado: Number(poliza.seleccionada_poliza) === 1,
+          Number(poliza.ya_liquidada_para_usuario) !== 1
+            ? "Por liquidar"
+            : poliza.estado_liquidacion_real === "Borrador"
+              ? "Borrador"
+              : poliza.estado_liquidacion_real === "Por pagar"
+                ? "Por pagar"
+                : poliza.estado_liquidacion_real === "Pagada"
+                  ? "Liquidada"
+                  : poliza.estado_liquidacion_real === "Anulada"
+                    ? "Por liquidar"
+                    : estados_por_liquidar[Number(poliza.ya_liquidada_para_usuario)] ||
+                      "Desconocido",
+        seleccionado:
+          poliza.estado_liquidacion_real === "Anulada"
+            ? false
+            : Number(poliza.seleccionada_poliza) === 1,
         ya_liquidada_para_usuario:
-          Number(poliza.ya_liquidada_para_usuario) === 1,
+          poliza.estado_liquidacion_real === "Anulada"
+            ? 0
+            : Number(poliza.ya_liquidada_para_usuario) === 1,
 
         // % que se usó para calcular
         porcentaje_comision_decimal: pctStr,

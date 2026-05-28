@@ -904,7 +904,7 @@ export default function LiquidacionImpresion() {
             Liquidación generada por:{" "}
             <span className="uppercase font-bold">{emisor_liquidacion}</span>
           </p>
-          <ul style={{ marginTop: 5, listStyleType: "disc", paddingLeft: 12 }}>
+          {/* <ul style={{ marginTop: 5, listStyleType: "disc", paddingLeft: 12 }}>
             <li style={{ marginTop: 5 }}>
               La participación se calcula sobre las comisiones netas promedio de
               la agencia (después de impuestos).
@@ -920,7 +920,7 @@ export default function LiquidacionImpresion() {
               aplicarán las retenciones a las que haya lugar de acuerdo a la
               información que se encuentre registrada en el RUT.
             </li>
-          </ul>
+          </ul> */}
         </section>
       </main>
     </div>

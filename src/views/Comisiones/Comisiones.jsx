@@ -54,10 +54,20 @@ export const Comisiones = ({ setLoading, loading }) => {
     }
   };
 
-  const handlerLoadFilterUsuarios = async () => {
+  const handlerLoadFilterUsuarios = async (unidad) => {
     try {
-      const data = await getAsesoresSGA(formStates.unidadnegocio);
-      setUsuariosInput(Array.isArray(data) ? data : []);
+      const [internalData, externalData] = await Promise.all([
+        getAsesoresSGA(unidad || null, "internal"),
+        getAsesoresSGA(unidad || null, "external"),
+      ]);
+      const internals = Array.isArray(internalData) ? internalData : [];
+      const externals = Array.isArray(externalData) ? externalData : [];
+      const merged = [...internals, ...externals];
+      const unique = merged.filter(
+        (item, index, self) =>
+          index === self.findIndex((t) => t.value === item.value),
+      );
+      setUsuariosInput(unique);
     } catch (e) {
       console.error("Error en la carga de usuarios", e);
     }
@@ -110,7 +120,7 @@ export const Comisiones = ({ setLoading, loading }) => {
       return;
     }
 
-    if (formStates.unidadnegocio === "") {
+    if (formStates.unidadnegocio === "" && formStates.usuario !== "67038128") {
       Swal.fire("Aviso", "Debe seleccionar una unidad de negocio", "warning");
       return;
     }
@@ -176,7 +186,7 @@ export const Comisiones = ({ setLoading, loading }) => {
         await Promise.all([
           handlerLoadUnidadesNegocio(),
           handlerLoaderAseguradoras(),
-          handlerLoadFilterUsuarios(),
+          handlerLoadFilterUsuarios(null),
           handlerLoadRamo(),
           handlerLoadTiposExpedicion(),
           handlerGetLiqAdmin(),
@@ -194,6 +204,10 @@ export const Comisiones = ({ setLoading, loading }) => {
   useEffect(() => {
     handlerLoadUnidadesNegocio();
   }, [reloadScreen]);
+
+  useEffect(() => {
+    handlerLoadFilterUsuarios(formStates.unidadnegocio || null);
+  }, [formStates.unidadnegocio]);
 
   // cargar objeto con las polizas seleccionadas actualmente en la BD y asi renderizar el objeto o colocarlo cada que se carge la vista
   useEffect(() => {
@@ -348,6 +362,12 @@ export const Comisiones = ({ setLoading, loading }) => {
     { field: "financiera", header: "Financiera" },
     { field: "cuotas", header: "Cuotas" },
     { field: "estado_cartera", header: "Estado Cartera" },
+    { field: "analista_comercial", header: "Analista" },
+    { field: "porcentaje_comision_decimal", header: "% Comisión" },
+    { field: "valor_comision", header: "Valor Comisión" },
+    { field: "estado_liquidacion", header: "Estado Liquidación" },
+    { field: "fecha_generacion_liquidacion", header: "Fecha Gen. Liq." },
+    { field: "fecha_pago_liquidacion", header: "Fecha Pago Liq." },
     { field: "observaciones", header: "Observaciones" },
     { field: "seleccionado", header: "Seleccionar" },
   ];
@@ -378,6 +398,12 @@ export const Comisiones = ({ setLoading, loading }) => {
     { field: "financiera", header: "Financiera" },
     { field: "cuotas", header: "Cuotas" },
     { field: "estado_cartera", header: "Estado Cartera" },
+    { field: "analista_comercial", header: "Analista" },
+    { field: "porcentaje_comision_decimal", header: "% Comisión" },
+    { field: "valor_comision", header: "Valor Comisión" },
+    { field: "estado_liquidacion", header: "Estado Liquidación" },
+    { field: "fecha_generacion_liquidacion", header: "Fecha Gen. Liq." },
+    { field: "fecha_pago_liquidacion", header: "Fecha Pago Liq." },
     { field: "observaciones", header: "Observaciones" },
     { field: "seleccionado", header: "Seleccionar" },
   ];
@@ -450,7 +476,7 @@ export const Comisiones = ({ setLoading, loading }) => {
 
   const handlerCloseModal = () => {
     setLiquidacionModal(false);
-    // window.location.reload();
+    handlerGetLiqAdmin();
   };
 
   const handlerCleanModal = () => {
@@ -624,7 +650,7 @@ export const Comisiones = ({ setLoading, loading }) => {
                   isClearable
                 />
               </div>
-              <div className="flex flex-col w-auto flex-1">
+              {/* <div className="flex flex-col w-auto flex-1">
                 <label htmlFor="tiponegocio" className="text-sm">
                   Tipo de negocio:
                 </label>
@@ -654,7 +680,7 @@ export const Comisiones = ({ setLoading, loading }) => {
                   placeholder=""
                   isClearable
                 />
-              </div>
+              </div> */}
             </div>
             <div className="flex flex-row gap-3 items-center w-full mt-7">
               <div className="flex flex-col w-1/5">
@@ -703,7 +729,7 @@ export const Comisiones = ({ setLoading, loading }) => {
                       setFormStates((prev) => ({
                         ...prev,
                         fechainiciovigdesde: value,
-                        fechafinvighasta: lastDayStr,
+                       // fechafinvighasta: lastDayStr,
                       }));
                     } else {
                       setFormStates((prev) => ({
@@ -733,7 +759,7 @@ export const Comisiones = ({ setLoading, loading }) => {
                       setFormStates((prev) => ({
                         ...prev,
                         fechafinvighasta: lastDayStr,
-                        fechainiciovigdesde: firstDayStr,
+                       // fechainiciovigdesde: firstDayStr,
                       }));
                     } else {
                       setFormStates((prev) => ({

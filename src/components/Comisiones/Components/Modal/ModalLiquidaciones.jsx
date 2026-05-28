@@ -623,6 +623,11 @@ const ModalLiquidaciones = ({
                   try {
                     const id = await handleSaveSettlement("Borrador");
                     if (id) {
+                      Swal.fire(
+                        "Guardado",
+                        "La liquidación se guardó en estado borrador.",
+                        "success",
+                      );
                       handlerCleanModal?.();
                       await handleReloadPolizas?.();
                       await onSuccess?.(id);

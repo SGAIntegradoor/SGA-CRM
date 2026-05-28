@@ -77,12 +77,9 @@ const getEstadoConciliacionLabel = (row) => {
   const states = {
     1: "Pendiente",
     2: "Conciliada",
-    3: "Pago parcial",
     pendiente: "Pendiente",
     conciliada: "Conciliada",
     conciliado: "Conciliada",
-    "pago parcial": "Pago parcial",
-    pago_parcial: "Pago parcial",
   };
 
   return states[normalized] || source;
@@ -168,7 +165,6 @@ const matchesEstadoConciliacion = (row, filters) => {
   const byId = {
     1: "pendiente",
     2: "conciliada",
-    3: "pago parcial",
   };
 
   return (

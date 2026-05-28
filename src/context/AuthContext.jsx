@@ -146,7 +146,7 @@ export const AuthProvider = ({ children }) => {
         nombre: responseData.nombre,
         apellido: responseData.apellido,
         usuario: responseData.usuario,
-        documento: responseData.userData.documento,
+        documento: responseData.documento,
         foto: responseData.foto,
         id_rol: responseData.id_rol,
         id_intermediario: responseData.id_intermediario,

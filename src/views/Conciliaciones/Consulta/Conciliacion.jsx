@@ -215,7 +215,6 @@ export const Conciliacion = ({ setLoading, loading }) => {
   const estadoConciliacionOptions = [
     { value: "1", label: "Pendiente" },
     { value: "2", label: "Conciliada" },
-    { value: "3", label: "Pago parcial" },
   ];
 
   const cleanTableAndFilters = () => {

@@ -184,9 +184,7 @@ const buildFreelanceRow = (row, index, unitRole, participationPctDefault) => {
 
   const comisionGA = Math.round((base * gaCommissionPct) / 100);
   const taxRate = getTaxRate(unitRole);
-  const impuestos = isCancellation(row)
-    ? 0
-    : Math.round((comisionGA * taxRate) / 100);
+  const impuestos = Math.round((comisionGA * taxRate) / 100);
   const comisionNeta = comisionGA - impuestos;
   const participationPct = getActorParticipationPct(
     unitRole,
@@ -228,9 +226,7 @@ const recalcGARow = (row, newGAPct) => {
   const gaPct = Number(newGAPct) || 0;
   const base = row.base_calculo || row.prima_sin_iva_num;
   const comisionGA = Math.round((base * gaPct) / 100);
-  const impuestos = isCancellation(row)
-    ? 0
-    : Math.round((comisionGA * (row.tax_rate ?? DEFAULT_TAX_RATE)) / 100);
+  const impuestos = Math.round((comisionGA * (row.tax_rate ?? DEFAULT_TAX_RATE)) / 100);
   const comisionNeta = comisionGA - impuestos;
   const totalComision = Math.round(
     (comisionNeta * (row.participation_pct || 0)) / 100,

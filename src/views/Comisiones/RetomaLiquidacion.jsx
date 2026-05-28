@@ -232,11 +232,11 @@ export const RetomaLiquidacion = ({ setLoading, loading, variant = "sga" }) => {
   const isFreelanceVariant = variant === "freelance";
   const backPath = isFreelanceVariant
     ? "/comisiones/liquidacion/externos"
-    : "/comisiones/liquidacion";
+    : "/comisiones/liquidacion/internos";
   const pageTitle = isFreelanceVariant
-    ? "Retoma de liquidacion freelance"
-    : "Retoma de liquidacion";
-  const actorLabel = isFreelanceVariant ? "Actor liquidado" : "Usuario SGA";
+    ? "Retoma de liquidación freelance"
+    : "Retoma de liquidación";
+  const actorLabel = isFreelanceVariant ? "Asesor Freelance" : "Usuario SGA";
 
   const initialState = {
     unidadnegocio: "",
@@ -373,7 +373,7 @@ export const RetomaLiquidacion = ({ setLoading, loading, variant = "sga" }) => {
     { field: "documento_tomador", header: "Doc Tomador" },
     { field: "placa", header: "Placa" },
     { field: "asistencia", header: "Asistencia" },
-    { field: "prima_neta", header: "Prima sin IVA" },
+    { field: "prima_sin_iva_asistencia", header: "Prima sin IVA + Asistencias" },
     { field: "gastos_expedicion", header: "Gastos" },
     { field: "iva", header: "IVA" },
     { field: "valor_total", header: "Valor Total" },
@@ -424,11 +424,11 @@ export const RetomaLiquidacion = ({ setLoading, loading, variant = "sga" }) => {
     { field: "poliza", header: "# Poliza" },
     { field: "nombre_tomador", header: "Asegurado" },
     { field: "placa", header: "Placa" },
-    { field: "prima_sin_iva_num", header: "Prima sin IVA" },
+    { field: "prima_sin_iva_num", header: "Prima sin IVA + Asistencias" },
     { field: "ga_commission_pct", header: "% Comision GA" },
     { field: "ga_commission_value", header: "Comision GA" },
     { field: "impuestos_value", header: "Impuesto aseg." },
-    { field: "comision_neta_value", header: "Comision neta" },
+    { field: "comision_neta_value", header: "Comision Neta GA" },
     { field: "participation_pct", header: "% freelance" },
     { field: "total_comision_value", header: "Comision freelance" },
     { field: "accion", header: "Acción" },
@@ -436,20 +436,16 @@ export const RetomaLiquidacion = ({ setLoading, loading, variant = "sga" }) => {
 
   const resolveAdvisorType = (liquidacionData) => {
     if (!liquidacionData) return null;
+    console.log(liquidacionData)
     const rolValue = String(
-      liquidacionData.usuario_data?.rol ?? liquidacionData.rol ?? "",
+      liquidacionData.usuario_data?.id_rol_user ?? liquidacionData.id_rol_user ?? "",
     );
     if (rolValue === "19" || rolValue === "1") return "freelance";
     if (rolValue === "10" || rolValue === "3") return "asesor10";
     if (rolValue === "11" || rolValue === "4") return "asesorGanador";
     return null;
   };
-
-  console.log(liquidacionHeader)
-  console.log(polizasIncluidas)
   const advisorType = resolveAdvisorType(liquidacionHeader);
-
-
   const advisorTypeLabel =
     advisorType === "freelance"
       ? "Asesor Freelance"
@@ -457,7 +453,7 @@ export const RetomaLiquidacion = ({ setLoading, loading, variant = "sga" }) => {
         ? "Asesor 10"
         : advisorType === "asesorGanador"
           ? "Asesor Ganador"
-          : "Actor liquidado";
+          : "N/A";
 
   const advisorUnitLabel =
     advisorType === "freelance"
@@ -483,13 +479,17 @@ export const RetomaLiquidacion = ({ setLoading, loading, variant = "sga" }) => {
       const { gaCommissionPct: defaultGA, aplica_sobre } =
         resolveGACommission(row);
       const gaPct = overrides?.ga_pct ?? defaultGA;
+      const primaNetaRaw = toNumberCOP(
+        row.prima_neta_raw ?? row.prima_neta ?? 0,
+      );
+      const asistenciasRaw = toNumberCOP(
+        row.asistencias_raw ?? row.asistencia ?? 0,
+      );
+      const rawSum = primaNetaRaw + asistenciasRaw;
       const primaSinIva = Math.round(
-        toNumberCOP(
-          row.prima_neta_raw ??
-            row.prima_neta ??
-            row.prima_sin_iva_asistencia ??
-            0,
-        ),
+        rawSum > 0
+          ? rawSum
+          : toNumberCOP(row.prima_sin_iva_asistencia ?? 0),
       );
       const base = getBaseForCommission(row, aplica_sobre);
 
@@ -652,6 +652,8 @@ export const RetomaLiquidacion = ({ setLoading, loading, variant = "sga" }) => {
       navigate("/comisiones/liquidacion");
       return;
     }
+
+    console.log(response)
 
     setLiquidacionHeader(response.liquidacion || null);
     const details = normalizeSettlementDetails(response.detalles || []);
@@ -1137,7 +1139,7 @@ export const RetomaLiquidacion = ({ setLoading, loading, variant = "sga" }) => {
                           Placa
                         </th>
                         <th className="border border-gray-300 px-2 py-2 font-medium">
-                          Prima sin IVA
+                          Prima sin IVA + Asistencias
                         </th>
                         <th className="border border-gray-300 px-2 py-2 font-medium">
                           % Comision GA
@@ -1673,17 +1675,17 @@ export const RetomaLiquidacion = ({ setLoading, loading, variant = "sga" }) => {
                       isClearable
                     />
                   </div>
-                  <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-3 w-full mt-2">
+                  <div className="flex   gap-3 mt-2">
                     <BtnGeneral
                       id="btnConsultarRetoma"
-                      className="bg-lime-9000 text-white px-10 h-[35px] m-[2px] rounded hover:bg-lime-600 transition duration-300 ease-in-out"
+                      className="bg-lime-9000 text-white px-5 h-[35px] m-[2px] rounded hover:bg-lime-600 transition duration-300 ease-in-out"
                       funct={() => handlerLoadPolizasUser()}
                     >
                       <span>Consultar</span>
                     </BtnGeneral>
                     <BtnGeneral
                       id="btnLimpiarRetoma"
-                      className="bg-black text-white px-10 h-[35px] m-[2px] rounded hover:bg-gray-700 transition duration-300 ease-in-out"
+                      className="bg-black text-white px-5 h-[35px] m-[2px] rounded hover:bg-gray-700 transition duration-300 ease-in-out"
                       funct={() => cleanTableAndFilters()}
                     >
                       <span>Limpiar</span>
@@ -1854,7 +1856,7 @@ export const RetomaLiquidacion = ({ setLoading, loading, variant = "sga" }) => {
                       name="fechainiciovigdesde"
                       className="text-md border-[1px] w-full border-gray-300 text-gray-900 focus:outline-none h-[35px] rounded-md p-2"
                       value={formStates.fechainiciovigdesde}
-                      disabled
+                      //disabled
                       onChange={(e) =>
                         setFormStates((prev) => ({
                           ...prev,
@@ -1872,7 +1874,7 @@ export const RetomaLiquidacion = ({ setLoading, loading, variant = "sga" }) => {
                       name="fechafinvighasta"
                       className="text-md border-[1px] w-full border-gray-300 text-gray-900 focus:outline-none h-[35px] rounded-md p-2"
                       value={formStates.fechafinvighasta}
-                      disabled
+                      //disabled
                       onChange={(e) =>
                         setFormStates((prev) => ({
                           ...prev,
@@ -1881,31 +1883,24 @@ export const RetomaLiquidacion = ({ setLoading, loading, variant = "sga" }) => {
                       }
                     />
                   </div>
-                  <div className="flex flex-col w-1/5" />
-                  <div className="flex flex-col w-1/5" />
-                </div>
-                <div className="flex flex-row gap-3 items-center w-full mt-7">
-                  <div className="flex flex-col w-1/5">
-                    <BtnGeneral
-                      id="btnConsultarRetoma"
-                      className="bg-lime-9000 text-white px-10 h-[35px] m-[2px] rounded hover:bg-lime-600 transition duration-300 ease-in-out"
-                      funct={() => handlerLoadPolizasUser()}
-                    >
-                      <span>Consultar</span>
-                    </BtnGeneral>
+                  <div className="flex flex-col w-2/5 items-end justify-end">
+                    <div className="flex flex-row gap-2">
+                      <BtnGeneral
+                        id="btnConsultarRetoma"
+                        className="bg-lime-9000 text-white px-6 h-[35px] m-[2px] rounded hover:bg-lime-600 transition duration-300 ease-in-out"
+                        funct={() => handlerLoadPolizasUser()}
+                      >
+                        <span>Consultar</span>
+                      </BtnGeneral>
+                      <BtnGeneral
+                        id="btnLimpiarRetoma"
+                        className="bg-black text-white px-6 h-[35px] m-[2px] rounded hover:bg-gray-700 transition duration-300 ease-in-out"
+                        funct={() => cleanTableAndFilters()}
+                      >
+                        <span>Limpiar</span>
+                      </BtnGeneral>
+                    </div>
                   </div>
-                  <div className="flex flex-col w-1/5">
-                    <BtnGeneral
-                      id="btnLimpiarRetoma"
-                      className="bg-black text-white px-10 h-[35px] m-[2px] rounded hover:bg-gray-700 transition duration-300 ease-in-out"
-                      funct={() => cleanTableAndFilters()}
-                    >
-                      <span>Limpiar</span>
-                    </BtnGeneral>
-                  </div>
-                  <div className="flex flex-col w-1/5" />
-                  <div className="flex flex-col w-1/5" />
-                  <div className="flex flex-col w-1/5" />
                 </div>
               </>
             )}
