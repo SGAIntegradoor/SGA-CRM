@@ -8,7 +8,15 @@ export default function PdfServicesImpresion() {
   const id = path.search.replace("?id=", "");
 
   const [liquidacion, setLiquidacion] = useState(null);
+  const [numAseguradoras, setNumAseguradoras] = useState(null);
   const pdfRef = useRef(null);
+
+
+  const handleLoading = async (id) => {
+    const res = await pdfServices(id);
+    setNumAseguradoras(res?.numAseguradoras ?? null);
+    setLiquidacion(res.html ?? "");
+  }
 
   const addDynamicPageBreaks = (htmlString) => {
     if (!htmlString || typeof htmlString !== "string") return htmlString;
