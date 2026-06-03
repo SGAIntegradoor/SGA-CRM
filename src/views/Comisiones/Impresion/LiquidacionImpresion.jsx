@@ -4,6 +4,7 @@ import { TableDirectos } from "../../../components/Comisiones/Components/Tables/
 import { IoIosCloudDownload } from "react-icons/io";
 import { MdAttachEmail } from "react-icons/md";
 import { getSettlement } from "../../../services/Settlements/getSettlement";
+import { getAllRet } from "../../../services/Comisiones/getAllRet";
 import LogoGA from "../../../assets/img/LogoGA.png";
 import { useReactToPrint } from "react-to-print";
 
@@ -223,6 +224,44 @@ const formatPct = (value) => {
   return rounded % 1 === 0 ? String(rounded) : rounded.toFixed(2);
 };
 
+const toSafeNumber = (value) => {
+  const n = Number(value);
+  return Number.isFinite(n) ? n : 0;
+};
+
+const MONTHS_ES = [
+  "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
+  "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre",
+];
+
+const formatPeriodo = (rows = []) => {
+  const dates = rows
+    .map((row) => {
+      const raw = String(row?.fecha_expedicion ?? "").trim();
+      if (!raw) return null;
+      const match = raw.match(/^(\d{4})-(\d{2})-(\d{2})/);
+      if (match) {
+        return { year: Number(match[1]), month: Number(match[2]) };
+      }
+      return null;
+    })
+    .filter(Boolean)
+    .sort((a, b) => a.year - b.year || a.month - b.month);
+
+  if (!dates.length) return "";
+
+  const first = dates[0];
+  const last = dates[dates.length - 1];
+
+  const formatMonthYear = (d) => `${MONTHS_ES[d.month - 1]} ${d.year}`;
+
+  if (first.year === last.year && first.month === last.month) {
+    return formatMonthYear(first);
+  }
+
+  return `${formatMonthYear(first)} - ${formatMonthYear(last)}`;
+};
+
 export default function LiquidacionImpresion() {
   const location = useLocation();
   const nav = useNavigate();
@@ -233,6 +272,7 @@ export default function LiquidacionImpresion() {
   const [loading, setLoading] = useState(true);
   const [liquidacion, setLiquidacion] = useState(null);
   const [detalles, setDetalles] = useState([]);
+  const [retenciones, setRetenciones] = useState([]);
 
   const state = location.state;
   const usuario = state?.usuario || (detalles[0]?.usuario_sga ?? "");
@@ -243,11 +283,15 @@ export default function LiquidacionImpresion() {
   useEffect(() => {
     const fetchData = async () => {
       if (!id_liquidacion) return;
-      const res = await getSettlement(id_liquidacion);
+      const [res, retData] = await Promise.all([
+        getSettlement(id_liquidacion),
+        getAllRet().catch(() => []),
+      ]);
       if (res?.status === "Ok") {
         setLiquidacion(res.liquidacion);
         setDetalles(res.detalles);
       }
+      setRetenciones(Array.isArray(retData) ? retData : []);
       setLoading(false);
       window.scrollTo(0, 0);
     };
@@ -438,6 +482,61 @@ export default function LiquidacionImpresion() {
     };
   }, [activePrintRows, cancelledPrintRows, printRows]);
 
+  const periodo = useMemo(() => formatPeriodo(detalles), [detalles]);
+
+  const printSummary = useMemo(() => {
+    const totalPrimas = activePrintRows.reduce(
+      (acc, row) => acc + toSafeNumber(row.primaSinIva),
+      0,
+    );
+    const totalComisionGA = printRows.reduce(
+      (acc, row) => acc + toSafeNumber(row.comisionGA),
+      0,
+    );
+    const totalImpuestos = printRows.reduce(
+      (acc, row) => acc + toSafeNumber(row.impuestos),
+      0,
+    );
+    const totalComisionNeta = printRows.reduce(
+      (acc, row) => acc + toSafeNumber(row.comisionNeta),
+      0,
+    );
+    const totalComisionFreelance = printRows.reduce(
+      (acc, row) => acc + toSafeNumber(row.totalComision),
+      0,
+    );
+
+    const totalAntesImpuestos = toSafeNumber(totalComisionFreelance);
+
+    const responsableIva =
+      liquidacion?.responsable_iva ?? detalles[0]?.usu_freelance?.responsable_iva;
+    const iva19 = String(responsableIva) === "1" ? totalAntesImpuestos * 0.19 : 0;
+
+    const retencionesList = Array.isArray(retenciones) ? retenciones : [];
+    const retencionId =
+      liquidacion?.usu_retencion ?? detalles[0]?.usu_freelance?.u_retencion;
+    const ret = retencionesList.find(
+      (r) => String(r?.id) === String(retencionId),
+    );
+    const retencionesPorcentaje = toSafeNumber(ret?.porc_ret);
+    const retencionesValue = (retencionesPorcentaje * totalAntesImpuestos) / 100;
+
+    const totalAPagar = totalAntesImpuestos + iva19 - retencionesValue;
+
+    return {
+      totalPrimas,
+      totalComisionGA,
+      totalImpuestos,
+      totalComisionNeta,
+      totalComisionFreelance,
+      totalAntesImpuestos,
+      iva19,
+      retencionesValue,
+      retencionesPorcentaje,
+      totalAPagar,
+    };
+  }, [activePrintRows, printRows, retenciones, liquidacion, detalles]);
+
   const isAnulada =
     String(liquidacion?.estado || "")
       .trim()
@@ -569,33 +668,33 @@ export default function LiquidacionImpresion() {
 
     return (
       <div className="overflow-x-auto border border-gray-300">
-        <table className="min-w-full text-[11px] border-collapse">
+        <table className="min-w-full text-[10px] border-collapse">
           <thead>
             <tr className="bg-gray-50 text-gray-700">
-              <th className="border border-gray-300 px-2 py-2">
-                Fecha de expedición
+              <th className="border border-gray-300 px-1 py-1 whitespace-nowrap">
+                Fecha expedición
               </th>
-              <th className="border border-gray-300 px-2 py-2">Ramo</th>
-              <th className="border border-gray-300 px-2 py-2">Compañia</th>
-              <th className="border border-gray-300 px-2 py-2"># Póliza</th>
-              <th className="border border-gray-300 px-2 py-2">Anexo</th>
-              <th className="border border-gray-300 px-2 py-2">Asegurado</th>
-              <th className="border border-gray-300 px-2 py-2">Placa</th>
-              <th className="border border-gray-300 px-2 py-2">
-                Prima sin iva
+              <th className="border border-gray-300 px-1 py-1 whitespace-nowrap">Ramo</th>
+              <th className="border border-gray-300 px-1 py-1 whitespace-nowrap">Compañía</th>
+              <th className="border border-gray-300 px-1 py-1 whitespace-nowrap"># Póliza</th>
+              <th className="border border-gray-300 px-1 py-1 whitespace-nowrap">Anexo</th>
+              <th className="border border-gray-300 px-1 py-1 whitespace-nowrap">Asegurado</th>
+              <th className="border border-gray-300 px-1 py-1 whitespace-nowrap">Placa</th>
+              <th className="border border-gray-300 px-1 py-1 whitespace-nowrap">
+                Prima sin IVA
               </th>
-              <th className="border border-gray-300 px-1 py-1">
-                % Comisión GA
+              <th className="border border-gray-300 px-1 py-1 whitespace-nowrap">
+                % Com. GA
               </th>
-              <th className="border border-gray-300 px-2 py-2">Comisión GA</th>
-              <th className="border border-gray-300 px-2 py-2">Impuestos</th>
-              <th className="border border-gray-300 px-2 py-2">
-                Comisión neta
+              <th className="border border-gray-300 px-1 py-1 whitespace-nowrap">Com. GA</th>
+              <th className="border border-gray-300 px-1 py-1 whitespace-nowrap">Impuestos</th>
+              <th className="border border-gray-300 px-1 py-1 whitespace-nowrap">
+                Com. neta
               </th>
-              <th className="border border-gray-300 px-2 py-2">
+              <th className="border border-gray-300 px-1 py-1 whitespace-nowrap">
                 {participationHeader}
               </th>
-              <th className="border border-gray-300 px-2 py-2">
+              <th className="border border-gray-300 px-1 py-1 whitespace-nowrap">
                 {totalComisionHeader}
               </th>
             </tr>
@@ -603,42 +702,42 @@ export default function LiquidacionImpresion() {
           <tbody>
             {rows.map((row) => (
               <tr key={row._print_id}>
-                <td className="border border-gray-300 px-2 py-2 text-center">
+                <td className="border border-gray-300 px-1 py-1 text-center whitespace-nowrap">
                   {row.fecha_expedicion || "N/A"}
                 </td>
-                <td className="border border-gray-300 px-2 py-2 text-center">
+                <td className="border border-gray-300 px-1 py-1 text-center whitespace-nowrap">
                   {row.ramo || "N/A"}
                 </td>
-                <td className="border border-gray-300 px-2 py-2 text-center">
+                <td className="border border-gray-300 px-1 py-1 text-center whitespace-nowrap">
                   {row.aseguradora || "N/A"}
                 </td>
-                <td className="border border-gray-300 px-2 py-2 text-center">
+                <td className="border border-gray-300 px-1 py-1 text-center whitespace-nowrap w-[90px]">
                   {row.poliza || "N/A"}
                 </td>
-                <td className="border border-gray-300 px-2 py-2 text-center">
+                <td className="border border-gray-300 px-1 py-1 text-center whitespace-nowrap">
                   {row.anexo || "0"}
                 </td>
-                <td className="border border-gray-300 px-2 py-2 text-center">
+                <td className="border border-gray-300 px-1 py-1 text-center whitespace-nowrap">
                   {row.asegurado || row.nombre_tomador || "N/A"}
                 </td>
-                <td className="border border-gray-300 px-2 py-2 text-center">
+                <td className="border border-gray-300 px-1 py-1 text-center whitespace-nowrap">
                   {row.placa || "N/A"}
                 </td>
-                <td className="border border-gray-300 px-2 py-2 text-right">
+                <td className="border border-gray-300 px-1 py-1 text-right whitespace-nowrap">
                   {formatCOP(row.primaSinIva)}
                 </td>
-                <td className="border border-gray-300 px-2 py-2 text-center">{`${formatPct(row.gaPct)}%`}</td>
-                <td className="border border-gray-300 px-2 py-2 text-right">
+                <td className="border border-gray-300 px-1 py-1 text-center whitespace-nowrap">{`${formatPct(row.gaPct)}%`}</td>
+                <td className="border border-gray-300 px-1 py-1 text-right whitespace-nowrap">
                   {formatCOP(row.comisionGA)}
                 </td>
-                <td className="border border-gray-300 px-2 py-2 text-right">
+                <td className="border border-gray-300 px-1 py-1 text-right whitespace-nowrap">
                   {formatCOP(row.impuestos)}
                 </td>
-                <td className="border border-gray-300 px-2 py-2 text-right">
+                <td className="border border-gray-300 px-1 py-1 text-right whitespace-nowrap">
                   {formatCOP(row.comisionNeta)}
                 </td>
-                <td className="border border-gray-300 px-2 py-2 text-center">{`${formatPct(row.participationPct)}%`}</td>
-                <td className="border border-gray-300 px-2 py-2 text-right">
+                <td className="border border-gray-300 px-1 py-1 text-center whitespace-nowrap">{`${formatPct(row.participationPct)}%`}</td>
+                <td className="border border-gray-300 px-1 py-1 text-right whitespace-nowrap">
                   {formatCOP(row.totalComision)}
                 </td>
               </tr>
@@ -670,7 +769,19 @@ export default function LiquidacionImpresion() {
           .page-break { break-after: page; }
           thead { display: table-header-group; }
           tfoot { display: table-footer-group; }
-          table, tr, th, td { break-inside: avoid; page-break-inside: avoid; padding: 2px}
+          table { border-collapse: collapse; }
+          table, tr, th, td { 
+            break-inside: avoid; 
+            page-break-inside: avoid; 
+            padding: 1px !important;
+            margin: 0 !important;
+            font-size: 9px !important;
+            line-height: 1 !important;
+          }
+          th, td {
+            height: auto !important;
+            vertical-align: middle !important;
+          }
         }
         .wm-anulada{
           position: fixed;
@@ -688,7 +799,7 @@ export default function LiquidacionImpresion() {
         </div>
       )}
 
-      <header className="px-8 flex flex-row pt-4 justify-between">
+      <header className="px-8 flex flex-row pt-4 justify-between relative">
         <div className="flex items-center gap-4 mt-9">
           <div className="flex flex-col">
             <img src={LogoGA} alt="Logo" className="h-12 w-40" />
@@ -705,8 +816,14 @@ export default function LiquidacionImpresion() {
               <div className="flex gap-2 items-center pt-5">
                 <span>Asesor:</span>
                 <input
-                  className="text-md border-[1px] w-36 border-gray-300 text-gray-900 focus:outline-none h-[35px] rounded-md p-2"
+                  className="text-md border-[1px] w-40 border-gray-300 text-gray-900 focus:outline-none h-[35px] rounded-md p-2"
                   value={`${usuario}`}
+                  readOnly
+                />
+                <span className="text-gray-600 ml-4">Periodo:</span>
+                <input
+                  className="text-md border-[1px] w-56 border-gray-300 text-gray-900 focus:outline-none h-[35px] rounded-md p-2 text-center"
+                  value={periodo}
                   readOnly
                 />
               </div>
@@ -714,7 +831,7 @@ export default function LiquidacionImpresion() {
           </div>
         </div>
 
-        <div className="flex items-center gap-4 mt-[-40px] ml-[-30px]">
+        <div className="absolute left-1/2 -translate-x-1/2 top-4 flex items-center justify-center">
           <div className="flex flex-col border border-gray-300 p-2 text-lg rounded-lg">
             <p className="uppercase text-center text-[12px]">
               {isExternalLiquidacion
@@ -779,8 +896,16 @@ export default function LiquidacionImpresion() {
                 <div className="flex gap-2 items-center flex-1">
                   <span>Asesor:</span>
                   <input
-                    className="text-md border-[1px] w-72 border-gray-300 text-gray-900 focus:outline-none h-[35px] rounded-md p-2"
+                    className="text-md border-[1px] w-40 border-gray-300 text-gray-900 focus:outline-none h-[28px] rounded-md p-2"
                     value={`${usuario}`}
+                    readOnly
+                  />
+                </div>
+                <div className="flex gap-2 items-center flex-1">
+                  <span className="text-gray-600">Periodo:</span>
+                  <input
+                    className="text-md border-[1px] w-30 border-gray-300 text-gray-900 focus:outline-none h-[28px] rounded-md p-2 text-center"
+                    value={periodo}
                     readOnly
                   />
                 </div>
@@ -789,15 +914,15 @@ export default function LiquidacionImpresion() {
                   <input
                     readOnly
                     value={unitInfo.unitLabel}
-                    className="h-[28px] border border-gray-300 px-2 rounded w-[40%]"
+                    className="h-[28px] border border-gray-300 px-2 rounded w-[65%]"
                   />
                 </div>
                 <div className="flex items-center gap-2 flex-1 justify-center">
-                  <span className="text-gray-600"># negocios nuevos</span>
+                  <span className="text-gray-600"># Negocios nuevos</span>
                   <input
                     readOnly
                     value={externalSummary.negociosNuevos}
-                    className="h-[28px] border border-gray-300 px-2 rounded w-[15%]"
+                    className="h-[28px] border border-gray-300 px-2 rounded w-[20%]"
                   />
                 </div>
                 <div className="flex items-center gap-2 flex-1">
@@ -884,7 +1009,59 @@ export default function LiquidacionImpresion() {
 
         {/* Bloque final: ya NO forzamos nueva hoja; irá en la misma si hay espacio */}
         <section className="print-keep" style={{ marginTop: 8 }}>
-          <div className="w-full">
+          <div className="flex justify-between items-end mb-4">
+            <div className="flex items-end">
+              <p className="text-[12px] text-gray-600">
+                Liquidación generada por:{" "}
+                <span className="uppercase font-bold">{emisor_liquidacion}</span>
+              </p>
+            </div>
+
+            <div className="grid grid-cols-2 gap-x-6 gap-y-2 p-4 border border-gray-300 rounded-lg bg-gray-50 text-[12px] w-[400px]">
+              <span className="font-medium text-gray-600">Total prima sin IVA</span>
+              <span className="text-right font-semibold text-gray-900">
+                {formatCOP(printSummary.totalPrimas)}
+              </span>
+              <span className="font-medium text-gray-600">Total comisión GA</span>
+              <span className="text-right font-semibold text-gray-900">
+                {formatCOP(printSummary.totalComisionGA)}
+              </span>
+              <span className="font-medium text-gray-600">Total impuestos aseguradora</span>
+              <span className="text-right font-semibold text-gray-900">
+                {formatCOP(printSummary.totalImpuestos)}
+              </span>
+              <span className="font-medium text-gray-600">Total comisión neta</span>
+              <span className="text-right font-semibold text-gray-900">
+                {formatCOP(printSummary.totalComisionNeta)}
+              </span>
+
+              <hr className="col-span-2 border-gray-300" />
+
+              <span className="font-medium text-gray-600">Total comisión freelance</span>
+              <span className="text-right font-semibold text-gray-900">
+                {formatCOP(printSummary.totalComisionFreelance)}
+              </span>
+              <span className="font-medium text-gray-600">IVA (19%)</span>
+              <span className="text-right font-semibold text-gray-900">
+                {formatCOP(printSummary.iva19)}
+              </span>
+              <span className="font-medium text-gray-600">
+                Retenciones ({printSummary.retencionesPorcentaje}%)
+              </span>
+              <span className="text-right font-semibold text-gray-900">
+                {formatCOP(printSummary.retencionesValue)}
+              </span>
+
+              <hr className="col-span-2 border-gray-300" />
+
+              <span className="font-semibold text-gray-800">Total a pagar</span>
+              <span className="text-right text-base font-bold text-gray-900">
+                {formatCOP(printSummary.totalAPagar)}
+              </span>
+            </div>
+          </div>
+
+          {/* <div className="w-full">
             <div
               className="adjust-total flex flex-row gap-3 justify-end text-right font-bold text-[14.5px]"
               style={{ marginRight: "24px" }}
@@ -895,15 +1072,14 @@ export default function LiquidacionImpresion() {
                   style: "currency",
                   currency: "COP",
                   maximumFractionDigits: 0,
-                }).format(effectiveTotalPagar)}
+                }).format(
+                  isExternalLiquidacion
+                    ? printSummary.totalAPagar
+                    : effectiveTotalPagar
+                )}
               </span>
             </div>
-          </div>
-
-          <p className="mt-2">
-            Liquidación generada por:{" "}
-            <span className="uppercase font-bold">{emisor_liquidacion}</span>
-          </p>
+          </div> */}
           {/* <ul style={{ marginTop: 5, listStyleType: "disc", paddingLeft: 12 }}>
             <li style={{ marginTop: 5 }}>
               La participación se calcula sobre las comisiones netas promedio de

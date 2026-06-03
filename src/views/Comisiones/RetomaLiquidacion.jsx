@@ -22,8 +22,7 @@ import { getTiposPoliza } from "../../services/Polizas/getTiposPoliza";
 import { getAllSMMLV } from "../../services/Comisiones/getAllSMMLV";
 import { getAllRet } from "../../services/Comisiones/getAllRet";
 
-const SMMLV_2026 = 1750905;
-const THRESHOLD_PRIMA = SMMLV_2026 * 8;
+ // Prima neta total para definir participación 70% vs 75%
 const DEFAULT_TAX_RATE = 12;
 
 const nfCOP = new Intl.NumberFormat("es-CO", {
@@ -178,7 +177,7 @@ const getActorParticipationPct = (unitRole, row, globalPct) => {
 const getTaxRate = (unitRole) =>
   unitRole === "asesor10" ? 0 : DEFAULT_TAX_RATE;
 
-const getDefaultParticipationPct = (rows = []) => {
+const getDefaultParticipationPct = (rows = [], thresholdPrima = 0) => {
   const totalPrima = rows.reduce(
     (sum, row) =>
       sum +
@@ -191,7 +190,7 @@ const getDefaultParticipationPct = (rows = []) => {
     0,
   );
   const totalNewBusiness = rows.filter((row) => isNewBusiness(row)).length;
-  return totalPrima >= THRESHOLD_PRIMA && totalNewBusiness >= 2 ? 75 : 70;
+  return totalPrima >= thresholdPrima && totalNewBusiness >= 2 ? 75 : 70;
 };
 
 const dateQueryOptions = [
@@ -469,7 +468,7 @@ export const RetomaLiquidacion = ({ setLoading, loading, variant = "sga" }) => {
       return polizasIncluidas;
     const role = advisorType || "freelance";
     const defaultParticipationPct =
-      getDefaultParticipationPct(polizasIncluidas);
+      getDefaultParticipationPct(polizasIncluidas, smmlv * 8);
     const taxRate = getTaxRate(role);
 
     return polizasIncluidas.map((row) => {
@@ -494,9 +493,7 @@ export const RetomaLiquidacion = ({ setLoading, loading, variant = "sga" }) => {
       const base = getBaseForCommission(row, aplica_sobre);
 
       const comisionGA = Math.round((base * gaPct) / 100);
-      const impuestos = isCancellation(row)
-        ? 0
-        : Math.round((comisionGA * taxRate) / 100);
+      const impuestos = Math.round((comisionGA * taxRate) / 100);
       const comisionNeta = comisionGA - impuestos;
 
       const defaultActorPct = getActorParticipationPct(
@@ -526,7 +523,7 @@ export const RetomaLiquidacion = ({ setLoading, loading, variant = "sga" }) => {
         total_comision_value_raw: totalComision,
       };
     });
-  }, [polizasIncluidas, advisorType, isFreelanceVariant, pctOverrides]);
+  }, [polizasIncluidas, advisorType, isFreelanceVariant, pctOverrides, smmlv]);
 
   const handleRetomaGAChange = (id_anexo_poliza, value) => {
     setPctOverrides((prev) => {
@@ -709,10 +706,8 @@ export const RetomaLiquidacion = ({ setLoading, loading, variant = "sga" }) => {
   const handlerGetSMMLV = async () => {
     try {
       const DTOSmmlv = await getAllSMMLV();
-      console.log(DTOSmmlv)
       const actualYear = new Date().getFullYear();
       if (Array.isArray(DTOSmmlv.result)) {
-        console.log(DTOSmmlv.result);
         const currentSmmlv = DTOSmmlv.result.find((item) => item.anio == actualYear);
         if (currentSmmlv) {
           setSmmlv(currentSmmlv.valor_smmlv);
@@ -746,11 +741,9 @@ export const RetomaLiquidacion = ({ setLoading, loading, variant = "sga" }) => {
     const base = getBaseForCommission(row, aplica_sobre);
     const comisionGA = Math.round((base * gaCommissionPct) / 100);
     const taxRate = getTaxRate(role);
-    const impuestos = isCancellation(row)
-      ? 0
-      : Math.round((comisionGA * taxRate) / 100);
+    const impuestos = Math.round((comisionGA * taxRate) / 100);
     const comisionNeta = comisionGA - impuestos;
-    const defaultPct = getDefaultParticipationPct(polizasIncluidas);
+    const defaultPct = getDefaultParticipationPct(polizasIncluidas, smmlv * 8);
     const actorPct = getActorParticipationPct(role, row, defaultPct);
     const totalComision = Math.round((comisionNeta * actorPct) / 100);
     return {
@@ -1151,7 +1144,7 @@ export const RetomaLiquidacion = ({ setLoading, loading, variant = "sga" }) => {
                           Impuesto aseguradora
                         </th>
                         <th className="border border-gray-300 px-2 py-2 font-medium">
-                          Comision neta
+                          Comision neta GA
                         </th>
                         <th className="border border-gray-300 px-2 py-2 font-medium">
                           % freelance

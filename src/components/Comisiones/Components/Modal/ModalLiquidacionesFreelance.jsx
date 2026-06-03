@@ -45,6 +45,17 @@ const normalizeText = (value) =>
     .toLowerCase()
     .trim();
 
+const showSuccess = (title, text) =>
+  Swal.fire({
+    title,
+    text,
+    icon: "success",
+    didOpen: () => {
+      const container = Swal.getContainer();
+      if (container) container.style.zIndex = "2147483647";
+    },
+  });
+
 const hasBusinessValue = (value) => {
   const text = normalizeText(value);
   return (
@@ -645,7 +656,7 @@ const ModalLiquidacionesFreelance = ({
                 Impuesto aseguradora
               </th>
               <th className="border border-gray-300 px-2 py-2 font-medium">
-                Comision neta
+                Comision neta GA
               </th>
               <th className="border border-gray-300 px-2 py-2 font-medium">
                 % freelance
@@ -1035,23 +1046,27 @@ const ModalLiquidacionesFreelance = ({
             </BtnGeneral>
             <BtnGeneral
               funct={async () => {
-                const win = window.open("", "_blank");
                 try {
                   const id = await handleSaveSettlement();
-                  if (id && win) {
+                  if (id) {
                     const url = new URL(
                       `crm1/comisiones/liquidacion/impresion?id_liquidacion=${encodeURIComponent(id)}`,
                       window.location.origin,
                     ).href;
 
+                    await showSuccess(
+                      "Guardado",
+                      mode === "update"
+                        ? "La liquidación se actualizó correctamente."
+                        : "La liquidación se generó correctamente.",
+                    );
                     handlerCleanModal?.();
                     await handleReloadPolizas?.();
                     await onSuccess?.(id);
                     onClose();
-                    win.opener = null;
-                    win.location.href = url;
+                    const win = window.open(url, "_blank");
+                    if (win) win.opener = null;
                   } else {
-                    win?.close();
                     Swal.fire(
                       "Error",
                       mode === "update"
@@ -1061,7 +1076,6 @@ const ModalLiquidacionesFreelance = ({
                     );
                   }
                 } catch (error) {
-                  win?.close();
                   console.error(error);
                 }
               }}
@@ -1076,6 +1090,10 @@ const ModalLiquidacionesFreelance = ({
                 try {
                   const id = await handleSaveSettlement("Borrador");
                   if (id) {
+                    await showSuccess(
+                      "Guardado",
+                      "La liquidación se guardó en estado borrador.",
+                    );
                     handlerCleanModal?.();
                     await handleReloadPolizas?.();
                     await onSuccess?.(id);

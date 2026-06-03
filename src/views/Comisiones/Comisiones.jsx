@@ -329,7 +329,7 @@ export const Comisiones = ({ setLoading, loading }) => {
     { field: "fecha", header: "Fecha liquidacion" },
     { field: "estado", header: "Estado" },
     { field: "valor_total_comision", header: "Valor total comision" },
-    { field: "doc_liquidador", header: "Doc Liquidador" },
+    // { field: "doc_liquidador", header: "Doc Liquidador" },
     { field: "nombre_emisor_liq", header: "Nombre emisor" },
     { field: "ids_anexos", header: "Anexos liquidados" },
     { field: "accion", header: "Accion" },

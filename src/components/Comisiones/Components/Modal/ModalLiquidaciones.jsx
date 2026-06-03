@@ -40,6 +40,17 @@ const ModalLiquidaciones = ({
   const nav = useNavigate();
   const hadSelectedPolizasRef = useRef(selectedPolizas.length > 0);
   const [id, setId] = useState(0);
+
+  const showSuccess = (title, text) =>
+    Swal.fire({
+      title,
+      text,
+      icon: "success",
+      didOpen: () => {
+        const container = Swal.getContainer();
+        if (container) container.style.zIndex = "2147483647";
+      },
+    });
   useEffect(() => {
     document.body.style.overflow = "hidden";
     return () => (document.body.style.overflow = "");
@@ -581,24 +592,28 @@ const ModalLiquidaciones = ({
               </BtnGeneral>
               <BtnGeneral
                 funct={async () => {
-                  const win = window.open("", "_blank");
                   try {
                     const id = await handleSaveSettlement();
-                    if (id && win) {
+                    if (id) {
                       const url = new URL(
                         `crm1/comisiones/liquidacion/impresion?id_liquidacion=${encodeURIComponent(
                           id
                         )}`,
                         window.location.origin
                       ).href;
+                      await showSuccess(
+                        "Guardado",
+                        mode === "update"
+                          ? "La liquidación se actualizó correctamente."
+                          : "La liquidación se generó correctamente.",
+                      );
                       handlerCleanModal?.();
                       await handleReloadPolizas?.();
                       await onSuccess?.(id);
                       onClose();
-                      win.opener = null;
-                      win.location.href = url;
+                      const win = window.open(url, "_blank");
+                      if (win) win.opener = null;
                     } else {
-                      win && win.close();
                       Swal.fire(
                         "Error",
                         mode === "update"
@@ -608,7 +623,6 @@ const ModalLiquidaciones = ({
                       );
                     }
                   } catch (err) {
-                    win && win.close();
                     console.error(err);
                   }
                 }}
@@ -623,10 +637,9 @@ const ModalLiquidaciones = ({
                   try {
                     const id = await handleSaveSettlement("Borrador");
                     if (id) {
-                      Swal.fire(
+                      await showSuccess(
                         "Guardado",
                         "La liquidación se guardó en estado borrador.",
-                        "success",
                       );
                       handlerCleanModal?.();
                       await handleReloadPolizas?.();

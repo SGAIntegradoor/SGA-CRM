@@ -216,9 +216,9 @@ export const TableDirectos = ({
 
       <tbody>
         {rows.map((row, rowIndex) => (
-          <tr key={rowIndex} className="border-gray-300 border-[1.5px]">
+          <tr key={rowIndex} className="border-gray-300 border-[1.5px] w-[80px]">
             {headers.map((header, cellIndex) => (
-              <td key={cellIndex} className="border-gray-300 border-[1.5px] text-center text-[12px]">
+              <td key={cellIndex} className="border-gray-300 border-[1.5px] text-center text-[12px] w-[70px]">
                 {renderCell(row, header, rowIndex)}
               </td>
             ))}

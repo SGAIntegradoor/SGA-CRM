@@ -139,11 +139,27 @@ export const MovimientoModal = ({
       if (response.status === "Ok") {
         return response.data;
       } else {
-        Swal.fire("Error", response.message, "error");
+        Swal.fire({
+          icon: "error",
+          title: "Error",
+          text: response.message,
+          didOpen: () => {
+            const container = Swal.getContainer();
+            if (container) container.style.zIndex = "2147483647";
+          },
+        });
         return null;
       }
     } catch (e) {
-      Swal.fire("Error", "No se pudo obtener el movimiento", "error");
+      Swal.fire({
+        icon: "error",
+        title: "Error",
+        text: "No se pudo obtener el movimiento",
+        didOpen: () => {
+          const container = Swal.getContainer();
+          if (container) container.style.zIndex = "2147483647";
+        },
+      });
       return null;
     } finally {
       if (typeof setIsLoading === "function") setIsLoading(false);
@@ -493,7 +509,10 @@ export const MovimientoModal = ({
         icon: "error",
         title: "Campos faltantes",
         text: `Por favor complete: ${nice.join(", ")}`,
-        zIndex: 9999,
+        didOpen: () => {
+          const container = Swal.getContainer();
+          if (container) container.style.zIndex = "2147483647";
+        },
       });
       return false;
     }
@@ -579,22 +598,27 @@ export const MovimientoModal = ({
 
       const updateAnexoPoliza = await updateAnexo(bodyGeneral);
       if (updateAnexoPoliza.status === "Ok") {
-        // Anexo actualizado exitosamente
         Swal.fire({
           icon: "success",
           title: "Éxito",
-          text: `El anexo se actualizó exitosamente con ID de póliza: ${updateAnexo.id_poliza}`,
+          text: `El anexo se actualizó exitosamente`,
+          didOpen: () => {
+            const container = Swal.getContainer();
+            if (container) container.style.zIndex = "2147483647";
+          },
         }).then(() => {
-          // Aquí puedes agregar la lógica que deseas ejecutar después de que se cierre el modal
           onCloseModal();
           window.location.reload();
         });
       } else {
-        // Manejo de error
         Swal.fire({
           icon: "error",
           title: "Error",
           text: updateAnexo.message || "No se pudo actualizar el anexo.",
+          didOpen: () => {
+            const container = Swal.getContainer();
+            if (container) container.style.zIndex = "2147483647";
+          },
         });
       }
     } else {
@@ -650,11 +674,14 @@ export const MovimientoModal = ({
       console.log(bodySentMovement)
       const crearAnexo = await createAnexo(bodySentMovement);
       if (crearAnexo.status == "Ok" && crearAnexo.codeStatus == 201) {
-        // Anexo creado exitosamente
         Swal.fire({
           icon: "success",
           title: "Éxito",
           text: `El anexo se creó exitosamente con ID de póliza: ${crearAnexo.id_poliza}`,
+          didOpen: () => {
+            const container = Swal.getContainer();
+            if (container) container.style.zIndex = "2147483647";
+          },
         }).then(() => {
           onCloseModal();
           window.location.reload();
@@ -664,6 +691,10 @@ export const MovimientoModal = ({
           icon: "error",
           title: "Error",
           text: crearAnexo.message || "No se pudo crear el anexo.",
+          didOpen: () => {
+            const container = Swal.getContainer();
+            if (container) container.style.zIndex = "2147483647";
+          },
         });
       }
     }
