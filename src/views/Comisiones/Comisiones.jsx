@@ -103,7 +103,11 @@ export const Comisiones = ({ setLoading, loading }) => {
   const handlerGetLiqAdmin = async () => {
     try {
       const data = await getPreSettlements();
-      setLiqAdminData(Array.isArray(data) ? data : []);
+      let preTreated = [];
+      if (Array.isArray(data)) {
+        preTreated = data.filter((item) => item.usuario_data?.rol != "19");
+      }
+      setLiqAdminData(preTreated);
     } catch (e) {
       console.error("Error en la carga de liquidaciones", e);
       setLiqAdminData([]);
