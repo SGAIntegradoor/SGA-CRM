@@ -965,7 +965,7 @@ const ModalLiquidacionesFreelance = ({
           </div>
 
           <div className="mt-8 flex flex-col gap-6 xl:flex-row xl:items-end xl:justify-between">
-            <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 xl:max-w-[560px]">
+            {/* <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 xl:max-w-[560px]">
               <p className="font-semibold">Regla aplicada</p>
               <p className="mt-1">
                 Si el total de primas sin IVA del periodo es mayor o igual a{" "}
@@ -973,10 +973,10 @@ const ModalLiquidacionesFreelance = ({
                 el porcentaje sugerido es 75%. En cualquier otro caso, el
                 porcentaje sugerido es 70%.
               </p>
-            </div>
+            </div> */}
 
-            <div className="ml-auto grid min-w-[320px] grid-cols-[1fr_auto] gap-x-4 gap-y-2 rounded-xl border border-gray-200 bg-gray-50 px-4 py-4 text-sm">
-              <span className="font-medium text-gray-600">
+            <div className="ml-auto grid  grid-cols-[150px_75px] gap-x-3 gap-y-1 rounded-xl bg-gray-50 border border-gray-200 px-4 py-4 text-sm">
+              {/* <span className="font-medium text-gray-600">
                 Total prima sin IVA
               </span>
               <span className="text-right font-semibold text-gray-900">
@@ -989,7 +989,7 @@ const ModalLiquidacionesFreelance = ({
                 {formatCOP(summary.totalComisionGA)}
               </span>
               <span className="font-medium text-gray-600">
-                Total impuestos aseguradora
+                Total impuestos aseg
               </span>
               <span className="text-right font-semibold text-gray-900">
                 {formatCOP(summary.totalImpuestos)}
@@ -1001,16 +1001,17 @@ const ModalLiquidacionesFreelance = ({
                 {formatCOP(summary.totalComisionNeta)}
               </span>
 
-              <hr className="col-span-2 border-gray-300" />
+              <hr className="col-span-2 border-gray-300" /> */}
 
-              <span className="font-medium text-gray-600">
-                Total comision freelance
+              <span className="font-medium text-gray-600 text-right">
+                Total antes de impuestos
               </span>
-              <span className="text-right font-semibold text-gray-900">
+              {/* <span className="text-right font-semibold text-gray-900">
                 {formatCOP(summary.totalComisionFreelance)}
-              </span>
-              <span className="font-medium text-gray-600">IVA (19%)</span>
-              <span className="text-right font-semibold text-gray-900">
+              </span> */}
+              <input className="text-center font-semibold text-gray-900 border-[1px] border-gray-300" value={formatCOP(summary.totalComisionFreelance)} />
+              <span className="font-medium text-gray-600 text-right">IVA</span>
+              {/* <span className="text-right font-semibold text-gray-900">
                 {formatCOP(
                   summary?.iva19 == 0 || summary?.iva19 == null
                     ? settlementData?.responsable_iva === "1"
@@ -1018,22 +1019,26 @@ const ModalLiquidacionesFreelance = ({
                       : 0
                     : summary?.iva19,
                 )}
+              </span> */}
+              <input className="text-center font-semibold text-gray-900 border-[1px] border-gray-300" value={formatCOP(summary?.iva19 === 0 || summary?.iva19 == null ? (settlementData?.responsable_iva === "1" ? summary?.totalComisionFreelance * 0.19 : 0) : summary?.iva19)} />
+              <span className="font-medium text-gray-600 text-right">
+                Retenciones
+                {/* {summary.retencionesPorcentaje} */}
+                
               </span>
-              <span className="font-medium text-gray-600">
-                Retenciones (
-                {summary.retencionesPorcentaje}
-                %)
-              </span>
-              <span className="text-right font-semibold text-gray-900">
+              {/* <span className="text-right font-semibold text-gray-900">
                 {formatCOP(summary.retencionesValue)}
-              </span>
+              </span> */}
+              <input className="text-center font-semibold text-gray-900 border-[1px] border-gray-300" value={formatCOP(summary.retencionesValue)} />
+              
 
               <hr className="col-span-2 border-gray-300" />
 
-              <span className="font-semibold text-gray-800">Total a pagar</span>
-              <span className="text-right text-base font-bold text-gray-900">
+              <span className="font-medium text-gray-600 text-right">Valor total a pagar</span>
+              {/* <span className="text-right text-base font-bold text-gray-900">
                 {formatCOP(summary.totalAPagar)}
-              </span>
+              </span> */}
+              <input className="text-center font-semibold text-gray-900 border-[1px] border-gray-300" value={formatCOP(summary.totalAPagar)} />
             </div>
           </div>
 

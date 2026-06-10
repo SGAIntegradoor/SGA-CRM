@@ -1017,7 +1017,73 @@ export default function LiquidacionImpresion() {
               </p>
             </div>
 
-            <div className="grid grid-cols-2 gap-x-6 gap-y-2 p-4 border border-gray-300 rounded-lg bg-gray-50 text-[12px] w-[400px]">
+                        <div className="ml-auto grid  grid-cols-[150px_75px] gap-x-3 gap-y-1 rounded-xl bg-gray-50 border border-gray-200 px-4 py-4 text-sm">
+              {/* <span className="font-medium text-gray-600">
+                Total prima sin IVA
+              </span>
+              <span className="text-right font-semibold text-gray-900">
+                {formatCOP(summary.totalPrimas)}
+              </span>
+              <span className="font-medium text-gray-600">
+                Total comision GA
+              </span>
+              <span className="text-right font-semibold text-gray-900">
+                {formatCOP(summary.totalComisionGA)}
+              </span>
+              <span className="font-medium text-gray-600">
+                Total impuestos aseg
+              </span>
+              <span className="text-right font-semibold text-gray-900">
+                {formatCOP(summary.totalImpuestos)}
+              </span>
+              <span className="font-medium text-gray-600">
+                Total comision neta
+              </span>
+              <span className="text-right font-semibold text-gray-900">
+                {formatCOP(summary.totalComisionNeta)}
+              </span>
+
+              <hr className="col-span-2 border-gray-300" /> */}
+
+              <span className="font-medium text-gray-600 text-right">
+                Total antes de impuestos
+              </span>
+              {/* <span className="text-right font-semibold text-gray-900">
+                {formatCOP(summary.totalComisionFreelance)}
+              </span> */}
+              <input className="text-center font-semibold text-gray-900 border-[1px] border-gray-300" value={formatCOP(printSummary.totalComisionFreelance)} />
+              <span className="font-medium text-gray-600 text-right">IVA</span>
+              {/* <span className="text-right font-semibold text-gray-900">
+                {formatCOP(
+                  summary?.iva19 == 0 || summary?.iva19 == null
+                    ? settlementData?.responsable_iva === "1"
+                      ? summary?.totalComisionFreelance * 0.19
+                      : 0
+                    : summary?.iva19,
+                )}
+              </span> */}
+              <input className="text-center font-semibold text-gray-900 border-[1px] border-gray-300" value={formatCOP(printSummary?.iva19 === 0 || printSummary?.iva19 == null ? (settlementData?.responsable_iva === "1" ? printSummary?.totalComisionFreelance * 0.19 : 0) : printSummary?.iva19)} />
+              <span className="font-medium text-gray-600 text-right">
+                Retenciones
+                {/* {summary.retencionesPorcentaje} */}
+                
+              </span>
+              {/* <span className="text-right font-semibold text-gray-900">
+                {formatCOP(summary.retencionesValue)}
+              </span> */}
+              <input className="text-center font-semibold text-gray-900 border-[1px] border-gray-300" value={formatCOP(printSummary.retencionesValue)} />
+              
+
+              <hr className="col-span-2 border-gray-300" />
+
+              <span className="font-medium text-gray-600 text-right">Valor total a pagar</span>
+              {/* <span className="text-right text-base font-bold text-gray-900">
+                {formatCOP(summary.totalAPagar)}
+              </span> */}
+              <input className="text-center font-semibold text-gray-900 border-[1px] border-gray-300" value={formatCOP(printSummary.totalAPagar)} />
+            </div>
+
+            {/* <div className="grid grid-cols-2 gap-x-6 gap-y-2 p-4 border border-gray-300 rounded-lg bg-gray-50 text-[12px] w-[400px]">
               <span className="font-medium text-gray-600">Total prima sin IVA</span>
               <span className="text-right font-semibold text-gray-900">
                 {formatCOP(printSummary.totalPrimas)}
@@ -1058,7 +1124,7 @@ export default function LiquidacionImpresion() {
               <span className="text-right text-base font-bold text-gray-900">
                 {formatCOP(printSummary.totalAPagar)}
               </span>
-            </div>
+            </div> */}
           </div>
 
           {/* <div className="w-full">
