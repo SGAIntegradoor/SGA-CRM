@@ -230,8 +230,18 @@ const toSafeNumber = (value) => {
 };
 
 const MONTHS_ES = [
-  "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
-  "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre",
+  "Enero",
+  "Febrero",
+  "Marzo",
+  "Abril",
+  "Mayo",
+  "Junio",
+  "Julio",
+  "Agosto",
+  "Septiembre",
+  "Octubre",
+  "Noviembre",
+  "Diciembre",
 ];
 
 const formatPeriodo = (rows = []) => {
@@ -509,8 +519,10 @@ export default function LiquidacionImpresion() {
     const totalAntesImpuestos = toSafeNumber(totalComisionFreelance);
 
     const responsableIva =
-      liquidacion?.responsable_iva ?? detalles[0]?.usu_freelance?.responsable_iva;
-    const iva19 = String(responsableIva) === "1" ? totalAntesImpuestos * 0.19 : 0;
+      liquidacion?.responsable_iva ??
+      detalles[0]?.usu_freelance?.responsable_iva;
+    const iva19 =
+      String(responsableIva) === "1" ? totalAntesImpuestos * 0.19 : 0;
 
     const retencionesList = Array.isArray(retenciones) ? retenciones : [];
     const retencionId =
@@ -519,7 +531,8 @@ export default function LiquidacionImpresion() {
       (r) => String(r?.id) === String(retencionId),
     );
     const retencionesPorcentaje = toSafeNumber(ret?.porc_ret);
-    const retencionesValue = (retencionesPorcentaje * totalAntesImpuestos) / 100;
+    const retencionesValue =
+      (retencionesPorcentaje * totalAntesImpuestos) / 100;
 
     const totalAPagar = totalAntesImpuestos + iva19 - retencionesValue;
 
@@ -674,20 +687,36 @@ export default function LiquidacionImpresion() {
               <th className="border border-gray-300 px-1 py-1 whitespace-nowrap">
                 Fecha expedición
               </th>
-              <th className="border border-gray-300 px-1 py-1 whitespace-nowrap">Ramo</th>
-              <th className="border border-gray-300 px-1 py-1 whitespace-nowrap">Compañía</th>
-              <th className="border border-gray-300 px-1 py-1 whitespace-nowrap"># Póliza</th>
-              <th className="border border-gray-300 px-1 py-1 whitespace-nowrap">Anexo</th>
-              <th className="border border-gray-300 px-1 py-1 whitespace-nowrap">Asegurado</th>
-              <th className="border border-gray-300 px-1 py-1 whitespace-nowrap">Placa</th>
+              <th className="border border-gray-300 px-1 py-1 whitespace-nowrap">
+                Ramo
+              </th>
+              <th className="border border-gray-300 px-1 py-1 whitespace-nowrap">
+                Compañía
+              </th>
+              <th className="border border-gray-300 px-1 py-1 whitespace-nowrap">
+                # Póliza
+              </th>
+              <th className="border border-gray-300 px-1 py-1 whitespace-nowrap">
+                Anexo
+              </th>
+              <th className="border border-gray-300 px-1 py-1 whitespace-nowrap">
+                Asegurado
+              </th>
+              <th className="border border-gray-300 px-1 py-1 whitespace-nowrap">
+                Placa
+              </th>
               <th className="border border-gray-300 px-1 py-1 whitespace-nowrap">
                 Prima sin IVA
               </th>
               <th className="border border-gray-300 px-1 py-1 whitespace-nowrap">
                 % Com. GA
               </th>
-              <th className="border border-gray-300 px-1 py-1 whitespace-nowrap">Com. GA</th>
-              <th className="border border-gray-300 px-1 py-1 whitespace-nowrap">Impuestos</th>
+              <th className="border border-gray-300 px-1 py-1 whitespace-nowrap">
+                Com. GA
+              </th>
+              <th className="border border-gray-300 px-1 py-1 whitespace-nowrap">
+                Impuestos
+              </th>
               <th className="border border-gray-300 px-1 py-1 whitespace-nowrap">
                 Com. neta
               </th>
@@ -1010,14 +1039,35 @@ export default function LiquidacionImpresion() {
         {/* Bloque final: ya NO forzamos nueva hoja; irá en la misma si hay espacio */}
         <section className="print-keep" style={{ marginTop: 8 }}>
           <div className="flex justify-between items-end mb-4">
-            <div className="flex items-end">
+            <div className="flex flex-col">
               <p className="text-[12px] text-gray-600">
                 Liquidación generada por:{" "}
-                <span className="uppercase font-bold">{emisor_liquidacion}</span>
+                <span className="uppercase font-bold">
+                  {emisor_liquidacion}
+                </span>
               </p>
+              <ul
+                style={{ marginTop: 5, listStyleType: "disc", paddingLeft: 12, width: 700 }}
+              >
+                <li style={{ marginTop: 5 }} className="text-[12px]">
+                  La participación se calcula sobre las comisiones netas
+                  promedio de la agencia (después de impuestos).
+                </li>
+                <li className="break-words text-[12px]" style={{ marginTop: 5 }}>
+                  Enviar cuenta de cobro o factura electrónica al correo{" "}
+                  <b>administracion@grupoasistencia.com</b>, adjuntando copia
+                  del RUT, cédula, la liquidación enviada y certificación
+                  bancaria en un solo PDF.
+                </li>
+                <li className="break-words text-[12px]" style={{ marginTop: 5 }}>
+                  Tener en cuenta que al valor total de la liquidación se le
+                  aplicarán las retenciones a las que haya lugar de acuerdo a la
+                  información que se encuentre registrada en el RUT.
+                </li>
+              </ul>
             </div>
 
-                        <div className="ml-auto grid  grid-cols-[150px_75px] gap-x-3 gap-y-1 rounded-xl bg-gray-50 border border-gray-200 px-4 py-4 text-sm">
+            <div className="ml-auto grid  grid-cols-[150px_75px] gap-x-3 gap-y-1 rounded-xl bg-gray-50 border border-gray-200 px-4 py-4 text-sm">
               {/* <span className="font-medium text-gray-600">
                 Total prima sin IVA
               </span>
@@ -1051,7 +1101,10 @@ export default function LiquidacionImpresion() {
               {/* <span className="text-right font-semibold text-gray-900">
                 {formatCOP(summary.totalComisionFreelance)}
               </span> */}
-              <input className="text-center font-semibold text-gray-900 border-[1px] border-gray-300" value={formatCOP(printSummary.totalComisionFreelance)} />
+              <input
+                className="text-center font-medium text-gray-900 border-[1px] border-gray-300"
+                value={formatCOP(printSummary.totalComisionFreelance)}
+              />
               <span className="font-medium text-gray-600 text-right">IVA</span>
               {/* <span className="text-right font-semibold text-gray-900">
                 {formatCOP(
@@ -1062,25 +1115,40 @@ export default function LiquidacionImpresion() {
                     : summary?.iva19,
                 )}
               </span> */}
-              <input className="text-center font-semibold text-gray-900 border-[1px] border-gray-300" value={formatCOP(printSummary?.iva19 === 0 || printSummary?.iva19 == null ? (settlementData?.responsable_iva === "1" ? printSummary?.totalComisionFreelance * 0.19 : 0) : printSummary?.iva19)} />
+              <input
+                className="text-center font-medium text-gray-900 border-[1px] border-gray-300"
+                value={formatCOP(
+                  printSummary?.iva19 === 0 || printSummary?.iva19 == null
+                    ? settlementData?.responsable_iva === "1"
+                      ? printSummary?.totalComisionFreelance * 0.19
+                      : 0
+                    : printSummary?.iva19,
+                )}
+              />
               <span className="font-medium text-gray-600 text-right">
                 Retenciones
                 {/* {summary.retencionesPorcentaje} */}
-                
               </span>
               {/* <span className="text-right font-semibold text-gray-900">
                 {formatCOP(summary.retencionesValue)}
               </span> */}
-              <input className="text-center font-semibold text-gray-900 border-[1px] border-gray-300" value={formatCOP(printSummary.retencionesValue)} />
-              
+              <input
+                className="text-center font-medium text-gray-900 border-[1px] border-gray-300"
+                value={formatCOP(printSummary.retencionesValue)}
+              />
 
               <hr className="col-span-2 border-gray-300" />
 
-              <span className="font-medium text-gray-600 text-right">Valor total a pagar</span>
+              <span className="font-medium text-gray-600 text-right">
+                Valor total a pagar
+              </span>
               {/* <span className="text-right text-base font-bold text-gray-900">
                 {formatCOP(summary.totalAPagar)}
               </span> */}
-              <input className="text-center font-semibold text-gray-900 border-[1px] border-gray-300" value={formatCOP(printSummary.totalAPagar)} />
+              <input
+                className="text-center font-medium text-gray-900 border-[1px] border-gray-300"
+                value={formatCOP(printSummary.totalAPagar)}
+              />
             </div>
 
             {/* <div className="grid grid-cols-2 gap-x-6 gap-y-2 p-4 border border-gray-300 rounded-lg bg-gray-50 text-[12px] w-[400px]">
