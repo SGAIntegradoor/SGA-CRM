@@ -1040,29 +1040,44 @@ export default function LiquidacionImpresion() {
         <section className="print-keep" style={{ marginTop: 8 }}>
           <div className="flex justify-between items-end mb-4">
             <div className="flex flex-col">
-              <p className="text-[12px] text-gray-600">
-                Liquidación generada por:{" "}
-                <span className="uppercase font-bold">
-                  {emisor_liquidacion}
-                </span>
-              </p>
+              <div>
+                <p className="text-[12px] text-gray-600">
+                  Liquidación generada por:{" "}
+                  <span className="uppercase font-bold">
+                    {emisor_liquidacion}
+                  </span>
+                </p>
+                <span className="text-[14px] font-semibold">315 609 1204</span>
+              </div>
+
               <ul
-                style={{ marginTop: 5, listStyleType: "disc", paddingLeft: 12, width: 700 }}
+                style={{
+                  marginTop: 5,
+                  listStyleType: "disc",
+                  paddingLeft: 12,
+                  width: 700,
+                }}
               >
                 <li style={{ marginTop: 5 }} className="text-[12px]">
                   La participación se calcula sobre las comisiones netas
-                  promedio de la agencia (después de impuestos).
+                  promedio de la agencia (después de impuestos)
                 </li>
-                <li className="break-words text-[12px]" style={{ marginTop: 5 }}>
+                <li
+                  className="break-words text-[12px]"
+                  style={{ marginTop: 5 }}
+                >
                   Enviar cuenta de cobro o factura electrónica al correo{" "}
-                  <b>administracion@grupoasistencia.com</b>, adjuntando copia
-                  del RUT, cédula, la liquidación enviada y certificación
-                  bancaria en un solo PDF.
+                  <b>administracion@grupoasistencia.com</b>, adjuntando la
+                  liquidación enviada en un solo PDF
                 </li>
-                <li className="break-words text-[12px]" style={{ marginTop: 5 }}>
-                  Tener en cuenta que al valor total de la liquidación se le
-                  aplicarán las retenciones a las que haya lugar de acuerdo a la
-                  información que se encuentre registrada en el RUT.
+                <li
+                  className="break-words text-[12px]"
+                  style={{ marginTop: 5 }}
+                >
+                  Tener en cuenta que al valor total de la liquidacion se le
+                  aplican las retenciones a las que haya lugar de acuerdo a la
+                  informacion que se encuentre registrada en el RUT de la
+                  persona o entidad beneficiaria de pago..
                 </li>
               </ul>
             </div>
