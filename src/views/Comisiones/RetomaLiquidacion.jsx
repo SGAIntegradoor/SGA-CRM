@@ -75,8 +75,16 @@ const toInputDate = (value) => {
   return parsed.toISOString().slice(0, 10);
 };
 
-const getExpeditionDateRange = (rows = []) => {
-  const dates = rows
+const isCancellation = (row) =>
+  normalizeText(row.tipo_expedicion) === "cancelacion";
+const isNewBusiness = (row) => normalizeText(row.tipo_expedicion) === "nueva";
+
+const getExpeditionDateRange = (rows = [], isFreelanceVariant = false) => {
+  const filteredRows = isFreelanceVariant 
+    ? rows.filter((row) => !isCancellation(row))
+    : rows;
+  
+  const dates = filteredRows
     .map((row) => toInputDate(row?.fecha_expedicion))
     .filter(Boolean)
     .sort();
@@ -109,10 +117,6 @@ const getExpeditionDateRange = (rows = []) => {
     to: toEndOfMonth(dates[dates.length - 1]),
   };
 };
-
-const isCancellation = (row) =>
-  normalizeText(row.tipo_expedicion) === "cancelacion";
-const isNewBusiness = (row) => normalizeText(row.tipo_expedicion) === "nueva";
 
 /** Extrae % comision GA y aplica_sobre del array porc_com por aseguradora_id */
 const resolveGACommission = (row) => {
@@ -435,10 +439,21 @@ export const RetomaLiquidacion = ({ setLoading, loading, variant = "sga" }) => {
 
   const resolveAdvisorType = (liquidacionData) => {
     if (!liquidacionData) return null;
-    console.log(liquidacionData)
+    
+    const usuCargo = String(liquidacionData.usu_cargo ?? "").toLowerCase().trim();
+    const tipoUsuario = String(liquidacionData.tipo_usuario ?? "").toLowerCase().trim();
     const rolValue = String(
       liquidacionData.usuario_data?.id_rol_user ?? liquidacionData.id_rol_user ?? "",
     );
+
+    if (usuCargo.includes("asesor 10") || usuCargo.includes("asesor10")) return "asesor10";
+    if (usuCargo.includes("asesor ganador") || usuCargo.includes("asesorganador")) return "asesorGanador";
+    if (usuCargo.includes("freelance")) return "freelance";
+
+    if (tipoUsuario === "asesor10" || tipoUsuario === "asesor 10") return "asesor10";
+    if (tipoUsuario === "asesorganador" || tipoUsuario === "asesor ganador") return "asesorGanador";
+    if (tipoUsuario === "freelance") return "freelance";
+
     if (rolValue === "19" || rolValue === "1") return "freelance";
     if (rolValue === "10" || rolValue === "3") return "asesor10";
     if (rolValue === "11" || rolValue === "4") return "asesorGanador";
@@ -463,6 +478,8 @@ export const RetomaLiquidacion = ({ setLoading, loading, variant = "sga" }) => {
           ? "Asesor Ganador"
           : "N/A";
 
+  const isFreelance = advisorType === "freelance";
+
   const polizasIncluidasWithCalc = useMemo(() => {
     if (!isFreelanceVariant || polizasIncluidas.length === 0)
       return polizasIncluidas;
@@ -477,7 +494,10 @@ export const RetomaLiquidacion = ({ setLoading, loading, variant = "sga" }) => {
 
       const { gaCommissionPct: defaultGA, aplica_sobre } =
         resolveGACommission(row);
-      const gaPct = overrides?.ga_pct ?? defaultGA;
+
+      const isAsesorInterno = role === "asesorGanador" || role === "asesor10";
+      const gaPct = isAsesorInterno ? 100 : (overrides?.ga_pct ?? defaultGA);
+
       const primaNetaRaw = toNumberCOP(
         row.prima_neta_raw ?? row.prima_neta ?? 0,
       );
@@ -488,19 +508,18 @@ export const RetomaLiquidacion = ({ setLoading, loading, variant = "sga" }) => {
       const primaSinIva = Math.round(
         rawSum > 0
           ? rawSum
-          : toNumberCOP(row.prima_sin_iva_asistencia ?? 0),
+          : toNumberCOP(row.prima_sin_iva_asistencia ?? row.prima_sin_iva_num ?? 0),
       );
-      const base = getBaseForCommission(row, aplica_sobre);
+      const base = getBaseForCommission(row, aplica_sobre) || primaSinIva;
 
       const comisionGA = Math.round((base * gaPct) / 100);
       const impuestos = Math.round((comisionGA * taxRate) / 100);
       const comisionNeta = comisionGA - impuestos;
 
-      const defaultActorPct = getActorParticipationPct(
-        role,
-        row,
-        defaultParticipationPct,
-      );
+      const savedActorPct = Number(row.porcentaje_comision_pct ?? row.participation_pct ?? 0);
+      const defaultActorPct = savedActorPct > 0
+        ? savedActorPct
+        : getActorParticipationPct(role, row, defaultParticipationPct);
       const actorPct = overrides?.actor_pct ?? defaultActorPct;
       const totalComision = Math.round((comisionNeta * actorPct) / 100);
 
@@ -524,6 +543,17 @@ export const RetomaLiquidacion = ({ setLoading, loading, variant = "sga" }) => {
       };
     });
   }, [polizasIncluidas, advisorType, isFreelanceVariant, pctOverrides, smmlv]);
+
+  const polizasIncluidasFormatted = useMemo(() => {
+    if (isFreelanceVariant || polizasIncluidas.length === 0)
+      return polizasIncluidas;
+    
+    return polizasIncluidas.map((row) => ({
+      ...row,
+      prima_neta: formatCOP(toNumberCOP(row.prima_neta ?? row.prima_neta_raw ?? 0)),
+      valor_total: formatCOP(toNumberCOP(row.valor_total ?? row.total_comision ?? 0)),
+    }));
+  }, [polizasIncluidas, isFreelanceVariant]);
 
   const handleRetomaGAChange = (id_anexo_poliza, value) => {
     setPctOverrides((prev) => {
@@ -654,7 +684,7 @@ export const RetomaLiquidacion = ({ setLoading, loading, variant = "sga" }) => {
 
     setLiquidacionHeader(response.liquidacion || null);
     const details = normalizeSettlementDetails(response.detalles || []);
-    const { from, to } = getExpeditionDateRange(details);
+    const { from, to } = getExpeditionDateRange(details, isFreelanceVariant);
     setPolizasIncluidas(details);
     setInitialIncludedIds(details.map((detail) => detail.id_anexo_poliza));
     setRemovedAnexosIds([]);
@@ -737,7 +767,8 @@ export const RetomaLiquidacion = ({ setLoading, loading, variant = "sga" }) => {
   const enrichRowForSync = (row) => {
     if (!isFreelanceVariant) return row;
     const role = advisorType || "freelance";
-    const { gaCommissionPct, aplica_sobre } = resolveGACommission(row);
+    const { gaCommissionPct: resolvedGA, aplica_sobre } = resolveGACommission(row);
+    const gaCommissionPct = (role === "asesorGanador" || role === "asesor10") ? 100 : resolvedGA;
     const base = getBaseForCommission(row, aplica_sobre);
     const comisionGA = Math.round((base * gaCommissionPct) / 100);
     const taxRate = getTaxRate(role);
@@ -1109,8 +1140,8 @@ export const RetomaLiquidacion = ({ setLoading, loading, variant = "sga" }) => {
                 </div>
 
                 {/* Tabla con los mismos campos que el modal freelance — % editables */}
-                <div className="overflow-auto mb-4">
-                  <table className="w-full border-collapse text-[12px]">
+                <div className="overflow-x-auto mb-4">
+                  <table className="w-full border-collapse text-[12px] whitespace-nowrap">
                     <thead>
                       <tr className="bg-gray-50 text-gray-700">
                         <th className="border border-gray-300 px-2 py-2 font-medium">
@@ -1147,10 +1178,10 @@ export const RetomaLiquidacion = ({ setLoading, loading, variant = "sga" }) => {
                           Comision neta GA
                         </th>
                         <th className="border border-gray-300 px-2 py-2 font-medium">
-                          % freelance
+                          {isFreelance ? "% freelance" : advisorType === "asesor10" ? "% Asesor 10" : "% Asesor Ganador"}
                         </th>
                         <th className="border border-gray-300 px-2 py-2 font-medium">
-                          Comision freelance
+                          {isFreelance ? "Comision freelance" : advisorType === "asesor10" ? "Comision Asesor 10" : "Comision Asesor Ganador"}
                         </th>
                         <th className="border border-gray-300 px-2 py-2 font-medium">
                           Accion
@@ -1198,6 +1229,7 @@ export const RetomaLiquidacion = ({ setLoading, loading, variant = "sga" }) => {
                                     e.target.value,
                                   )
                                 }
+                                readOnly={!isFreelance}
                               />
                               <span className="text-gray-500">%</span>
                             </div>
@@ -1225,6 +1257,7 @@ export const RetomaLiquidacion = ({ setLoading, loading, variant = "sga" }) => {
                                     e.target.value,
                                   )
                                 }
+                                readOnly={!isFreelance}
                               />
                               <span className="text-gray-500">%</span>
                             </div>
@@ -1313,7 +1346,7 @@ export const RetomaLiquidacion = ({ setLoading, loading, variant = "sga" }) => {
 
             {!isFreelanceVariant && (
               <TableComisiones
-                data={polizasIncluidas}
+                data={polizasIncluidasFormatted}
                 headers={headersIncluidas}
                 from="retoma-incluidas"
                 onRowAction={handleRemoveIncludedPoliza}

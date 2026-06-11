@@ -383,6 +383,8 @@ export const LiquidacionFreelance = ({ setLoading, loading }) => {
   };
 
   const handlerLoadPolizasFreelance = async () => {
+    setSelectedPolizas([]);
+    setPolizas([]);
     const consultafecha = String(formStates.consultafecha ?? "").trim();
     const unidadnegocio = String(formStates.unidadnegocio ?? "").trim();
     const fechaDesde = String(formStates.fechainiciovigdesde ?? "").trim();
@@ -467,6 +469,8 @@ export const LiquidacionFreelance = ({ setLoading, loading }) => {
   }, [formStates.unidadnegocio]);
 
   useEffect(() => {
+    setPolizas([]);
+    setSelectedPolizas([]);
     setFormStates((prev) => {
       const next = { ...prev };
 
@@ -496,6 +500,11 @@ export const LiquidacionFreelance = ({ setLoading, loading }) => {
       return next;
     });
   }, [enableAsesorFreelance, enableAsesor10, enableAsesorGanador]);
+
+  useEffect(() => {
+    setPolizas([]);
+    setSelectedPolizas([]);
+  }, [formStates.asesorfreelance, formStates.asesor10, formStates.asesorganador]);
 
   useEffect(() => {
     if (!Array.isArray(polizas) || polizas.length === 0) return;

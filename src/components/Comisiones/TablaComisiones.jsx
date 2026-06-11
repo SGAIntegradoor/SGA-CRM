@@ -258,6 +258,8 @@ export const TableComisiones = ({
     </div>
   );
 
+
+
   return (
     <>
       {/* Estilos locales para filas pagadas */}
@@ -334,6 +336,8 @@ export const TableComisiones = ({
               />
             );
           }
+
+          
 
           // Columna de selección (checkbox)
           if (col.field === "seleccionado") {

@@ -185,13 +185,15 @@ const getTaxRate = (unitRole) =>
   unitRole === "asesor10" ? 0 : DEFAULT_TAX_RATE;
 
 const buildFreelanceRow = (row, index, unitRole, participationPctDefault) => {
-  const { gaCommissionPct, aplica_sobre } = resolveGACommission(row);
+  const { gaCommissionPct: resolvedGAPct, aplica_sobre } = resolveGACommission(row);
   const primaSinIva = Math.round(
     toNumberCOP(
       row.prima_neta_raw ?? row.prima_neta ?? row.prima_sin_iva_asistencia ?? 0,
     ),
   );
   const base = getBaseForCommission(row, aplica_sobre);
+
+  const gaCommissionPct = (unitRole === "asesorGanador" || unitRole === "asesor10") ? 100 : resolvedGAPct;
 
   const comisionGA = Math.round((base * gaCommissionPct) / 100);
   const taxRate = getTaxRate(unitRole);
@@ -596,6 +598,8 @@ const ModalLiquidacionesFreelance = ({
     }
   };
 
+  const isFreelance = effectiveUnitRole === "freelance";
+
   const renderTable = (
     tableRows,
     { showTotals = true, emptyLabel = "Sin registros" } = {},
@@ -658,9 +662,11 @@ const ModalLiquidacionesFreelance = ({
               <th className="border border-gray-300 px-2 py-2 font-medium">
                 Comision neta GA
               </th>
-              <th className="border border-gray-300 px-2 py-2 font-medium">
-                % freelance
-              </th>
+              {isFreelance && (
+                <th className="border border-gray-300 px-2 py-2 font-medium">
+                  % freelance
+                </th>
+              )}
               <th className="border border-gray-300 px-2 py-2 font-medium">
                 Comision freelance
               </th>
@@ -717,24 +723,26 @@ const ModalLiquidacionesFreelance = ({
                 <td className="border border-gray-300 px-2 py-2 text-right">
                   {formatCOP(row.comision_neta_value)}
                 </td>
-                <td className="border border-gray-300 px-2 py-1 text-center">
-                  <div className="inline-flex items-center rounded border border-gray-300 bg-white px-1 py-1">
-                    <input
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      className="w-14 text-center outline-none"
-                      value={row.participation_pct}
-                      onChange={(e) =>
-                        handleRowParticipationChange(
-                          row.modal_row_id,
-                          e.target.value,
-                        )
-                      }
-                    />
-                    <span className="text-gray-500">%</span>
-                  </div>
-                </td>
+                {isFreelance && (
+                  <td className="border border-gray-300 px-2 py-1 text-center">
+                    <div className="inline-flex items-center rounded border border-gray-300 bg-white px-1 py-1">
+                      <input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        className="w-14 text-center outline-none"
+                        value={row.participation_pct}
+                        onChange={(e) =>
+                          handleRowParticipationChange(
+                            row.modal_row_id,
+                            e.target.value,
+                          )
+                        }
+                      />
+                      <span className="text-gray-500">%</span>
+                    </div>
+                  </td>
+                )}
                 <td className="border border-gray-300 px-2 py-2 text-right font-medium">
                   {formatCOP(row.total_comision_value)}
                 </td>
@@ -752,7 +760,7 @@ const ModalLiquidacionesFreelance = ({
             {showTotals && (
               <tr className="bg-gray-50 font-semibold">
                 <td
-                  colSpan={6}
+                  colSpan={isFreelance ? 6 : 6}
                   className="border border-gray-300 px-2 py-2 text-right"
                 >
                   Totales
@@ -770,7 +778,9 @@ const ModalLiquidacionesFreelance = ({
                 <td className="border border-gray-300 px-2 py-2 text-right">
                   {formatCOP(totNeta)}
                 </td>
-                <td className="border border-gray-300 px-2 py-2" />
+                {isFreelance && (
+                  <td className="border border-gray-300 px-2 py-2" />
+                )}
                 <td className="border border-gray-300 px-2 py-2 text-right">
                   {formatCOP(totFreelance)}
                 </td>
@@ -913,24 +923,26 @@ const ModalLiquidacionesFreelance = ({
                   disabled
                 />
               </div>
-              <div className="flex flex-col gap-1">
-                <span className="text-xs text-gray-500">
-                  % participacion freelance
-                </span>
-                <div className="inline-flex h-[36px] items-center rounded border border-gray-300 bg-white px-3">
-                  <input
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    className="w-full text-sm outline-none"
-                    value={globalParticipationPct}
-                    onChange={(event) =>
-                      handleGlobalParticipationChange(event.target.value)
-                    }
-                  />
-                  <span className="text-sm text-gray-500">%</span>
+              {isFreelance && (
+                <div className="flex flex-col gap-1">
+                  <span className="text-xs text-gray-500">
+                    % participacion freelance
+                  </span>
+                  <div className="inline-flex h-[36px] items-center rounded border border-gray-300 bg-white px-3">
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      className="w-full text-sm outline-none"
+                      value={globalParticipationPct}
+                      onChange={(event) =>
+                        handleGlobalParticipationChange(event.target.value)
+                      }
+                    />
+                    <span className="text-sm text-gray-500">%</span>
+                  </div>
                 </div>
-              </div>
+              )}
             </div>
           </div>
 

@@ -1134,7 +1134,7 @@ export default function LiquidacionImpresion() {
                 className="text-center font-medium text-gray-900 border-[1px] border-gray-300"
                 value={formatCOP(
                   printSummary?.iva19 === 0 || printSummary?.iva19 == null
-                    ? settlementData?.responsable_iva === "1"
+                    ? liquidacion?.responsable_iva === "1"
                       ? printSummary?.totalComisionFreelance * 0.19
                       : 0
                     : printSummary?.iva19,

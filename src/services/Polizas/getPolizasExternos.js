@@ -339,12 +339,22 @@ export const getPolizasExternos = async (dataFilters) => {
         valorComisionStr = formatCOP(0); // comisión en cancelación = 0
       }
 
-      const nombreFreelance =
-        poliza.usuario_freelance != null
-          ? poliza.usuario_freelance.info_usuario.u_nombre +
-            " " +
-            poliza.usuario_freelance.info_usuario.u_apellido
-          : "N/A";
+      const sgaDoc = poliza.usuario_sga?.info_usuario?.u_documento;
+      const sgaNombre = poliza.usuario_sga?.info_usuario
+        ? `${poliza.usuario_sga.info_usuario.u_nombre} ${poliza.usuario_sga.info_usuario.u_apellido}`
+        : null;
+
+      const resolveAsesorNombre = (docNumber) => {
+        if (docNumber == null || docNumber === "" || docNumber === "N/A") return "N/A";
+        if (sgaDoc && String(sgaDoc).trim() === String(docNumber).trim() && sgaNombre) {
+          return sgaNombre;
+        }
+        return docNumber;
+      };
+
+      const nombreAsesorFreelance = resolveAsesorNombre(poliza.asesor_freelance);
+      const nombreAsesor10 = resolveAsesorNombre(poliza.asesor_10);
+      const nombreAsesorGanador = resolveAsesorNombre(poliza.asesor_ganador);
 
       const unidadesNegocio = {
         1: "Freelance",
@@ -421,9 +431,9 @@ export const getPolizasExternos = async (dataFilters) => {
         // Observaciones
         observaciones: poliza.observaciones_gstn_comercial || "N/A",
 
-        asesor_freelance: nombreFreelance,
-        asesor_10: poliza.asesor_10 || "N/A",
-        asesor_ganador: poliza.asesor_ganador || "N/A",
+        asesor_freelance: nombreAsesorFreelance,
+        asesor_10: nombreAsesor10,
+        asesor_ganador: nombreAsesorGanador,
 
         prima_sin_iva_asistencia: formatCOP(base),
 
