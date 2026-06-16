@@ -489,7 +489,7 @@ export const RetomaLiquidacion = ({ setLoading, loading, variant = "sga" }) => {
     const taxRate = getTaxRate(role);
 
     return polizasIncluidas.map((row) => {
-      const id = row.id_anexo_poliza;
+      const id = row.id_remision;
       const overrides = pctOverrides.get(id);
 
       const { gaCommissionPct: defaultGA, aplica_sobre } =

@@ -16,6 +16,33 @@ import { updateConciliacion } from "../../../services/Conciliaciones/updateConci
 import { RegistroConciliacion } from "../Registro/RegistroConciliacion";
 import { CancelacionConciliacion } from "../Registro/CancelacionesConciliacion";
 
+const sanitizeMoneyDigits = (value = "") => {
+  if (!value) return "";
+  const cleaned = String(value).replace(/\$/g, "").replace(/\s/g, "").replace(/[^\d,.-]/g, "");
+  const hasDot = cleaned.includes(".");
+  const hasComma = cleaned.includes(",");
+  let normalized = cleaned;
+  if (hasDot && hasComma) {
+    const lastDot = cleaned.lastIndexOf(".");
+    const lastComma = cleaned.lastIndexOf(",");
+    const decimalSep = lastDot > lastComma ? "." : ",";
+    const thousandSep = decimalSep === "." ? "," : ".";
+    normalized = cleaned.split(thousandSep).join("").replace(decimalSep, ".");
+  } else if (hasDot || hasComma) {
+    const sep = hasDot ? "." : ",";
+    normalized = new RegExp(`\\${sep}\\d{1,2}$`).test(cleaned)
+      ? cleaned.replace(sep, ".")
+      : cleaned.split(sep).join("");
+  }
+  const numeric = Number(normalized);
+  return Number.isFinite(numeric) ? String(Math.round(numeric)) : "";
+};
+
+const formatMoneyInput = (digits) => {
+  if (!digits) return "$ ";
+  return `$ ${Number(digits).toLocaleString("es-CO")}`;
+};
+
 export const Conciliacion = ({ setLoading, loading }) => {
   const initialState = {
     poliza: "",
@@ -27,6 +54,7 @@ export const Conciliacion = ({ setLoading, loading }) => {
     fechafinvighasta: "",
     estadoconciliacion: "",
     financieras: "",
+    pagos_financieras: "",
   };
 
   const [polizas, setPolizas] = useState([]);
@@ -177,7 +205,7 @@ export const Conciliacion = ({ setLoading, loading }) => {
     { field: "saldo", header: "Saldo" },
     { field: "comision_recibida", header: "Comisión recibida" },
     { field: "valor_cancelacion", header: "Valor Cancelación" },
-    { field: "porcentaje_cancelacion", header: "% cancelación" },
+    { field: "porcentaje_cancelacion", header: "% Cancelación" },
     { field: "pago_financieras", header: "Pago financieras" },
     { field: "accion", header: "Acción" },
   ];
@@ -679,6 +707,25 @@ export const Conciliacion = ({ setLoading, loading }) => {
                 styles={customNewStyles}
                 placeholder=""
                 isClearable
+              />
+            </div>
+
+            <div className="flex flex-col w-full">
+              <label
+                htmlFor="pagos_financieras"
+                className="text-sm font-medium text-gray-800"
+              >
+                Pagos financieras
+              </label>
+              <input
+                type="text"
+                name="pagos_financieras"
+                className="h-[35px] w-full rounded-md border border-gray-300 px-2 text-sm text-gray-900 focus:outline-none"
+                value={formatMoneyInput(formStates.pagos_financieras)}
+                onChange={(e) => {
+                  const digits = sanitizeMoneyDigits(e.target.value);
+                  setFormStates((prev) => ({ ...prev, pagos_financieras: digits }));
+                }}
               />
             </div>
 

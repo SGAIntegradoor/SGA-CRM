@@ -132,6 +132,7 @@ const buildInitialFormState = (poliza = {}) => ({
     pickFirstValue([poliza?.fecha_conciliacion, getTodayDate()]),
   ),
   comisionRecibida: "",
+  pagoFinancieras: sanitizeMoneyDigits(pickFirstValue([poliza?.pagos_financieras_con, ""])),
 });
 
 const buildConciliacionRow = (row = {}, index = 0) => {
@@ -466,6 +467,11 @@ export const CancelacionConciliacion = ({
     [formData.comisionRecibida],
   );
 
+  const displayPagoFinancieras = useMemo(
+    () => formatMoneyInput(formData.pagoFinancieras),
+    [formData.pagoFinancieras],
+  );
+
   const validateField = (field, value) => {
     if (field === "factura") {
       if (!value) {
@@ -622,6 +628,7 @@ export const CancelacionConciliacion = ({
       prima_planilla: formData.primaPlanilla,
       fecha_conciliacion: formData.fechaConciliacion,
       comision_recibida: formData.comisionRecibida,
+      pago_financiera: formData.pagoFinancieras,
     };
 
     try {
@@ -1387,6 +1394,24 @@ export const CancelacionConciliacion = ({
                   </tr>
                 </tfoot>
               </table>
+              <div>
+                <p className="text-xs font-semibold tracking-wide text-gray-500 mb-1 mt-4">
+                  Pagos financieras:
+                </p>
+                <input
+                  id="pagoFinancieras"
+                  className={getInputClassName("pagoFinancieras")}
+                  value={displayPagoFinancieras}
+                  onChange={handleMoneyChange("pagoFinancieras")}
+                  onBlur={() => {
+                    const minVal = sanitizeMoneyDigits(poliza?.pagos_financieras_con ?? "");
+                    if (minVal && Number(minVal) > 0 && Number(formData.pagoFinancieras || 0) < Number(minVal)) {
+                      setFieldValue("pagoFinancieras", minVal);
+                    }
+                  }}
+                  autoComplete="off"
+                />
+              </div>
             </div>
 
             <section id="secComentarios" className="mt-10">

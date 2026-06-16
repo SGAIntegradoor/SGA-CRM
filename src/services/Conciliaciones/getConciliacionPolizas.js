@@ -322,8 +322,14 @@ export const getConciliacionPolizas = async (filters) => {
         pickFirstValue([
           queryRow.pago_financieras,
           queryRow.valor_pago_financiera,
+          queryRow.pagos_financieras_con,
         ]),
       ),
+      pagos_financieras_con: pickFirstValue([
+        queryRow.pagos_financieras_con,
+        queryRow.pago_financieras,
+        queryRow.valor_pago_financiera,
+      ]),
       asegurado: pickFirstValue([
         row.asegurado,
         queryRow.nombre_completo_asegurado,

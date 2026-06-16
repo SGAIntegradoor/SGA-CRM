@@ -330,13 +330,13 @@ const ModalLiquidacionesFreelance = ({
   );
 
   const effectiveUnitRole =
-    detectedUnit.unitRole || context.unitRole || "freelance";
+    context.unitRole || detectedUnit.unitRole || "freelance";
   const effectiveUnitLabel =
-    detectedUnit.unitLabel !== "N/A"
+    context.unitLabel || (detectedUnit.unitLabel !== "N/A"
       ? detectedUnit.unitLabel
-      : context.unitLabel || "Unidad no definida";
+      : "Unidad no definida");
   const effectiveAdvisorName =
-    detectedUnit.advisorName || context.advisorName || "Asesor";
+    context.advisorName || detectedUnit.advisorName || "Asesor";
 
   useEffect(() => {
     document.body.style.overflow = "hidden";
@@ -624,6 +624,8 @@ const ModalLiquidacionesFreelance = ({
       0,
     );
 
+    console.log(tableRows)
+
     return (
       <div className="overflow-x-auto border border-gray-300 rounded-lg">
         <table className="min-w-full border-collapse text-[12px]">
@@ -662,13 +664,11 @@ const ModalLiquidacionesFreelance = ({
               <th className="border border-gray-300 px-2 py-2 font-medium">
                 Comision neta GA
               </th>
-              {isFreelance && (
-                <th className="border border-gray-300 px-2 py-2 font-medium">
-                  % freelance
-                </th>
-              )}
               <th className="border border-gray-300 px-2 py-2 font-medium">
-                Comision freelance
+                {isFreelance ? "% freelance" : effectiveUnitRole === "asesor10" ? "% Asesor 10" : "% Asesor Ganador"}
+              </th>
+              <th className="border border-gray-300 px-2 py-2 font-medium">
+                {isFreelance ? "Comision freelance" : effectiveUnitRole === "asesor10" ? "Comision Asesor 10" : "Comision Asesor Ganador"}
               </th>
               <th className="border border-gray-300 px-2 py-2 font-medium">
                 Accion
@@ -710,6 +710,7 @@ const ModalLiquidacionesFreelance = ({
                       onChange={(e) =>
                         handleRowGAChange(row.modal_row_id, e.target.value)
                       }
+                      readOnly={!isFreelance}
                     />
                     <span className="text-gray-500">%</span>
                   </div>
@@ -723,26 +724,25 @@ const ModalLiquidacionesFreelance = ({
                 <td className="border border-gray-300 px-2 py-2 text-right">
                   {formatCOP(row.comision_neta_value)}
                 </td>
-                {isFreelance && (
-                  <td className="border border-gray-300 px-2 py-1 text-center">
-                    <div className="inline-flex items-center rounded border border-gray-300 bg-white px-1 py-1">
-                      <input
-                        type="number"
-                        step="0.01"
-                        min="0"
-                        className="w-14 text-center outline-none"
-                        value={row.participation_pct}
-                        onChange={(e) =>
-                          handleRowParticipationChange(
-                            row.modal_row_id,
-                            e.target.value,
-                          )
-                        }
-                      />
-                      <span className="text-gray-500">%</span>
-                    </div>
-                  </td>
-                )}
+                <td className="border border-gray-300 px-2 py-1 text-center">
+                  <div className="inline-flex items-center rounded border border-gray-300 bg-white px-1 py-1">
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      className="w-14 text-center outline-none"
+                      value={row.participation_pct}
+                      onChange={(e) =>
+                        handleRowParticipationChange(
+                          row.modal_row_id,
+                          e.target.value,
+                        )
+                      }
+                      readOnly={!isFreelance}
+                    />
+                    <span className="text-gray-500">%</span>
+                  </div>
+                </td>
                 <td className="border border-gray-300 px-2 py-2 text-right font-medium">
                   {formatCOP(row.total_comision_value)}
                 </td>
@@ -760,7 +760,7 @@ const ModalLiquidacionesFreelance = ({
             {showTotals && (
               <tr className="bg-gray-50 font-semibold">
                 <td
-                  colSpan={isFreelance ? 6 : 6}
+                  colSpan={6}
                   className="border border-gray-300 px-2 py-2 text-right"
                 >
                   Totales
@@ -778,9 +778,7 @@ const ModalLiquidacionesFreelance = ({
                 <td className="border border-gray-300 px-2 py-2 text-right">
                   {formatCOP(totNeta)}
                 </td>
-                {isFreelance && (
-                  <td className="border border-gray-300 px-2 py-2" />
-                )}
+                <td className="border border-gray-300 px-2 py-2" />
                 <td className="border border-gray-300 px-2 py-2 text-right">
                   {formatCOP(totFreelance)}
                 </td>

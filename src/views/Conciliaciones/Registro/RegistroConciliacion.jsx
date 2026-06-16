@@ -131,6 +131,7 @@ const buildInitialFormState = (poliza = {}) => ({
     pickFirstValue([poliza?.fecha_conciliacion, getTodayDate()]),
   ),
   comisionRecibida: "",
+  pagoFinancieras: sanitizeMoneyDigits(pickFirstValue([poliza?.pagos_financieras_con, ""])),
 });
 
 const buildConciliacionRow = (row = {}, index = 0) => {
@@ -287,6 +288,7 @@ export const RegistroConciliacion = ({
     if (!open) {
       return;
     }
+    console.log("Poliza in conciliation modal:", poliza);
     setFormData(buildInitialFormState(poliza));
     setErrors({});
     setTouched({});
@@ -372,7 +374,9 @@ export const RegistroConciliacion = ({
   // };
 
   const calcSaldo = (row) => {
-    const totalPagosRaw = row?.conciliaciones.map((c => c?.prima_planilla || 0)).reduce((acc, val) => acc + Number(val), 0);
+    const totalPagosRaw = row?.conciliaciones
+      .map((c) => c?.prima_planilla || 0)
+      .reduce((acc, val) => acc + Number(val), 0);
     let valorTotalRaw = row?.prima_sin_iva;
     const isNA = (value) => {
       const text = String(value ?? "")
@@ -391,7 +395,7 @@ export const RegistroConciliacion = ({
               .replace(/\./g, "")
               .replace(/,/g, "."),
           );
-    
+
       valorTotalRaw = isNA(valorTotalRaw)
         ? 0
         : Number(
@@ -456,10 +460,10 @@ export const RegistroConciliacion = ({
     [formData.comisionRecibida],
   );
 
-  // const displayPagoFinanciera = useMemo(
-  //   () => formData.financiera,
-  //   [formData.financiera],
-  // );
+  const displayPagoFinancieras = useMemo(
+    () => formatMoneyInput(formData.pagoFinancieras),
+    [formData.pagoFinancieras],
+  );
 
   const validateField = (field, value) => {
     if (field === "factura") {
@@ -617,6 +621,7 @@ export const RegistroConciliacion = ({
       prima_planilla: formData.primaPlanilla,
       fecha_conciliacion: formData.fechaConciliacion,
       comision_recibida: formData.comisionRecibida,
+      pago_financiera: formData.pagoFinancieras,
     };
 
     try {
@@ -665,7 +670,7 @@ export const RegistroConciliacion = ({
   ];
 
   const getInputClassName = (field, extraClassName = "") =>
-    `text-md border-[1px] w-full text-gray-900 focus:outline-none h-[35px] rounded-md p-2 ${
+    `text-md border-[1px] ${field == "pagoFinancieras" ? "w-[25%]" : "w-full"} text-gray-900 focus:outline-none h-[35px] rounded-md p-2 ${
       hasError(field) ? "border-red-500" : "border-gray-300"
     } ${extraClassName}`;
 
@@ -781,6 +786,8 @@ export const RegistroConciliacion = ({
     } else if (field === "porcentaje_comision") {
       nextValue = sanitizePercentValue(value);
     } else if (field === "prima_planilla" || field === "comision_recibida") {
+      nextValue = sanitizeMoneyDigits(value);
+    } else if (field === "pago_financiera") {
       nextValue = sanitizeMoneyDigits(value);
     }
 
@@ -965,7 +972,7 @@ export const RegistroConciliacion = ({
     closeSaveDialog();
   };
 
-  console.log(poliza)
+  console.log(poliza);
 
   return (
     <Modal open={open} onClose={handleModalClose}>
@@ -1376,17 +1383,17 @@ export const RegistroConciliacion = ({
                 </p>
                 <input
                   id="pagoFinancieras"
-                  className={`${getInputClassName("pagoFinancieras")} w-[30%]`}
-                  value={displayPrimaPlanilla}
+                  className={getInputClassName("pagoFinancieras")}
+                  value={displayPagoFinancieras}
                   onChange={handleMoneyChange("pagoFinancieras")}
-                  onBlur={() => markTouched("pagoFinancieras")}
+                  onBlur={() => {
+                    const minVal = sanitizeMoneyDigits(poliza?.pagos_financieras_con ?? "");
+                    if (minVal && Number(minVal) > 0 && Number(formData.pagoFinancieras || 0) < Number(minVal)) {
+                      setFieldValue("pagoFinancieras", minVal);
+                    }
+                  }}
                   autoComplete="off"
                 />
-                {hasError("pagoFinancieras") ? (
-                  <p className="mt-1 text-[11px] text-red-600">
-                    {errors.pagoFinancieras}
-                  </p>
-                ) : null}
               </div>
             </div>
 

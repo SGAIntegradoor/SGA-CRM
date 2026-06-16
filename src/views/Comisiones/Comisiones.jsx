@@ -115,6 +115,8 @@ export const Comisiones = ({ setLoading, loading }) => {
   };
 
   const handlerLoadPolizasUser = async () => {
+    setSelectedPolizas([]);
+    setPolizas([]);
     // if (formStates.unidadnegocio === "") {
     //   // Swal.fire("Error", "Debe seleccionar una unidad de negocio", "error");
     //   // return;
@@ -211,7 +213,14 @@ export const Comisiones = ({ setLoading, loading }) => {
 
   useEffect(() => {
     handlerLoadFilterUsuarios(formStates.unidadnegocio || null);
+    setSelectedPolizas([]);
+    setPolizas([]);
   }, [formStates.unidadnegocio]);
+
+  useEffect(() => {
+    setSelectedPolizas([]);
+    setPolizas([]);
+  }, [formStates.usuario]);
 
   // cargar objeto con las polizas seleccionadas actualmente en la BD y asi renderizar el objeto o colocarlo cada que se carge la vista
   useEffect(() => {
@@ -297,6 +306,7 @@ export const Comisiones = ({ setLoading, loading }) => {
         rowsPage.forEach((row) => {
           byId.set(row.id_anexo_poliza, {
             id: row.id_anexo_poliza,
+            id_remision: row.id_remision,
             ...row,
             seleccionado: true,
           });
@@ -335,7 +345,7 @@ export const Comisiones = ({ setLoading, loading }) => {
     { field: "valor_total_comision", header: "Valor total comision" },
     // { field: "doc_liquidador", header: "Doc Liquidador" },
     { field: "nombre_emisor_liq", header: "Nombre emisor" },
-    { field: "ids_anexos", header: "Anexos liquidados" },
+    { field: "ids_anexos", header: "Remisiones liquidadas" },
     { field: "accion", header: "Accion" },
   ];
 

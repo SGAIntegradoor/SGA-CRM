@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useContext } from "react";
+import React, { useState, useEffect, useRef, useContext, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 
 import { DataTable } from "primereact/datatable";
@@ -99,15 +99,36 @@ export const TablaConfigCom = ({
 
   useEffect(() => {
     filterData();
-  }, [globalFilterValue, data]);
+  }, [globalFilterValue, data, ramos, aseguradoras, tipoExpedicionOptions, unidadesNegocio, aplicaSobreOptions]);
+
+  const enrichedData = useMemo(() => {
+    return data.map((item) => {
+      const ramoIds = toArray(item.ramo);
+      const ramoLabels = ramoIds.map((id) => findLabel(ramos, id)).join(", ");
+      const aseguradoraIds = toArray(item.aseguradora);
+      const aseguradoraLabels = aseguradoraIds.map((id) => findLabel(aseguradoras, id)).join(", ");
+      const tipoExpIds = toArray(item.tipo_expedicion);
+      const tipoExpLabels = tipoExpIds.map((id) => findLabel(tipoExpedicionOptions, id)).join(", ");
+      const unidadLabel = findLabel(unidadesNegocio, item.unidad_negocio);
+      const aplicaSobreLabel = findLabel(aplicaSobreOptions, item.aplica_sobre);
+      return {
+        ...item,
+        ramo_labels: ramoLabels,
+        aseguradora_labels: aseguradoraLabels,
+        tipo_expedicion_labels: tipoExpLabels,
+        unidad_negocio_label: unidadLabel,
+        aplica_sobre_label: aplicaSobreLabel,
+      };
+    });
+  }, [data, ramos, aseguradoras, tipoExpedicionOptions, unidadesNegocio, aplicaSobreOptions]);
 
   const filterData = () => {
     if (!globalFilterValue) {
-      setFilteredData(data);
+      setFilteredData(enrichedData);
       return;
     }
 
-    const filtered = data.filter((item) => {
+    const filtered = enrichedData.filter((item) => {
       return Object.values(item).some((value) =>
         String(value).toLowerCase().includes(globalFilterValue.toLowerCase()),
       );
@@ -117,7 +138,8 @@ export const TablaConfigCom = ({
   };
 
   const exportExcel = () => {
-    const worksheet = xlsx.utils.json_to_sheet(filteredData);
+    const exportData = filteredData.map(({ ramo_labels, aseguradora_labels, tipo_expedicion_labels, unidad_negocio_label, aplica_sobre_label, ...rest }) => rest);
+    const worksheet = xlsx.utils.json_to_sheet(exportData);
     const workbook = { Sheets: { data: worksheet }, SheetNames: ["data"] };
     const excelBuffer = xlsx.write(workbook, {
       bookType: "xlsx",
@@ -178,16 +200,22 @@ export const TablaConfigCom = ({
   const globalFilterSettings = [
     "id_param",
     "unidad_negocio",
+    "unidad_negocio_label",
     "aseguradora",
     "ramo",
+    "ramo_labels",
+    "aseguradora_labels",
+    "tipo_expedicion_labels",
     "aplica_sobre",
+    "observaciones",
+    "aplica_sobre_label",
   ];
 
   return (
     <>
       <DataTable
         ref={dt}
-        value={data}
+        value={enrichedData}
         style={{
           textAlign: "center",
           verticalAlign: "middle",
