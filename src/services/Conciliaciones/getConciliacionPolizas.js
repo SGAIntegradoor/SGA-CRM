@@ -62,27 +62,20 @@ const buildQueryMap = (rows = []) => {
   return { byAnexo, byComposite };
 };
 
-const getEstadoConciliacionLabel = (row) => {
-  const source = pickFirstValue([
-    row.estado_conciliacion,
-    row.estado_conciliacion_desc,
-    row.estadoconciliacion,
-  ]);
+const computeEstadoConciliacion = (row) => {
+  const conciliaciones = normalizeArrayField(row.conciliaciones);
+  const primaNeta = Number(String(row.prima_neta_poliza ?? "0").replace(/[^\d.]/g, ""));
 
-  if (source === "N/A") {
+  if (primaNeta <= 0 || conciliaciones.length === 0) {
     return "Pendiente";
   }
 
-  const normalized = normalizeText(source);
-  const states = {
-    1: "Pendiente",
-    2: "Conciliada",
-    pendiente: "Pendiente",
-    conciliada: "Conciliada",
-    conciliado: "Conciliada",
-  };
+  const totalPlanilla = conciliaciones.reduce(
+    (sum, c) => sum + Number(String(c.prima_planilla ?? "0").replace(/[^\d.]/g, "")),
+    0,
+  );
 
-  return states[normalized] || source;
+  return primaNeta - totalPlanilla <= 1000 ? "Conciliada" : "Pendiente";
 };
 
 const formatPercent = (value) => {
@@ -187,7 +180,7 @@ export const getConciliacionPolizas = async (filters) => {
       queryMap.byComposite.get(`${row.id_poliza ?? ""}-${row.anexo ?? ""}`) ||
       {};
 
-    const estadoConciliacion = getEstadoConciliacionLabel(queryRow);
+    const estadoConciliacion = computeEstadoConciliacion(queryRow);
     const isCancellation =
       normalizeText(row.tipo_expedicion) === "cancelacion" ||
       String(row.tipo_certificado ?? "").trim() === "4" ||
@@ -252,14 +245,17 @@ export const getConciliacionPolizas = async (filters) => {
         queryRow.fecha_cancelacion_poliza,
       ]),
       asesor_freelance: pickFirstValue([
-        row.asesor_freelance,
         queryRow.nombre_asesor_freelance,
+        row.nombre_asesor_freelance,
       ]),
       asesor_ganador: pickFirstValue([
         queryRow.nombre_asesor_ganador,
-        row.asesor_ganador,
+        row.nombre_asesor_ganador,
       ]),
-      asesor_10: pickFirstValue([queryRow.nombre_asesor_10, row.asesor_10]),
+      asesor_10: pickFirstValue([
+        queryRow.nombre_asesor_10,
+        row.nombre_asesor_10,
+      ]),
       unidad_negocio: pickFirstValue([
         row.unidad_negocio,
         queryRow.nombre_unidad_negocio,
@@ -277,11 +273,13 @@ export const getConciliacionPolizas = async (filters) => {
         queryRow.no_factura,
         queryRow.factura,
       ]),
-      porcentaje_comision: pickFirstValue([
-        formatPercent(row.porcentaje_comision_pct),
-        formatPercent(queryRow.porcentaje_comision_pct),
-        formatPercent(queryRow.porcentaje_comision),
-      ]),
+      porcentaje_comision: formatPercent(
+        pickFirstValue([
+          row.porcentaje_comision_pct,
+          queryRow.porcentaje_comision_pct,
+          queryRow.porcentaje_comision,
+        ]),
+      ),
       prima_planilla: formatCurrency(
         pickFirstValue([queryRow.prima_planilla, row.prima_sin_iva_asistencia]),
       ),
@@ -289,7 +287,15 @@ export const getConciliacionPolizas = async (filters) => {
         queryRow.fecha_conciliacion,
         queryRow.fecha_conciliado,
       ]),
-      saldo: formatCurrency(pickFirstValue([queryRow.saldo, queryRow.saldo_conciliacion])),
+      saldo: (() => {
+        const primaNeta = Number(String(queryRow.prima_neta_poliza ?? "0").replace(/[^\d.]/g, ""));
+        const totalPlanilla = normalizeArrayField(queryRow.conciliaciones).reduce(
+          (sum, c) => sum + Number(String(c.prima_planilla ?? "0").replace(/[^\d.]/g, "")),
+          0,
+        );
+        const diff = primaNeta - totalPlanilla;
+        return formatCurrency(diff >= 0 ? diff : 0);
+      })(),
       comision_recibida: formatCurrency(
         pickFirstValue([
           queryRow.comision_recibida,
@@ -313,10 +319,12 @@ export const getConciliacionPolizas = async (filters) => {
           const raw = Math.abs(Number(lastConciliacion.porcentaje_comision));
           return Number.isFinite(raw) ? `-${raw}%` : "N/A";
         }
-        return pickFirstValue([
-          formatPercent(queryRow.porcentaje_cancelacion),
-          isCancellation ? formatPercent(row.porcentaje_comision_pct) : null,
-        ]);
+        return formatPercent(
+          pickFirstValue([
+            queryRow.porcentaje_cancelacion,
+            isCancellation ? row.porcentaje_comision_pct : null,
+          ]),
+        );
       })(),
       pago_financieras: formatCurrency(
         pickFirstValue([
