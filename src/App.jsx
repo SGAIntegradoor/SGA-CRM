@@ -12,10 +12,15 @@ import { Clientes } from "./views/Clientes/Clientes";
 import { Polizas } from "./views/Polizas/Registro/RegistroPolizas";
 import { EditarPoliza } from "./views/Polizas/Edicion/EditarPoliza";
 import { Comisiones } from "./views/Comisiones/Comisiones";
+import { LiquidacionFreelance } from "./views/Comisiones/LiquidacionFreelance";
+import { RetomaLiquidacion } from "./views/Comisiones/RetomaLiquidacion";
 import LiquidacionImpresion from "./views/Comisiones/Impresion/LiquidacionImpresion";
 import { Pagos } from "./views/Pagos/Pagos";
 import { AdminNegocios } from "./views/AdminNegocios/AdminNegocios";
 import PdfServicesImpresion from "./views/Comisiones/Impresion/PdfPhp";
+import { ConfigComisiones } from "./views/Comisiones/Configuracion";
+import { Conciliacion } from "./views/Conciliaciones/Consulta/Conciliacion";
+import { RegistroConciliacion } from "./views/Conciliaciones/Registro/RegistroConciliacion";
 
 function App() {
   const [theme, colorMode] = useMode();
@@ -132,11 +137,39 @@ function App() {
                 <Route path="comisiones">
                   <Route index element={<Navigate to="/inicio" />} />
                   <Route
-                    path="liquidacion"
+                    path="liquidacion/internos"
                     element={
                       <Comisiones
                         setLoading={setIsLoading}
                         loading={isLoading}
+                      />
+                    }
+                  />
+                  <Route
+                    path="liquidacion/externos"
+                    element={
+                      <LiquidacionFreelance
+                        setLoading={setIsLoading}
+                        loading={isLoading}
+                      />
+                    }
+                  />
+                  <Route
+                    path="liquidacion/internos/retoma/:idLiquidacion"
+                    element={
+                      <RetomaLiquidacion
+                        setLoading={setIsLoading}
+                        loading={isLoading}
+                      />
+                    }
+                  />
+                  <Route
+                    path="liquidacion/externos/retoma/:idLiquidacion"
+                    element={
+                      <RetomaLiquidacion
+                        setLoading={setIsLoading}
+                        loading={isLoading}
+                        variant="freelance"
                       />
                     }
                   />
@@ -153,6 +186,34 @@ function App() {
                       }
                     />
                   </Route>
+
+                  <Route
+                    path="configuracion"
+                    element={
+                      <ConfigComisiones
+                        setLoading={setIsLoading}
+                        loading={isLoading}
+                        isCollapsed={isCollapsed}
+                      />
+                    }
+                  />
+                </Route>
+                <Route path="conciliacion">
+                  <Route
+                    index
+                    element={
+                      <Conciliacion
+                        setLoading={setIsLoading}
+                        loading={isLoading}
+                      />
+                    }
+                  />
+                  <Route
+                    path="registro"
+                    element={
+                      <RegistroConciliacion />
+                    }
+                  />
                 </Route>
                 <Route path="*" element={<Navigate to="/inicio" />} />
               </Route>

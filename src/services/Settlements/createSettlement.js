@@ -11,8 +11,12 @@ export const createSettlement = async (data) => {
         },
       }
     );
-    return response.data;
+    const payload = response?.data ?? {};
+    return payload?.data ?? payload;
   } catch (error) {
-    return error;
+    return {
+      status: "Error",
+      message: error?.response?.data?.message || error.message,
+    };
   }
 };

@@ -49,12 +49,11 @@ export const CardUser = ({
           onChange("numeroIdentificacion", numeroIdentificacion.value);
           onChange("nombre", nombre.value);
         }
+      } else {
+        onChange("tipoIdentificacion", "");
+        onChange("numeroIdentificacion", "");
+        onChange("nombre", "");
       }
-      // else {
-      //   onChange("tipoIdentificacion", "");
-      //   onChange("numeroIdentificacion", "");
-      //   onChange("nombre", "");
-      // }
     } else if (titulo === "Beneficiario") {
       if (buttonSwitch?.Beneficiario) {
         onChange("tipoIdentificacion", "2"); // NIT por defecto

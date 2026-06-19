@@ -987,7 +987,7 @@ export const Polizas = ({ setLoading, loading }) => {
     });
   };
 
-  const searchProspecto = async (numeroIdentificacion, calledFrom) => {
+  const searchProspecto = async (numeroIdentificacion, tipoIdentificacion, calledFrom) => {
     if (
       numeroIdentificacion == "" ||
       numeroIdentificacion == null ||
@@ -1000,10 +1000,17 @@ export const Polizas = ({ setLoading, loading }) => {
       });
       return;
     }
+    
+    if(tipoIdentificacion == "2" && numeroIdentificacion.length > 9){
+      Swal.fire({
+        icon: "warning",
+        title: "Documento NIT",
+        text: "Por favor complete el campo de documento de identificación con un NIT válido (máximo 9 dígitos) sin dígito de verificación.",
+      });
+      return;
+    }
 
     setCalledFrom(calledFrom);
-    console.log(calledFrom);
-
     setLoading(true);
     setSelectedClientId(null);
     setIsModalOpenCliente(true);
@@ -1463,6 +1470,7 @@ export const Polizas = ({ setLoading, loading }) => {
           searchProspecto={() =>
             searchProspecto(
               datosUsuarios.Tomador.numeroIdentificacion,
+              datosUsuarios.Tomador.tipoIdentificacion,
               "Tomador"
             )
           }
@@ -1483,6 +1491,7 @@ export const Polizas = ({ setLoading, loading }) => {
           searchProspecto={() =>
             searchProspecto(
               datosUsuarios.Asegurado.numeroIdentificacion,
+              datosUsuarios.Asegurado.tipoIdentificacion,
               "Asegurado"
             )
           }

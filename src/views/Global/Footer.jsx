@@ -10,10 +10,10 @@ const colors = tokens(theme.palette.mode);
     <footer className="footer footer-center ml-0 mb-1 mt-4 w-900 xl:ml-2 xl:mr-2 md:w-auto md:mr-1 lg:w-auto p-5 rounded-sm shadow-md" style={{color: colors.gray[100], backgroundColor: colors.gray[700]}}>
       <Box display="flex" flexDirection="row" justifyContent="space-between">
         <div>
-          <strong>CRM SGA - Copyright</strong> © <strong>{new Date().getFullYear()}</strong> Seguros Grupo Asistencia SAS BIC.
+          <strong>SAN - Sistema de Administración de Negocios - Copyright</strong> © <strong>{new Date().getFullYear()}</strong> Seguros Grupo Asistencia SAS BIC.
           Todos los derechos reservados.{" "}
         </div>
-        <div>Versión <strong>1.0.0</strong> - Alpha</div>
+        <div>Versión <strong>1.1.0</strong></div>
       </Box>
     </footer>
   );

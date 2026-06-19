@@ -1,11 +1,12 @@
 import axios from "axios";
 
-export const getAsesoresSGA = async (unidadNegocio = null) => {
+export const getAsesoresSGA = async (unidadNegocio = null, type = "internal") => {
   try {
     const response = await axios.post(
       "/Users/getAllAsesoresSGA",
       {
         unidadNegocio,
+        type,
       },
       {
         headers: {
@@ -14,6 +15,7 @@ export const getAsesoresSGA = async (unidadNegocio = null) => {
       }
     );
     const { data } = response.data.data;
+    
     return data.map((asesorsga) => ({
       value: asesorsga.usu_documento,
       label: asesorsga.usu_nombre + " " + asesorsga.usu_apellido,

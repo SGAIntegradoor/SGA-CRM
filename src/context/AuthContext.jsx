@@ -1,10 +1,10 @@
 import React, { createContext, useState, useEffect, useContext } from "react";
 import { useNavigate } from "react-router-dom";
 import { loginSSO } from "../services/Login/loginSSO";
-import { 
-  getToken, 
-  getUserFromToken, 
-  isAuthenticated as checkAuth, 
+import {
+  getToken,
+  getUserFromToken,
+  isAuthenticated as checkAuth,
   clearSession,
   saveToken,
   getPermissions,
@@ -12,7 +12,7 @@ import {
   hasAnyPermission as checkAnyPermission,
   isTokenExpiringSoon,
   getFormattedTimeRemaining,
-  PERMISSIONS
+  PERMISSIONS,
 } from "../utils/jwtHelper";
 
 export const AuthContext = createContext();
@@ -21,7 +21,7 @@ export const AuthContext = createContext();
 export const useAuth = () => {
   const context = useContext(AuthContext);
   if (!context) {
-    throw new Error('useAuth debe usarse dentro de un AuthProvider');
+    throw new Error("useAuth debe usarse dentro de un AuthProvider");
   }
   return context;
 };
@@ -31,7 +31,7 @@ export const AuthProvider = ({ children }) => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [userData, setUserData] = useState({});
   const [permissions, setPermissions] = useState({});
-  const [tokenTimeRemaining, setTokenTimeRemaining] = useState('');
+  const [tokenTimeRemaining, setTokenTimeRemaining] = useState("");
 
   // Verificar autenticación al cargar
   useEffect(() => {
@@ -65,16 +65,16 @@ export const AuthProvider = ({ children }) => {
     if (isAuthenticated) {
       const updateTime = () => {
         setTokenTimeRemaining(getFormattedTimeRemaining());
-        
+
         // Avisar si el token está por expirar
         if (isTokenExpiringSoon()) {
-          console.warn('El token está por expirar');
+          console.warn("El token está por expirar");
         }
       };
-      
+
       updateTime();
       const interval = setInterval(updateTime, 60000); // Cada minuto
-      
+
       return () => clearInterval(interval);
     }
   }, [isAuthenticated]);
@@ -113,30 +113,32 @@ export const AuthProvider = ({ children }) => {
     if (token) {
       saveToken(token);
     }
-    
+
     // Normalizar la estructura de datos
     // Puede venir como:
     // 1. Login normal: { state, token, userData: {...}, permisos: {...} }
     // 2. SSO (decoded token): { id_usuario, nombre, permisos: {...} }
-    
+
     let normalizedUserData;
     let normalizedPermisos;
-    
+
     // Si tiene userData anidado (viene del login normal)
     if (responseData?.userData) {
       normalizedUserData = {
         id_usuario: responseData.userData.id_usuario,
         nombre: responseData.userData.nombre,
         apellido: responseData.userData.apellido,
-        usuario: responseData.userData.usuario,
+        usuario: responseData.usuario,
+        documento: responseData.userData.documento,
         foto: responseData.userData.usu_foto,
         id_rol: responseData.userData.id_rol,
         id_intermediario: responseData.userData.id_intermediario,
         id_cargo: responseData.userData.id_cargo,
         descripcion_cargo: responseData.userData.descripcion_cargo,
       };
-      normalizedPermisos = responseData.permisos || responseData.userData.permisos || {};
-    } 
+      normalizedPermisos =
+        responseData.permisos || responseData.userData.permisos || {};
+    }
     // Si tiene id_usuario directo (viene del SSO/token decodificado)
     else if (responseData?.id_usuario) {
       normalizedUserData = {
@@ -144,6 +146,7 @@ export const AuthProvider = ({ children }) => {
         nombre: responseData.nombre,
         apellido: responseData.apellido,
         usuario: responseData.usuario,
+        documento: responseData.documento,
         foto: responseData.foto,
         id_rol: responseData.id_rol,
         id_intermediario: responseData.id_intermediario,
@@ -154,16 +157,16 @@ export const AuthProvider = ({ children }) => {
     }
     // Fallback: intentar obtener del token
     else {
-      console.log(responseData)
+      //console.log(responseData);
       const tokenData = getUserFromToken();
       normalizedUserData = tokenData || responseData;
       normalizedPermisos = tokenData?.permisos || {};
     }
-    
+
     localStorage.setItem("logged", true);
     localStorage.setItem("userData", JSON.stringify(normalizedUserData));
     localStorage.setItem("permisos", JSON.stringify(normalizedPermisos));
-    
+
     setUserData(normalizedUserData);
     setPermissions(normalizedPermisos);
     setIsAuthenticated(true);
@@ -204,19 +207,19 @@ export const AuthProvider = ({ children }) => {
 
   return (
     <AuthContext.Provider
-      value={{ 
-        isAuthenticated, 
-        login, 
-        logout, 
-        isLogged, 
-        loggedData, 
+      value={{
+        isAuthenticated,
+        login,
+        logout,
+        isLogged,
+        loggedData,
         loginWithSSO,
         hasPermission,
         hasAnyPermission,
         getUserPermissions,
         permissions,
         tokenTimeRemaining,
-        PERMISSIONS
+        PERMISSIONS,
       }}
     >
       {children}

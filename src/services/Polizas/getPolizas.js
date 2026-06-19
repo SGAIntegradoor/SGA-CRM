@@ -19,6 +19,7 @@ export const getPolizas = async (dataFilters) => {
     0: "Por liquidar",
     1: "Liquidada",
     2: "Cancelada",
+    4: "Borrador"
   };
 
   const ALLOW_RAMOS_PLACA = [1, 7, 8, 11, 14, 15, 22, 24, 25, 26, 27, 30, 31];
@@ -167,31 +168,75 @@ export const getPolizas = async (dataFilters) => {
   //   pctStr: string tal cual (p.ej. "0.070") que representa 0.07%
   //   pctNum: número en unidades de % (0.07 significa 0.07%)
   //   pctFrac: fracción para multiplicar la base (0.07% = 0.0007)
+  //
+  // Prioridad:
+  //   1. Comisión con ramo "Todos" (aplica a cualquier ramo) que coincida en tipo_expedicion y unidad_negocio
+  //   2. Comisión con ramo específico que coincida en tipo_expedicion y unidad_negocio
+  //   3. Igual sin filtro de unidad_negocio (fallback si no hay unidad)
   const selectComision = (
     comisiones = [],
     ramoPolizaNombre,
-    tipoCertificadoNombre
+    tipoCertificadoNombre,
+    unidadNegocioNombre = null   // ej. "Directo", "Asesor 10", "Asesor Ganador", "Freelance"
   ) => {
     const tipoPoliza = norm(tipoCertificadoNombre); // ej. "nueva"
-    // console.log(tipoPoliza)
-    const ramoPolizaCanon = canonizeRamo(ramoPolizaNombre); // ej. "autos"
-    // console.log(ramoPolizaCanon)
+    const ramoPolizaCanon = canonizeRamo(ramoPolizaNombre); // ej. "pesados"
 
-    const match = (comisiones || []).find((c) => {
+    // Mapeo de nombres internos -> posibles nombres en las comisiones
+    const unidadNegocioAliases = {
+      "directo":        ["negocio directo", "directo"],
+      "freelance":      ["freelance", "asesor freelance"],
+      "asesor 10":      ["asesor 10"],
+      "asesor ganador": ["asesor ganador"],
+    };
+    const unidadNorm = unidadNegocioNombre ? norm(unidadNegocioNombre) : null;
+    const unidadAliases = unidadNorm
+      ? (unidadNegocioAliases[unidadNorm] ?? [unidadNorm])
+      : null;
+
+    const tipoOk = (c) => {
       const tiposC = parseListFromJsonish(c?.tipo_expedicion).map(norm);
-      const tipoOk =
-        tiposC.length > 0
-          ? tiposC.includes(tipoPoliza)
-          : norm(c?.tipo_expedicion) === tipoPoliza;
-      if (!tipoOk) return false;
+      return tiposC.length > 0
+        ? tiposC.includes(tipoPoliza)
+        : norm(c?.tipo_expedicion) === tipoPoliza;
+    };
 
+    const unidadOk = (c) => {
+      if (!unidadAliases) return true; // sin filtro de unidad
+      const unidadesC = parseListFromJsonish(c?.unidad_negocio).map(norm);
+      if (unidadesC.length === 0) return true; // comisión sin restricción de unidad
+      return unidadesC.some((u) => unidadAliases.includes(u));
+    };
+
+    const esTodos = (c) => {
+      const ramsC = parseListFromJsonish(c?.ramo).map(norm);
+      return ramsC.some((r) => r === "todos");
+    };
+
+    const esRamoEspecifico = (c) => {
       const ramsC = parseListFromJsonish(c?.ramo).map((x) => canonizeRamo(x));
-      console.log(ramsC);
+      return ramsC.length > 0 && ramsC.some((canon) => canon === ramoPolizaCanon);
+    };
 
-      if (ramsC.length === 0) return false;
+    const lista = comisiones || [];
 
-      return ramsC.some((canon) => canon === ramoPolizaCanon);
-    });
+    // 1. "Todos" + tipo_expedicion coincide + unidad_negocio coincide
+    let match = lista.find((c) => tipoOk(c) && unidadOk(c) && esTodos(c));
+
+    // 2. Ramo específico + tipo_expedicion coincide + unidad_negocio coincide
+    if (!match) {
+      match = lista.find((c) => tipoOk(c) && unidadOk(c) && esRamoEspecifico(c));
+    }
+
+    // 3. Fallback sin filtro de unidad: "Todos" + tipo_expedicion
+    if (!match) {
+      match = lista.find((c) => tipoOk(c) && esTodos(c));
+    }
+
+    // 4. Fallback sin filtro de unidad: ramo específico + tipo_expedicion
+    if (!match) {
+      match = lista.find((c) => tipoOk(c) && esRamoEspecifico(c));
+    }
 
     if (!match) return { pctStr: "0", pctNum: 0, pctFrac: 0 };
 
@@ -210,6 +255,15 @@ export const getPolizas = async (dataFilters) => {
 
     const lista = Array.isArray(data?.data) ? data.data : [];
 
+    if (lista.length === 0) {
+      return {
+        codStatus: 404,
+        message: "No se encontraron polizas",
+        error: true,
+        data: [],
+      };
+    }
+
     // ====== Mapa del anexo 0 (NUEVA) por póliza, con % realmente usado ======
     const basePorPoliza = new Map();
     for (const p of lista) {
@@ -223,10 +277,18 @@ export const getPolizas = async (dataFilters) => {
             : String(p.ramo_poliza);
 
         // % que aplica a la “Nueva”
+        const unidadNegocioNombre0 = {
+          1: "Freelance",
+          2: "Directo",
+          3: "Asesor 10",
+          4: "Asesor Ganador",
+        }[Number(p.unidad_negocio_poliza)] || null;
+
         const { pctStr, pctNum, pctFrac } = selectComision(
           p.comisiones,
           ramoNombre0,
-          "Nueva"
+          "Nueva",
+          unidadNegocioNombre0
         );
 
         const prima0 = Number(p?.prima_neta_poliza ?? 0);
@@ -286,6 +348,16 @@ export const getPolizas = async (dataFilters) => {
 
       const key = String(poliza?.id_poliza ?? "");
 
+      // Unidad de negocio de esta póliza (para filtrar comisiones correctas)
+      const unidadNegocioMap = {
+        1: "Freelance",
+        2: "Directo",
+        3: "Asesor 10",
+        4: "Asesor Ganador",
+      };
+      const unidadNegocioNombre =
+        unidadNegocioMap[Number(poliza.unidad_negocio_poliza)] || null;
+
       // Base del renglón actual
       const primaNeta = Number(
         poliza.ramo_poliza != 6
@@ -298,7 +370,7 @@ export const getPolizas = async (dataFilters) => {
       const base = primaNeta + asist;
 
       // === Porcentaje a usar ===
-      // - Modificación y Cancelación deben usar el % de “Nueva”
+      // - Modificación y Cancelación deben usar el % de "Nueva"
       // - Para Cancelación, si existe el anexo 0, usamos exactamente el % del anexo 0 (lo realmente aplicado)
       let pctStr, pctNum, pctFrac;
 
@@ -309,8 +381,8 @@ export const getPolizas = async (dataFilters) => {
           pctNum = baseInfo.pctNum0;
           pctFrac = baseInfo.pctFrac0;
         } else {
-          // Fallback: buscar comisión usando regla de “Nueva”
-          const sel = selectComision(poliza.comisiones, ramoNombre, "Nueva");
+          // Fallback: buscar comisión usando regla de "Nueva"
+          const sel = selectComision(poliza.comisiones, ramoNombre, "Nueva", unidadNegocioNombre);
           pctStr = sel.pctStr;
           pctNum = sel.pctNum;
           pctFrac = sel.pctFrac;
@@ -320,7 +392,8 @@ export const getPolizas = async (dataFilters) => {
         const sel = selectComision(
           poliza.comisiones,
           ramoNombre,
-          tipoParaComision
+          tipoParaComision,
+          unidadNegocioNombre
         );
         pctStr = sel.pctStr;
         pctNum = sel.pctNum;
@@ -432,11 +505,40 @@ export const getPolizas = async (dataFilters) => {
         valor_comision: valorComisionStr,
 
         estado_liquidacion:
-          estados_por_liquidar[Number(poliza.ya_liquidada_para_usuario)] ||
-          "Desconocido",
-        seleccionado: Number(poliza.seleccionada_poliza) === 1,
+          Number(poliza.ya_liquidada_para_usuario) !== 1
+            ? "Por liquidar"
+            : poliza.estado_liquidacion_real === "Borrador"
+              ? "Borrador"
+              : poliza.estado_liquidacion_real === "Por pagar"
+                ? "Por pagar"
+                : poliza.estado_liquidacion_real === "Pagada"
+                  ? "Liquidada"
+                  : poliza.estado_liquidacion_real === "Anulada"
+                    ? "Por liquidar"
+                    : estados_por_liquidar[Number(poliza.ya_liquidada_para_usuario)] ||
+                      "Desconocido",
+        seleccionado:
+          poliza.estado_liquidacion_real === "Anulada"
+            ? false
+            : Number(poliza.seleccionada_poliza) === 1,
         ya_liquidada_para_usuario:
-          Number(poliza.ya_liquidada_para_usuario) === 1,
+          poliza.estado_liquidacion_real === "Anulada"
+            ? 0
+            : Number(poliza.ya_liquidada_para_usuario) === 1,
+
+        analista_comercial: poliza.analista_comercial || "N/A",
+        id_liquidacion:
+          Number(poliza.ya_liquidada_para_usuario) === 1 && poliza.id_liquidacion
+            ? poliza.id_liquidacion
+            : "N/A",
+        fecha_generacion_liquidacion:
+          poliza.estado_liquidacion_real === "Anulada"
+            ? "-"
+            : poliza.pal_fecha_usuario || "-",
+        fecha_pago_liquidacion:
+          poliza.estado_liquidacion_real === "Anulada"
+            ? "-"
+            : poliza.pal_fecha_pago_usuario || "-",
 
         // % que se usó para calcular
         porcentaje_comision_decimal: pctStr,

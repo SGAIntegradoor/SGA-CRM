@@ -5,6 +5,7 @@ export const TableDirectos = ({
   data = [],
   classname = "",
   onRowsChange,
+  onRemoveRow,
   readOnly = false,
   headerColor = "",
   title = "",
@@ -131,6 +132,20 @@ export const TableDirectos = ({
     const isTotal = lower.includes("total comisión");
     const isBase = lower.includes("prima sin iva + asistencia");
     const isUnidadNegocio = lower.includes("unidad de negocio");
+    const isAction = lower.includes("acción") || lower.includes("accion");
+
+    if (isAction) {
+      return (
+        <button
+          type="button"
+          className="bg-red-600 text-white px-2 py-1 rounded hover:bg-red-700 text-[11px]"
+          onClick={() => onRemoveRow?.(row)}
+          disabled={readOnly}
+        >
+          Quitar
+        </button>
+      );
+    }
 
     if (isPct) {
       const disabledPct =
@@ -201,9 +216,9 @@ export const TableDirectos = ({
 
       <tbody>
         {rows.map((row, rowIndex) => (
-          <tr key={rowIndex} className="border-gray-300 border-[1.5px]">
+          <tr key={rowIndex} className="border-gray-300 border-[1.5px] w-[80px]">
             {headers.map((header, cellIndex) => (
-              <td key={cellIndex} className="border-gray-300 border-[1.5px] text-center text-[12px]">
+              <td key={cellIndex} className="border-gray-300 border-[1.5px] text-center text-[12px] w-[70px]">
                 {renderCell(row, header, rowIndex)}
               </td>
             ))}
