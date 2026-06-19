@@ -12,7 +12,7 @@ import { AuthProvider } from "./context/AuthContext.jsx";
 import NavProvider from "./context/NavContext.jsx";
 
 
-axios.defaults.baseURL = "https://grupoasistencia.com/API_STAGE"; // Configura la URL base para las solicitudes HTTP
+axios.defaults.baseURL = "https://grupoasistencia.com/API"; // Configura la URL base para las solicitudes HTTP
 // axios.defaults.baseURL = "http://localhost/IntegradoorQAS/API"; // Configura la URL base para las solicitudes HTTP
 
 ReactDOM.createRoot(document.getElementById("root")).render(
