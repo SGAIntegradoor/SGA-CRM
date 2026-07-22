@@ -1,4 +1,4 @@
-import { useState, useEffect, useContext } from "react";
+import { useState, useEffect, useContext, useRef } from "react";
 import { Box } from "@mui/material";
 import Select from "react-select";
 import { NavContext } from "../../context/NavContext";
@@ -44,6 +44,7 @@ export const Comisiones = ({ setLoading, loading }) => {
   const [usuariosInput, setUsuariosInput] = useState([]);
   const [ramos, setRamos] = useState([]);
   const [tiposExpedicion, setTiposExpedicion] = useState([]);
+  const initialLoadDone = useRef(false);
 
   const handlerLoadUnidadesNegocio = async () => {
     try {
@@ -125,8 +126,15 @@ export const Comisiones = ({ setLoading, loading }) => {
       Swal.fire("Error", "Debe seleccionar un usuario", "warning");
       return;
     }
+    if (
+      formStates.unidadnegocio === "" &&
+      formStates.usuario !== "67038128" &&
+      formStates.usuario !== "66830224" &&
+      formStates.usuario !== "1109662966" &&
+      formStates.usuario !== "1192918480" 
+      // formStates.usuario !== "1109187804" 
 
-    if (formStates.unidadnegocio === "" && formStates.usuario !== "67038128") {
+    ) {
       Swal.fire("Aviso", "Debe seleccionar una unidad de negocio", "warning");
       return;
     }
@@ -192,11 +200,13 @@ export const Comisiones = ({ setLoading, loading }) => {
         await Promise.all([
           handlerLoadUnidadesNegocio(),
           handlerLoaderAseguradoras(),
-          handlerLoadFilterUsuarios(null),
           handlerLoadRamo(),
           handlerLoadTiposExpedicion(),
           handlerGetLiqAdmin(),
         ]);
+        // asesores se cargan una sola vez, ya con unidad de negocio lista
+        await handlerLoadFilterUsuarios(null);
+        initialLoadDone.current = true;
       } catch (error) {
         console.error("Error en la carga inicial", error);
       } finally {
@@ -212,6 +222,7 @@ export const Comisiones = ({ setLoading, loading }) => {
   }, [reloadScreen]);
 
   useEffect(() => {
+    if (!initialLoadDone.current) return; // evita doble carga durante el mount inicial
     handlerLoadFilterUsuarios(formStates.unidadnegocio || null);
     setSelectedPolizas([]);
     setPolizas([]);
@@ -743,7 +754,7 @@ export const Comisiones = ({ setLoading, loading }) => {
                       setFormStates((prev) => ({
                         ...prev,
                         fechainiciovigdesde: value,
-                       // fechafinvighasta: lastDayStr,
+                        // fechafinvighasta: lastDayStr,
                       }));
                     } else {
                       setFormStates((prev) => ({
@@ -773,7 +784,7 @@ export const Comisiones = ({ setLoading, loading }) => {
                       setFormStates((prev) => ({
                         ...prev,
                         fechafinvighasta: lastDayStr,
-                       // fechainiciovigdesde: firstDayStr,
+                        // fechainiciovigdesde: firstDayStr,
                       }));
                     } else {
                       setFormStates((prev) => ({

@@ -11,11 +11,9 @@ export default function PdfServicesImpresion() {
   const [numAseguradoras, setNumAseguradoras] = useState(null);
   const pdfRef = useRef(null);
 
-
   const handleLoading = async (id) => {
     const res = await pdfServices(id);
-    setNumAseguradoras(res?.numAseguradoras ?? null);
-    setLiquidacion(res.html ?? "");
+    setLiquidacion(res.data ?? "");
   }
 
   const addDynamicPageBreaks = (htmlString) => {
@@ -192,114 +190,16 @@ export default function PdfServicesImpresion() {
     return doc.body.innerHTML;
   };
 
-  //   const openPdfPreviewWindow = async () => {
-  //     if (!liquidacion || !pdfRef.current) return;
-
-  //     const previewWindow = window.open("", "_blank");
-
-  //     if (!previewWindow) {
-  //       alert("El navegador bloqueó la ventana emergente del PDF.");
-  //       return;
-  //     }
-
-  //     previewWindow.document.write(`
-  //       <html>
-  //         <head>
-  //           <title>Vista previa PDF</title>
-  //         </head>
-  //         <body style="font-family: sans-serif; margin: 16px;">
-  //           Generando vista previa...
-  //         </body>
-  //       </html>
-  //     `);
-
-  //     previewWindow.document.close();
-
-  //     try {
-  //       if (document.fonts && document.fonts.ready) {
-  //         await document.fonts.ready;
-  //       }
-
-  //       const pdfBlob = await html2pdf()
-  //         .set({
-  //           margin: [11.176, 0, 0, 0],
-  //           filename: "cotizacion.pdf",
-  //           image: {
-  //             type: "jpeg",
-  //             quality: 0.98,
-  //           },
-  //           html2canvas: {
-  //             scale: 1.5,
-  //             useCORS: true,
-  //             allowTaint: false,
-  //             scrollX: 0,
-  //             scrollY: 0,
-  //             windowWidth: pdfRef.current.offsetWidth,
-  //             width: pdfRef.current.offsetWidth,
-  //             height: pdfRef.current.scrollHeight,
-  //             backgroundColor: "#ffffff",
-  //             logging: false,
-
-  //             onclone: (clonedDoc) => {
-  //               const style = clonedDoc.createElement("style");
-
-  //               style.innerHTML = `
-  //                 .pdf-print-root {
-  //                     background: #ffffff !important;
-  //                     overflow: visible !important;
-  //                 }
-
-  //                 .pdf-print-root * {
-  //                     box-sizing: border-box !important;
-  //                 }
-
-  //                 .pdf-print-root img {
-  //                     display: inline-block !important;
-  //                 }
-  //                 `;
-
-  //               clonedDoc.head.appendChild(style);
-  //             },
-  //           },
-  //           jsPDF: {
-  //             unit: "mm",
-  //             format: "a3",
-  //             orientation: "landscape",
-  //           },
-  //           pagebreak: {
-  //             mode: ["css", "legacy"],
-  //             before: ".page-break",
-  //           },
-  //         })
-  //         .from(pdfRef.current)
-  //         .toPdf()
-  //         .outputPdf("blob");
-
-  //       const blobUrl = URL.createObjectURL(pdfBlob);
-  //       previewWindow.location.href = blobUrl;
-
-  //       previewWindow.addEventListener(
-  //         "beforeunload",
-  //         () => URL.revokeObjectURL(blobUrl),
-  //         { once: true },
-  //       );
-  //     } catch (error) {
-  //       previewWindow.document.body.innerHTML =
-  //         "No se pudo generar la vista previa del PDF.";
-
-  //       console.error("Error generando vista previa con html2pdf:", error);
-  //     }
-  //   };
-
   const openPdfPreviewWindow = async () => {
     if (!liquidacion) return;
-
     const printWindow = window.open("", "_blank");
-
+    let scope = numAseguradoras > 3 ? "landscape" : "portrait";
     if (!printWindow) {
       alert("El navegador bloqueó la ventana emergente.");
       return;
     }
+
+    console.log("Liquidacion:", liquidacion);
 
     printWindow.document.open();
 
@@ -310,7 +210,7 @@ export default function PdfServicesImpresion() {
         <title>Cotización</title>
         <style>
           @page {
-            size: A3 landscape;
+            size: A3 ${scope};
             margin: 11.176mm 0 0 0;
           }
 
@@ -357,7 +257,8 @@ export default function PdfServicesImpresion() {
       if (!id) return;
 
       const res = await pdfServices(id);
-      setLiquidacion(addDynamicPageBreaks(res ?? ""));
+      setNumAseguradoras(res.ofertas);
+      setLiquidacion(addDynamicPageBreaks(res.data ?? ""));
     };
 
     getLiquidacion();

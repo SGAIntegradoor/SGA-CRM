@@ -170,7 +170,7 @@ export const getPolizasExternos = async (dataFilters) => {
   const selectComision = (
     comisiones = [],
     ramoPolizaNombre,
-    tipoCertificadoNombre
+    tipoCertificadoNombre,
   ) => {
     const tipoPoliza = norm(tipoCertificadoNombre); // ej. "nueva"
     // console.log(tipoPoliza)
@@ -204,7 +204,7 @@ export const getPolizasExternos = async (dataFilters) => {
     const { data } = await axios.post(
       "/Policy/retrievePolizasExternos",
       { dataFilters },
-      { headers: { "Content-Type": "application/json" } }
+      { headers: { "Content-Type": "application/json" } },
     );
 
     const lista = Array.isArray(data?.data) ? data.data : [];
@@ -225,7 +225,7 @@ export const getPolizasExternos = async (dataFilters) => {
         const { pctStr, pctNum, pctFrac } = selectComision(
           p.comisiones,
           ramoNombre0,
-          "Nueva"
+          "Nueva",
         );
 
         const prima0 = Number(p?.prima_neta_poliza ?? 0);
@@ -287,11 +287,12 @@ export const getPolizasExternos = async (dataFilters) => {
 
       // Base del renglón actual
       const primaNeta = Number(
-        poliza.ramo_poliza != 6
-          ? poliza.prima_neta_poliza ?? 0
-          : poliza.ramo_poliza == 6
-          ? poliza.valor_asistencia_aviajes ?? 0
-          : poliza.prima_neta_poliza ?? 0
+        //poliza.ramo_poliza != 6
+        //?
+        poliza.prima_neta_poliza ?? 0,
+        // : poliza.ramo_poliza == 6
+        // ? poliza.valor_asistencia_aviajes ?? 0
+        // : poliza.prima_neta_poliza ?? 0
       );
       const asist = Number(poliza.asistencias_otros_poliza ?? 0);
       const base = primaNeta + asist;
@@ -319,7 +320,7 @@ export const getPolizasExternos = async (dataFilters) => {
         const sel = selectComision(
           poliza.comisiones,
           ramoNombre,
-          tipoParaComision
+          tipoParaComision,
         );
         pctStr = sel.pctStr;
         pctNum = sel.pctNum;
@@ -345,14 +346,21 @@ export const getPolizasExternos = async (dataFilters) => {
         : null;
 
       const resolveAsesorNombre = (docNumber) => {
-        if (docNumber == null || docNumber === "" || docNumber === "N/A") return "N/A";
-        if (sgaDoc && String(sgaDoc).trim() === String(docNumber).trim() && sgaNombre) {
+        if (docNumber == null || docNumber === "" || docNumber === "N/A")
+          return "N/A";
+        if (
+          sgaDoc &&
+          String(sgaDoc).trim() === String(docNumber).trim() &&
+          sgaNombre
+        ) {
           return sgaNombre;
         }
         return docNumber;
       };
 
-      const nombreAsesorFreelance = resolveAsesorNombre(poliza.asesor_freelance);
+      const nombreAsesorFreelance = resolveAsesorNombre(
+        poliza.asesor_freelance,
+      );
       const nombreAsesor10 = resolveAsesorNombre(poliza.asesor_10);
       const nombreAsesorGanador = resolveAsesorNombre(poliza.asesor_ganador);
 
@@ -390,11 +398,11 @@ export const getPolizasExternos = async (dataFilters) => {
           aseguradoras[Number(poliza.aseguradora_poliza)] || "Desconocido",
         asegurado: poliza.nombre_completo_asegurado,
         identificacion_asegurado: poliza.numero_documento_asegurado,
-        
+
         // Datos del tomador
         nombre_tomador: poliza.nombre_completo_tomador || "N/A",
         documento_tomador: poliza.numero_documento_tomador || "N/A",
-        
+
         placa: ALLOW_RAMOS_PLACA.includes(Number(poliza.ramo_poliza))
           ? poliza.placa_veh_poliza || "N/A"
           : "N/A",
@@ -403,10 +411,12 @@ export const getPolizasExternos = async (dataFilters) => {
         // Valores financieros separados
         asistencia: formatCOP(Number(poliza.asistencias_otros_poliza ?? 0)),
         prima_neta: formatCOP(Number(poliza.prima_neta_poliza ?? 0)),
-        gastos_expedicion: formatCOP(Number(poliza.gastos_expedicion_poliza ?? 0)),
+        gastos_expedicion: formatCOP(
+          Number(poliza.gastos_expedicion_poliza ?? 0),
+        ),
         iva: formatCOP(Number(poliza.iva_poliza ?? 0)),
         valor_total: formatCOP(Number(poliza.valor_total_poliza ?? 0)),
-        
+
         // Vigencia
         fecha_inicio_vigencia: poliza.fecha_inicio_vig_poliza || "N/A",
         fecha_fin_vigencia: poliza.fecha_fin_vig_poliza || "N/A",
@@ -419,15 +429,16 @@ export const getPolizasExternos = async (dataFilters) => {
 
         forma_de_pago:
           formas_pago[Number(poliza.forma_pago_poliza)] || "Desconocido",
-        
+
         // Unidad de negocio y financiación
-        unidad_negocio: unidadesNegocio[Number(poliza.unidad_negocio_poliza)] || "N/A",
+        unidad_negocio:
+          unidadesNegocio[Number(poliza.unidad_negocio_poliza)] || "N/A",
         financiera: financieras[Number(poliza.financiada_por)] || "N/A",
         cuotas: poliza.no_cuotas || "0",
-        
+
         // Estado cartera (basado en liquidación)
         estado_cartera: Number(poliza.liquidada) === 1 ? "Pagada" : "Pendiente",
-        
+
         // Observaciones
         observaciones: poliza.observaciones_gstn_comercial || "N/A",
 
@@ -440,10 +451,13 @@ export const getPolizasExternos = async (dataFilters) => {
         valor_a_reversar: valorAReversarStr,
         valor_comision: valorComisionStr,
         id_liquidacion:
-          Number(poliza.ya_liquidada_para_usuario) === 1 && poliza.id_liquidacion
+          Number(poliza.ya_liquidada_para_usuario) === 1 &&
+          poliza.id_liquidacion
             ? poliza.id_liquidacion
             : "N/A",
-        valor_comision_freelance: poliza.pal_valor_usuario ? formatCOP(poliza.pal_valor_usuario) : "N/A",
+        valor_comision_freelance: poliza.pal_valor_usuario
+          ? formatCOP(poliza.pal_valor_usuario)
+          : "N/A",
         fecha_generacion_liquidacion:
           poliza.estado_liquidacion_real === "Anulada"
             ? "-"
@@ -463,8 +477,9 @@ export const getPolizasExternos = async (dataFilters) => {
                   ? "Liquidada"
                   : poliza.estado_liquidacion_real === "Anulada"
                     ? "Por liquidar"
-                    : estados_por_liquidar[Number(poliza.ya_liquidada_para_usuario)] ||
-                      "Desconocido",
+                    : estados_por_liquidar[
+                        Number(poliza.ya_liquidada_para_usuario)
+                      ] || "Desconocido",
         seleccionado:
           poliza.estado_liquidacion_real === "Anulada"
             ? false

@@ -105,7 +105,7 @@ export const TablePagosLiq = ({
 
 
   const navigateToLiquidacion = (id_liquidacion) => {
-    const url = `/crm1/comisiones/liquidacion/impresion?id_liquidacion=${id_liquidacion}`;
+    const url = `/crm/comisiones/liquidacion/impresion?id_liquidacion=${id_liquidacion}`;
     window.open(url, "_blank");
   }
 

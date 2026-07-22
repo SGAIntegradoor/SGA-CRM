@@ -360,11 +360,12 @@ export const getPolizas = async (dataFilters) => {
 
       // Base del renglón actual
       const primaNeta = Number(
-        poliza.ramo_poliza != 6
-          ? poliza.prima_neta_poliza ?? 0
-          : poliza.ramo_poliza == 6
-          ? poliza.valor_asistencia_aviajes ?? 0
-          : poliza.prima_neta_poliza ?? 0
+        // poliza.ramo_poliza != 6
+        //   ? 
+          poliza.prima_neta_poliza ?? 0
+          // : poliza.ramo_poliza == 6
+          // ? poliza.valor_asistencia_aviajes ?? 0
+          // : poliza.prima_neta_poliza ?? 0
       );
       const asist = Number(poliza.asistencias_otros_poliza ?? 0);
       const base = primaNeta + asist;
