@@ -193,13 +193,13 @@ export default function PdfServicesImpresion() {
   const openPdfPreviewWindow = async () => {
     if (!liquidacion) return;
     const printWindow = window.open("", "_blank");
-    let scope = numAseguradoras > 3 ? "landscape" : "portrait";
+    let orientation = numAseguradoras > 3 ? "landscape" : "portrait";
     if (!printWindow) {
       alert("El navegador bloqueó la ventana emergente.");
       return;
     }
 
-    console.log("Liquidacion:", liquidacion);
+    // console.log("Liquidacion:", liquidacion);
 
     printWindow.document.open();
 
@@ -210,7 +210,7 @@ export default function PdfServicesImpresion() {
         <title>Cotización</title>
         <style>
           @page {
-            size: A3 ${scope};
+            size: ${orientation == "landscape" ? "carta landscape" : "A4 portrait"};
             margin: 11.176mm 0 0 0;
           }
 
