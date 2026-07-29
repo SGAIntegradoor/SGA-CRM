@@ -681,7 +681,7 @@ export const LiquidacionFreelance = ({ setLoading, loading }) => {
           retenciones={retcn}
           isLoading={loading}
           setIsLoading={setLoading}
-          handleReloadPolizas={handlerLoadPolizasFreelance}
+         // handleReloadPolizas={handlerLoadPolizasFreelance}
           handlerCleanModal={handlerCleanModal}
           onRemovePoliza={handleRemovePolizaFromModal}
           from={1}

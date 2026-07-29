@@ -310,7 +310,7 @@ const ModalLiquidacionesFreelance = ({
   smmlv,
   selectedPolizas,
   setIsLoading,
-  handleReloadPolizas,
+  //handleReloadPolizas,
   handlerCleanModal,
   mode = "create",
   settlementId = null,
