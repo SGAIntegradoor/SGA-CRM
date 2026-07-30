@@ -185,13 +185,20 @@ const getTaxRate = (unitRole) =>
   unitRole === "asesor10" ? 0 : DEFAULT_TAX_RATE;
 
 const buildFreelanceRow = (row, index, unitRole, participationPctDefault) => {
-  const { gaCommissionPct: resolvedGAPct, aplica_sobre } = resolveGACommission(row);
+  const { gaCommissionPct: resolvedGAPct, aplica_sobre: resolvedAplicaSobre } =
+    resolveGACommission(row);
+  // El backend ya resuelve aplica_sobre y la prima calculada segun la config
+  // (configuracion_com_ramos); si vienen, mandan sobre el calculo local.
+  const aplica_sobre = Number(row.aplica_sobre) || resolvedAplicaSobre;
   const primaSinIva = Math.round(
     toNumberCOP(
       row.prima_neta_raw ?? row.prima_neta ?? row.prima_sin_iva_asistencia ?? 0,
     ),
   );
-  const base = getBaseForCommission(row, aplica_sobre);
+  const base =
+    row.valor_prima_sin_iva != null
+      ? Math.round(toNumberCOP(row.valor_prima_sin_iva))
+      : getBaseForCommission(row, aplica_sobre);
 
   const gaCommissionPct = (unitRole === "asesorGanador" || unitRole === "asesor10") ? 100 : resolvedGAPct;
 
@@ -310,7 +317,7 @@ const ModalLiquidacionesFreelance = ({
   smmlv,
   selectedPolizas,
   setIsLoading,
-  //handleReloadPolizas,
+  handleReloadPolizas,
   handlerCleanModal,
   mode = "create",
   settlementId = null,
@@ -419,7 +426,7 @@ const ModalLiquidacionesFreelance = ({
 
   const summary = useMemo(() => {
     const totalPrimas = activeRows.reduce(
-      (acc, row) => acc + toSafeNumber(row.prima_sin_iva_num),
+      (acc, row) => acc + toSafeNumber(row.base_calculo ?? row.prima_sin_iva_num),
       0,
     );
     const negociosNuevos = activeRows.filter(isNewBusiness).length;
@@ -612,7 +619,11 @@ const ModalLiquidacionesFreelance = ({
       );
     }
 
-    const totPrima = tableRows.reduce((acc, r) => acc + r.prima_sin_iva_num, 0);
+    // Debe cuadrar con lo que muestra la columna "Prima sin IVA" (base_calculo)
+    const totPrima = tableRows.reduce(
+      (acc, r) => acc + toSafeNumber(r.base_calculo ?? r.prima_sin_iva_num),
+      0,
+    );
     const totGA = tableRows.reduce((acc, r) => acc + r.ga_commission_value, 0);
     const totImp = tableRows.reduce((acc, r) => acc + r.impuestos_value, 0);
     const totNeta = tableRows.reduce(
@@ -697,7 +708,7 @@ const ModalLiquidacionesFreelance = ({
                   {row.placa || "N/A"}
                 </td>
                 <td className="border border-gray-300 px-2 py-2 text-right">
-                  {formatCOP(row.prima_sin_iva_num)}
+                  {formatCOP(row.base_calculo ?? row.prima_sin_iva_num)}
                 </td>
                 <td className="border border-gray-300 px-2 py-1 text-center">
                   <div className="inline-flex items-center rounded border border-gray-300 bg-white px-1 py-1">
