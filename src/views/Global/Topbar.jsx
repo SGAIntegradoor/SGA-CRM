@@ -57,7 +57,14 @@ export const Topbar = ({ isCollapsed, setIsCollapsed }) => {
         </IconButton>
       </Box>
       {/* Icon Buttonss */}
-      <Box display="flex">
+      <Box display="flex" alignItems="center" gap="12px">
+        <a
+          id="btnVolverIntegradoor"
+          href="https://integradoor.com/app/"
+          className="flex items-center rounded-md bg-lime-9000 h-[35px] px-4 text-sm font-semibold text-white transition duration-300 ease-in-out hover:bg-lime-600"
+        >
+          Volver a Integradoor
+        </a>
         <IconButton
           id="basic-button"
           aria-controls={open ? "basic-menu" : undefined}
