@@ -255,6 +255,7 @@ export const RegistroConciliacion = ({
   onSaveComentario = () => {},
   onUpdateComentario = () => {},
   onUpdateConciliacion = () => {},
+  onSavePagosFinancieras = () => {},
   poliza,
   userData,
 }) => {
@@ -282,6 +283,7 @@ export const RegistroConciliacion = ({
   const [isSaveDialogOpen, setIsSaveDialogOpen] = useState(false);
   const [pendingSaveComentarioIndex, setPendingSaveComentarioIndex] =
     useState(null);
+  const [isSavingPagoFinancieras, setIsSavingPagoFinancieras] = useState(false);
   const comentarioInputRefs = useRef({});
 
   useEffect(() => {
@@ -303,6 +305,7 @@ export const RegistroConciliacion = ({
     setEditingComentarioTexto("");
     setIsSaveDialogOpen(false);
     setPendingSaveComentarioIndex(null);
+    setIsSavingPagoFinancieras(false);
   }, [open, poliza, userData]);
 
   useEffect(() => {
@@ -661,6 +664,32 @@ export const RegistroConciliacion = ({
     setErrors({});
     setTouched({});
     setIsComisionRecibidaManual(false);
+  };
+
+  const handleSavePagoFinancieras = async () => {
+    if (isSavingPagoFinancieras) {
+      return;
+    }
+
+    setIsSavingPagoFinancieras(true);
+    try {
+      const maybePromise = onSavePagosFinancieras({
+        pago_financiera: formData.pagoFinancieras || "0",
+      });
+
+      if (maybePromise && typeof maybePromise.then === "function") {
+        const result = await maybePromise;
+        if (result === false) {
+          return;
+        }
+      }
+
+      onClose();
+    } catch (error) {
+      console.error("Error guardando el pago de las financieras:", error);
+    } finally {
+      setIsSavingPagoFinancieras(false);
+    }
   };
 
   const baseHeaders = [
@@ -1495,6 +1524,16 @@ export const RegistroConciliacion = ({
                         </div>
                       ))
                     )}
+                  </div>
+                  <div className="mt-4 flex justify-end">
+                    <BtnGeneral
+                      id="btnGuardarPagoFinancieras"
+                      className="rounded-md bg-lime-9000 h-10 px-8 py-3 text-sm font-semibold text-white transition duration-300 ease-in-out hover:bg-lime-600"
+                      funct={handleSavePagoFinancieras}
+                      isDisabled={isSavingPagoFinancieras}
+                    >
+                      {isSavingPagoFinancieras ? "Guardando..." : "Guardar"}
+                    </BtnGeneral>
                   </div>
                 </div>
               </div>

@@ -13,6 +13,7 @@ import { saveConciliacion } from "../../../services/Conciliaciones/saveConciliac
 import { saveComentarioConciliacion } from "../../../services/Conciliaciones/saveComentarioConciliacion";
 import { updateComentarioConciliacion } from "../../../services/Conciliaciones/updateComentarioConciliacion";
 import { updateConciliacion } from "../../../services/Conciliaciones/updateConciliacion";
+import { savePagosFinancieras } from "../../../services/Conciliaciones/savePagosFinancieras";
 import { RegistroConciliacion } from "../Registro/RegistroConciliacion";
 import { CancelacionConciliacion } from "../Registro/CancelacionesConciliacion";
 
@@ -424,6 +425,41 @@ export const Conciliacion = ({ setLoading, loading }) => {
     return response?.data || true;
   };
 
+  const handleSavePagosFinancieras = async (payload) => {
+    if (!activeSelectedPoliza?.id_poliza || !activeSelectedPoliza?.id_anexo_poliza) {
+      Swal.fire(
+        "Error",
+        "No se encontro la poliza para guardar el pago de las financieras",
+        "error",
+      );
+      return false;
+    }
+
+    const response = await savePagosFinancieras({
+      ...payload,
+      id_poliza: activeSelectedPoliza.id_poliza,
+      id_anexo_poliza: activeSelectedPoliza.id_anexo_poliza,
+      id_usuario: getCurrentUserId(),
+    });
+
+    if (response?.status !== "Ok") {
+      Swal.fire(
+        "Error",
+        response?.message || "No fue posible guardar el pago de las financieras",
+        "error",
+      );
+      return false;
+    }
+
+    if (response?.data?.poliza) {
+      applyPolizaUpdate(response.data.poliza);
+    }
+
+    Swal.fire("Listo", "Conciliación guardada", "success");
+
+    return response?.data || true;
+  };
+
   const handleUpdateConciliacion = async (payload) => {
     const response = await updateConciliacion({
       ...payload,
@@ -456,6 +492,7 @@ export const Conciliacion = ({ setLoading, loading }) => {
         onSaveComentario={handleSaveComentario}
         onUpdateComentario={handleUpdateComentario}
         onUpdateConciliacion={handleUpdateConciliacion}
+        onSavePagosFinancieras={handleSavePagosFinancieras}
         poliza={selectedPoliza}
         userData={userData}
         setLoading={setLoading}
@@ -467,6 +504,7 @@ export const Conciliacion = ({ setLoading, loading }) => {
         onSaveComentario={handleSaveComentario}
         onUpdateComentario={handleUpdateComentario}
         onUpdateConciliacion={handleUpdateConciliacion}
+        onSavePagosFinancieras={handleSavePagosFinancieras}
         poliza={selectedPolizaCancelacion}
         userData={userData}
         setLoading={setLoading}
