@@ -377,7 +377,6 @@ export const RegistroConciliacion = ({
     const totalPagosRaw = row?.conciliaciones
       .map((c) => c?.prima_planilla || 0)
       .reduce((acc, val) => acc + Number(val), 0);
-    let valorTotalRaw = row?.prima_sin_iva;
     const isNA = (value) => {
       const text = String(value ?? "")
         .trim()
@@ -385,26 +384,33 @@ export const RegistroConciliacion = ({
       return text === "" || text === "N/A";
     };
 
-    if (row?.compania == "Axa Colpatria") {
-      const gastos = isNA(row?.gastos)
-        ? 0
-        : Number(
-            String(row?.gastos)
-              .replace(/\$/g, "")
-              .replace(/\s/g, "")
-              .replace(/\./g, "")
-              .replace(/,/g, "."),
-          );
+    // Prima base parametrizada (aplica_sobre): 1 = prima sin IVA,
+    // 2 = + asistencias (Bolívar), 3 = + gastos de expedición (AXA).
+    // Viene calculada del backend; si falta, se arma acá con el mismo criterio.
+    let valorTotalRaw = row?.valor_prima_sin_iva;
 
-      valorTotalRaw = isNA(valorTotalRaw)
-        ? 0
-        : Number(
-            String(valorTotalRaw)
-              .replace(/\$/g, "")
-              .replace(/\s/g, "")
-              .replace(/\./g, "")
-              .replace(/,/g, "."),
-          ) + gastos;
+    if (valorTotalRaw == null || isNA(valorTotalRaw)) {
+      const toNumber = (v) =>
+        isNA(v)
+          ? 0
+          : Number(
+              String(v)
+                .replace(/\$/g, "")
+                .replace(/\s/g, "")
+                .replace(/\./g, "")
+                .replace(/,/g, "."),
+            ) || 0;
+
+      const primaNeta = toNumber(row?.prima_sin_iva);
+      const aplicaSobre = Number(row?.aplica_sobre) || 1;
+
+      valorTotalRaw = isNA(row?.prima_sin_iva)
+        ? row?.prima_sin_iva
+        : aplicaSobre === 2
+          ? primaNeta + toNumber(row?.asistencia)
+          : aplicaSobre === 3
+            ? primaNeta + toNumber(row?.gastos)
+            : primaNeta;
     }
 
     if (isNA(valorTotalRaw)) {

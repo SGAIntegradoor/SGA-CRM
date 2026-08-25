@@ -11,11 +11,17 @@ export const getFinancieras = async () => {
       }
     );
 
-     return response.data.data.map((financiera) => ({
+     const financieras = Array.isArray(response?.data?.data)
+      ? response.data.data
+      : [];
+
+    return financieras.map((financiera) => ({
       value: financiera.id,
       label: financiera.nombre_financiera,
     }));
   } catch (error) {
-    return error;
+    console.error("getFinancieras:", error);
+    // Siempre un arreglo: las vistas alimentan <Select options> con esto
+    return [];
   }
 };

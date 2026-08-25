@@ -193,7 +193,14 @@ export default function PdfServicesImpresion() {
   const openPdfPreviewWindow = async () => {
     if (!liquidacion) return;
     const printWindow = window.open("", "_blank");
-    let orientation = numAseguradoras > 3 ? "landscape" : "portrait";
+    // Menos de 4 ofertas caben en A4 vertical; de 4 en adelante se necesita
+    // el ancho de A3 horizontal para las columnas de planes.
+    const pageSize = Number(numAseguradoras) < 4 ? "A4 portrait" : "A3 landscape";
+    // El ancho útil de A4 vertical (794px) no alcanza para las columnas de
+    // planes, que piden ~1150px. Se compensa con zoom, que recalcula el
+    // layout y mantiene los saltos de página en su lugar (transform: scale
+    // no lo haría: dejaría las cajas con su alto original).
+    const pageZoom = Number(numAseguradoras) < 4 ? 0.69 : 1;
     if (!printWindow) {
       alert("El navegador bloqueó la ventana emergente.");
       return;
@@ -210,7 +217,7 @@ export default function PdfServicesImpresion() {
         <title>Cotización</title>
         <style>
           @page {
-            size: ${orientation == "landscape" ? "carta landscape" : "A4 portrait"};
+            size: ${pageSize};
             margin: 11.176mm 0 0 0;
           }
 
@@ -221,6 +228,14 @@ export default function PdfServicesImpresion() {
             background: #ffffff;
             -webkit-print-color-adjust: exact !important;
             print-color-adjust: exact !important;
+          }
+
+          /* El HTML que llega de la BD termina con un
+             <script>document.body.style.zoom = "100%"</script>. Ese estilo
+             inline le gana a una regla normal de hoja de estilos, así que el
+             zoom de acá tiene que ir con !important para imponerse. */
+          body {
+            zoom: ${pageZoom} !important;
           }
 
           .page-break,

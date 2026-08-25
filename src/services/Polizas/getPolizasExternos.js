@@ -256,16 +256,18 @@ export const getPolizasExternos = async (dataFilters) => {
       const tipo = Number(p?.tipo_certificado);
       if (tipo === 1) return true; // Nueva
       if (tipo === 2) return true; // Renovación  ✅
+      if (tipo === 3) return true; // Modificación  ✅
       if (tipo === 4) return true; // Cancelación
 
-      if (tipo === 3) {
-        const key = String(p?.id_poliza ?? "");
-        if (!key || !basePorPoliza.has(key)) return false;
-        const { prima0, base0 } = basePorPoliza.get(key);
-        const primaAct = Number(p?.prima_neta_poliza ?? 0);
-        const baseAct = primaAct + Number(p?.asistencias_otros_poliza ?? 0);
-        return primaAct !== prima0 || baseAct !== base0;
-      }
+      // if (tipo === 3) {
+      //   const key = String(p?.id_poliza ?? "");
+      //   if (!key || !basePorPoliza.has(key)) return false;
+      //   const { prima0, base0 } = basePorPoliza.get(key);
+      //   const primaAct = Number(p?.prima_neta_poliza ?? 0);
+      //   const baseAct = primaAct + Number(p?.asistencias_otros_poliza ?? 0);
+      //   return primaAct !== prima0 || baseAct !== base0;
+      // }
+      
       return false;
     });
 
@@ -436,8 +438,19 @@ export const getPolizasExternos = async (dataFilters) => {
         financiera: financieras[Number(poliza.financiada_por)] || "N/A",
         cuotas: poliza.no_cuotas || "0",
 
-        // Estado cartera (basado en liquidación)
-        estado_cartera: Number(poliza.liquidada) === 1 ? "Pagada" : "Pendiente",
+        // Estado cartera: pagos registrados vs valor total (lo calcula el backend).
+        // El fallback a `liquidada` queda solo para respuestas viejas sin el campo.
+        estado_cartera:
+          poliza.estado_cartera ||
+          (Number(poliza.liquidada) === 1 ? "Pagada" : "Pendiente"),
+        saldo_cartera: poliza.saldo_cartera ?? null,
+        total_pagos: poliza.total_pagos ?? 0,
+
+        // Estado conciliación: suma de lo conciliado vs prima base parametrizada
+        estado_conciliacion: poliza.estado_conciliacion_desc || "Pendiente",
+        estado_conciliacion_cod: poliza.estado_conciliacion ?? "1",
+        total_prima_conciliada: poliza.total_prima_conciliada ?? 0,
+        saldo_conciliacion: poliza.saldo_conciliacion ?? null,
 
         // Observaciones
         observaciones: poliza.observaciones_gstn_comercial || "N/A",
@@ -466,22 +479,25 @@ export const getPolizasExternos = async (dataFilters) => {
           poliza.estado_liquidacion_real === "Anulada"
             ? "-"
             : poliza.pal_fecha_pago_usuario || "-",
+        // Una liquidación en "Por pagar" ya consumió la póliza: cuenta como liquidada.
+        // Solo las anuladas devuelven la póliza al estado "Por liquidar".
         estado_liquidacion:
           Number(poliza.ya_liquidada_para_usuario) !== 1
             ? "Por liquidar"
             : poliza.estado_liquidacion_real === "Borrador"
               ? "Borrador"
-              : poliza.estado_liquidacion_real === "Por pagar"
-                ? "Por pagar"
-                : poliza.estado_liquidacion_real === "Pagada"
-                  ? "Liquidada"
-                  : poliza.estado_liquidacion_real === "Anulada"
-                    ? "Por liquidar"
-                    : estados_por_liquidar[
-                        Number(poliza.ya_liquidada_para_usuario)
-                      ] || "Desconocido",
+              : poliza.estado_liquidacion_real === "Por pagar" ||
+                  poliza.estado_liquidacion_real === "Pagada"
+                ? "Liquidada"
+                : poliza.estado_liquidacion_real === "Anulada"
+                  ? "Por liquidar"
+                  : estados_por_liquidar[
+                      Number(poliza.ya_liquidada_para_usuario)
+                    ] || "Desconocido",
+        // Ya liquidada => nunca preseleccionada (el checkbox además va deshabilitado)
         seleccionado:
-          poliza.estado_liquidacion_real === "Anulada"
+          poliza.estado_liquidacion_real === "Anulada" ||
+          Number(poliza.ya_liquidada_para_usuario) === 1
             ? false
             : Number(poliza.seleccionada_poliza) === 1,
         ya_liquidada_para_usuario:

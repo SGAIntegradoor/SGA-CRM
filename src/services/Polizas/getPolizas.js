@@ -315,6 +315,14 @@ export const getPolizas = async (dataFilters) => {
     // - MODIFICACIONES: sólo si cambia base vs anexo 0
     // - CANCELACIONES: siempre
 
+    // Si el filtro de tipo de expedición no incluye las nuevas, el anexo base (no_certificado 0)
+    // no viene en la respuesta, así que no hay contra qué comparar la modificación.
+    const tiposFiltrados = Array.isArray(dataFilters?.tipoexpedicion)
+      ? dataFilters.tipoexpedicion.map(Number)
+      : [];
+    const sinAnexoBase =
+      tiposFiltrados.length > 0 && !tiposFiltrados.includes(1);
+
     const listaTrabajo = lista.filter((p) => {
       const tipo = Number(p?.tipo_certificado);
       if (tipo === 1) return true; // Nueva
@@ -323,7 +331,7 @@ export const getPolizas = async (dataFilters) => {
 
       if (tipo === 3) {
         const key = String(p?.id_poliza ?? "");
-        if (!key || !basePorPoliza.has(key)) return false;
+        if (!key || !basePorPoliza.has(key)) return sinAnexoBase;
         const { prima0, base0 } = basePorPoliza.get(key);
         const primaAct = Number(p?.prima_neta_poliza ?? 0);
         const baseAct = primaAct + Number(p?.asistencias_otros_poliza ?? 0);
@@ -490,8 +498,19 @@ export const getPolizas = async (dataFilters) => {
         financiera: financieras[Number(poliza.financiada_por)] || "N/A",
         cuotas: poliza.no_cuotas || "0",
         
-        // Estado cartera (basado en liquidación)
-        estado_cartera: Number(poliza.liquidada) === 1 ? "Pagada" : "Pendiente",
+        // Estado cartera: pagos registrados vs valor total (lo calcula el backend).
+        // El fallback a `liquidada` queda solo para respuestas viejas sin el campo.
+        estado_cartera:
+          poliza.estado_cartera ||
+          (Number(poliza.liquidada) === 1 ? "Pagada" : "Pendiente"),
+        saldo_cartera: poliza.saldo_cartera ?? null,
+        total_pagos: poliza.total_pagos ?? 0,
+
+        // Estado conciliación: lo conciliado vs la prima base parametrizada (aplica_sobre)
+        estado_conciliacion: poliza.estado_conciliacion_desc || "Pendiente",
+        estado_conciliacion_cod: poliza.estado_conciliacion ?? "1",
+        total_prima_conciliada: poliza.total_prima_conciliada ?? 0,
+        saldo_conciliacion: poliza.saldo_conciliacion ?? null,
         
         // Observaciones
         observaciones: poliza.observaciones_gstn_comercial || "N/A",
