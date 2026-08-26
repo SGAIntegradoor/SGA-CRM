@@ -262,6 +262,13 @@ const recalcGARow = (row, newGAPct) => {
   };
 };
 
+/**
+ * Clave estable por poliza para conservar los % editados a mano
+ * cuando la tabla se reconstruye (p. ej. al quitar una poliza).
+ */
+const getPolizaKey = (row) =>
+  String(row?.id_anexo_poliza ?? row?.id_poliza ?? row?.poliza ?? "");
+
 const sortRows = (rows = []) =>
   [...rows].sort((left, right) => {
     const dateLeft = String(left.fecha_expedicion ?? "");
@@ -328,6 +335,9 @@ const ModalLiquidacionesFreelance = ({
 }) => {
   const hadSelectedPolizasRef = useRef(selectedPolizas.length > 0);
   const rowsInitializedRef = useRef(false);
+  // % editados manualmente por el area administrativa, por poliza
+  const manualPctOverridesRef = useRef(new Map());
+  const globalPctOverrideRef = useRef(null);
   const [rows, setRows] = useState([]);
   const [globalParticipationPct, setGlobalParticipationPct] = useState(70);
 
@@ -392,11 +402,29 @@ const ModalLiquidacionesFreelance = ({
     const defaultPct =
       totalPrimas >= THRESHOLD_PRIMA && negociosNuevos >= 2 ? 75 : 70;
 
-    setGlobalParticipationPct(defaultPct);
+    const effectivePct = globalPctOverrideRef.current ?? defaultPct;
+
+    setGlobalParticipationPct(effectivePct);
     setRows(
-      sortRows(selectedPolizas).map((row, index) =>
-        buildFreelanceRow(row, index, effectiveUnitRole, defaultPct),
-      ),
+      sortRows(selectedPolizas).map((row, index) => {
+        const built = buildFreelanceRow(
+          row,
+          index,
+          effectiveUnitRole,
+          effectivePct,
+        );
+        const override = manualPctOverridesRef.current.get(getPolizaKey(row));
+        if (!override) return built;
+
+        let next = built;
+        if (override.ga_commission_pct != null) {
+          next = recalcGARow(next, override.ga_commission_pct);
+        }
+        if (override.participation_pct != null) {
+          next = recalcFreelanceRow(next, override.participation_pct);
+        }
+        return next;
+      }),
     );
     rowsInitializedRef.current = true;
   }, [selectedPolizas, effectiveUnitRole]);
@@ -500,9 +528,24 @@ const ModalLiquidacionesFreelance = ({
     return formatPeriodMonthYear(dates[0]);
   }, [activeRows]);
 
+  const rememberPctOverride = (row, patch) => {
+    const key = getPolizaKey(row);
+    if (!key) return;
+
+    const current = manualPctOverridesRef.current.get(key) || {};
+    manualPctOverridesRef.current.set(key, { ...current, ...patch });
+  };
+
   const handleGlobalParticipationChange = (value) => {
     const nextPct = Number(value);
     const safePct = Number.isFinite(nextPct) ? nextPct : 0;
+
+    // el % global pisa los % por fila: se descartan esos overrides
+    globalPctOverrideRef.current = safePct;
+    manualPctOverridesRef.current.forEach((override) => {
+      delete override.participation_pct;
+    });
+
     setGlobalParticipationPct(safePct);
     setRows((prev) => prev.map((row) => recalcFreelanceRow(row, safePct)));
   };
@@ -510,6 +553,9 @@ const ModalLiquidacionesFreelance = ({
   const handleRowParticipationChange = (modalRowId, value) => {
     const nextPct = Number(value);
     const safePct = Number.isFinite(nextPct) ? nextPct : 0;
+
+    const target = rows.find((row) => row.modal_row_id === modalRowId);
+    if (target) rememberPctOverride(target, { participation_pct: safePct });
 
     setRows((prev) =>
       prev.map((row) =>
@@ -523,6 +569,9 @@ const ModalLiquidacionesFreelance = ({
   const handleRowGAChange = (modalRowId, value) => {
     const nextPct = Number(value);
     const safePct = Number.isFinite(nextPct) ? nextPct : 0;
+
+    const target = rows.find((row) => row.modal_row_id === modalRowId);
+    if (target) rememberPctOverride(target, { ga_commission_pct: safePct });
 
     setRows((prev) =>
       prev.map((row) =>
@@ -721,7 +770,6 @@ const ModalLiquidacionesFreelance = ({
                       onChange={(e) =>
                         handleRowGAChange(row.modal_row_id, e.target.value)
                       }
-                      readOnly={!isFreelance}
                     />
                     <span className="text-gray-500">%</span>
                   </div>
@@ -749,7 +797,6 @@ const ModalLiquidacionesFreelance = ({
                           e.target.value,
                         )
                       }
-                      readOnly={!isFreelance}
                     />
                     <span className="text-gray-500">%</span>
                   </div>
