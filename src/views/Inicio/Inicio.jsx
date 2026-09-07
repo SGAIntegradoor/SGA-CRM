@@ -46,7 +46,7 @@ export const Inicio = () => {
                 width={200}
                 />
               <br />
-              Bienvenido a SAN - Sistema de Administración de Negocios 💼
+              Bienvenido a Integradoor - Core 💼
             </motion.h1>
           </motion.div>
         )}

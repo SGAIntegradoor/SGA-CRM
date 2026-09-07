@@ -1,4 +1,4 @@
-import { useState, useEffect, useContext } from "react";
+import { useState, useEffect, useContext, useRef } from "react";
 import { Box } from "@mui/material";
 import Select from "react-select";
 import { NavContext } from "../../context/NavContext";
@@ -25,9 +25,9 @@ export const Comisiones = ({ setLoading, loading }) => {
     aseguradora: "",
     ramo: "",
     tiponegocio: "",
-    tipoexpedicion: "",
-    fechainiciovigdesde: "",
-    fechafinvighasta: "",
+    tipoexpedicion: [],
+    fechaexpdesde: "",
+    fechaexphasta: "",
     estadoliquidacion: "",
   };
 
@@ -44,6 +44,7 @@ export const Comisiones = ({ setLoading, loading }) => {
   const [usuariosInput, setUsuariosInput] = useState([]);
   const [ramos, setRamos] = useState([]);
   const [tiposExpedicion, setTiposExpedicion] = useState([]);
+  const initialLoadDone = useRef(false);
 
   const handlerLoadUnidadesNegocio = async () => {
     try {
@@ -125,37 +126,44 @@ export const Comisiones = ({ setLoading, loading }) => {
       Swal.fire("Error", "Debe seleccionar un usuario", "warning");
       return;
     }
+    if (
+      formStates.unidadnegocio === "" &&
+      formStates.usuario !== "67038128" &&
+      formStates.usuario !== "66830224" &&
+      formStates.usuario !== "1109662966" &&
+      formStates.usuario !== "1192918480" 
+      // formStates.usuario !== "1109187804" 
 
-    if (formStates.unidadnegocio === "" && formStates.usuario !== "67038128") {
+    ) {
       Swal.fire("Aviso", "Debe seleccionar una unidad de negocio", "warning");
       return;
     }
 
     if (
-      formStates.fechainiciovigdesde &&
-      formStates.fechafinvighasta &&
-      formStates.fechainiciovigdesde > formStates.fechafinvighasta
+      formStates.fechaexpdesde &&
+      formStates.fechaexphasta &&
+      formStates.fechaexpdesde > formStates.fechaexphasta
     ) {
       Swal.fire(
         "Aviso",
-        "La fecha de inicio no puede ser mayor a la fecha de fin",
+        "La fecha de expedición desde no puede ser mayor a la fecha de expedición hasta",
         "warning",
       );
       return;
     } else if (
-      formStates.fechainiciovigdesde &&
-      formStates.fechafinvighasta &&
-      formStates.fechafinvighasta < formStates.fechainiciovigdesde
+      formStates.fechaexpdesde &&
+      formStates.fechaexphasta &&
+      formStates.fechaexphasta < formStates.fechaexpdesde
     ) {
       Swal.fire(
         "Aviso",
-        "La fecha de fin no puede ser menor a la fecha de inicio",
+        "La fecha de expedición hasta no puede ser menor a la fecha de expedición desde",
         "warning",
       );
       return;
     } else if (
-      formStates.fechainiciovigdesde == "" ||
-      formStates.fechafinvighasta == ""
+      formStates.fechaexpdesde == "" ||
+      formStates.fechaexphasta == ""
     ) {
       Swal.fire("Aviso", "Se debe indicar el periodo a liquidar", "warning");
       return;
@@ -192,11 +200,13 @@ export const Comisiones = ({ setLoading, loading }) => {
         await Promise.all([
           handlerLoadUnidadesNegocio(),
           handlerLoaderAseguradoras(),
-          handlerLoadFilterUsuarios(null),
           handlerLoadRamo(),
           handlerLoadTiposExpedicion(),
           handlerGetLiqAdmin(),
         ]);
+        // asesores se cargan una sola vez, ya con unidad de negocio lista
+        await handlerLoadFilterUsuarios(null);
+        initialLoadDone.current = true;
       } catch (error) {
         console.error("Error en la carga inicial", error);
       } finally {
@@ -212,6 +222,7 @@ export const Comisiones = ({ setLoading, loading }) => {
   }, [reloadScreen]);
 
   useEffect(() => {
+    if (!initialLoadDone.current) return; // evita doble carga durante el mount inicial
     handlerLoadFilterUsuarios(formStates.unidadnegocio || null);
     setSelectedPolizas([]);
     setPolizas([]);
@@ -376,6 +387,7 @@ export const Comisiones = ({ setLoading, loading }) => {
     { field: "financiera", header: "Financiera" },
     { field: "cuotas", header: "Cuotas" },
     { field: "estado_cartera", header: "Estado Cartera" },
+    { field: "estado_conciliacion", header: "Estado Conciliación" },
     { field: "analista_comercial", header: "Analista" },
     { field: "porcentaje_comision_decimal", header: "% Comisión" },
     { field: "valor_comision", header: "Valor Comisión" },
@@ -412,6 +424,7 @@ export const Comisiones = ({ setLoading, loading }) => {
     { field: "financiera", header: "Financiera" },
     { field: "cuotas", header: "Cuotas" },
     { field: "estado_cartera", header: "Estado Cartera" },
+    { field: "estado_conciliacion", header: "Estado Conciliación" },
     { field: "analista_comercial", header: "Analista" },
     { field: "porcentaje_comision_decimal", header: "% Comisión" },
     { field: "valor_comision", header: "Valor Comisión" },
@@ -726,61 +739,38 @@ export const Comisiones = ({ setLoading, loading }) => {
               </div>
 
               <div className="flex flex-col w-1/5">
-                <label htmlFor="fechainiciovigencia" className="text-sm">
-                  Fecha inicio vigencia desde:
+                <label htmlFor="fechaexpdesde" className="text-sm">
+                  Fecha de expedición desde:
                 </label>
                 <input
                   type="date"
-                  name="fechainiciovigdesde"
+                  name="fechaexpdesde"
                   className="text-md border-[1px] w-full border-gray-300 text-gray-900 focus:outline-none h-[35px] rounded-md p-2"
-                  value={formStates.fechainiciovigdesde}
+                  value={formStates.fechaexpdesde}
                   onChange={(e) => {
                     const value = e.target.value;
-                    if (value) {
-                      const [year, month] = value.split("-").map(Number);
-                      const lastDay = new Date(year, month, 0).getDate();
-                      const lastDayStr = `${year}-${String(month).padStart(2, "0")}-${String(lastDay).padStart(2, "0")}`;
-                      setFormStates((prev) => ({
-                        ...prev,
-                        fechainiciovigdesde: value,
-                       // fechafinvighasta: lastDayStr,
-                      }));
-                    } else {
-                      setFormStates((prev) => ({
-                        ...prev,
-                        fechainiciovigdesde: value,
-                      }));
-                    }
+                    setFormStates((prev) => ({
+                      ...prev,
+                      fechaexpdesde: value,
+                    }));
                   }}
                 />
               </div>
               <div className="flex flex-col w-1/5">
-                <label htmlFor="fechafinvighasta" className="text-sm">
-                  Fecha fin vigencia hasta:
+                <label htmlFor="fechaexphasta" className="text-sm">
+                  Fecha de expedición hasta:
                 </label>
                 <input
                   type="date"
-                  name="fechafinvighasta"
+                  name="fechaexphasta"
                   className="text-md border-[1px] w-full border-gray-300 text-gray-900 focus:outline-none h-[35px] rounded-md p-2"
-                  value={formStates.fechafinvighasta}
+                  value={formStates.fechaexphasta}
                   onChange={(e) => {
                     const value = e.target.value;
-                    if (value) {
-                      const [year, month] = value.split("-").map(Number);
-                      const lastDay = new Date(year, month, 0).getDate();
-                      const lastDayStr = `${year}-${String(month).padStart(2, "0")}-${String(lastDay).padStart(2, "0")}`;
-                      const firstDayStr = `${year}-${String(month).padStart(2, "0")}-01`;
-                      setFormStates((prev) => ({
-                        ...prev,
-                        fechafinvighasta: lastDayStr,
-                       // fechainiciovigdesde: firstDayStr,
-                      }));
-                    } else {
-                      setFormStates((prev) => ({
-                        ...prev,
-                        fechafinvighasta: "",
-                      }));
-                    }
+                    setFormStates((prev) => ({
+                      ...prev,
+                      fechaexphasta: value,
+                    }));
                   }}
                 />
               </div>

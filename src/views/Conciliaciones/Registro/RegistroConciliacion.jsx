@@ -255,6 +255,7 @@ export const RegistroConciliacion = ({
   onSaveComentario = () => {},
   onUpdateComentario = () => {},
   onUpdateConciliacion = () => {},
+  onSavePagosFinancieras = () => {},
   poliza,
   userData,
 }) => {
@@ -282,6 +283,7 @@ export const RegistroConciliacion = ({
   const [isSaveDialogOpen, setIsSaveDialogOpen] = useState(false);
   const [pendingSaveComentarioIndex, setPendingSaveComentarioIndex] =
     useState(null);
+  const [isSavingPagoFinancieras, setIsSavingPagoFinancieras] = useState(false);
   const comentarioInputRefs = useRef({});
 
   useEffect(() => {
@@ -303,6 +305,7 @@ export const RegistroConciliacion = ({
     setEditingComentarioTexto("");
     setIsSaveDialogOpen(false);
     setPendingSaveComentarioIndex(null);
+    setIsSavingPagoFinancieras(false);
   }, [open, poliza, userData]);
 
   useEffect(() => {
@@ -377,7 +380,6 @@ export const RegistroConciliacion = ({
     const totalPagosRaw = row?.conciliaciones
       .map((c) => c?.prima_planilla || 0)
       .reduce((acc, val) => acc + Number(val), 0);
-    let valorTotalRaw = row?.prima_sin_iva;
     const isNA = (value) => {
       const text = String(value ?? "")
         .trim()
@@ -385,26 +387,33 @@ export const RegistroConciliacion = ({
       return text === "" || text === "N/A";
     };
 
-    if (row?.compania == "Axa Colpatria") {
-      const gastos = isNA(row?.gastos)
-        ? 0
-        : Number(
-            String(row?.gastos)
-              .replace(/\$/g, "")
-              .replace(/\s/g, "")
-              .replace(/\./g, "")
-              .replace(/,/g, "."),
-          );
+    // Prima base parametrizada (aplica_sobre): 1 = prima sin IVA,
+    // 2 = + asistencias (Bolívar), 3 = + gastos de expedición (AXA).
+    // Viene calculada del backend; si falta, se arma acá con el mismo criterio.
+    let valorTotalRaw = row?.valor_prima_sin_iva;
 
-      valorTotalRaw = isNA(valorTotalRaw)
-        ? 0
-        : Number(
-            String(valorTotalRaw)
-              .replace(/\$/g, "")
-              .replace(/\s/g, "")
-              .replace(/\./g, "")
-              .replace(/,/g, "."),
-          ) + gastos;
+    if (valorTotalRaw == null || isNA(valorTotalRaw)) {
+      const toNumber = (v) =>
+        isNA(v)
+          ? 0
+          : Number(
+              String(v)
+                .replace(/\$/g, "")
+                .replace(/\s/g, "")
+                .replace(/\./g, "")
+                .replace(/,/g, "."),
+            ) || 0;
+
+      const primaNeta = toNumber(row?.prima_sin_iva);
+      const aplicaSobre = Number(row?.aplica_sobre) || 1;
+
+      valorTotalRaw = isNA(row?.prima_sin_iva)
+        ? row?.prima_sin_iva
+        : aplicaSobre === 2
+          ? primaNeta + toNumber(row?.asistencia)
+          : aplicaSobre === 3
+            ? primaNeta + toNumber(row?.gastos)
+            : primaNeta;
     }
 
     if (isNA(valorTotalRaw)) {
@@ -655,6 +664,32 @@ export const RegistroConciliacion = ({
     setErrors({});
     setTouched({});
     setIsComisionRecibidaManual(false);
+  };
+
+  const handleSavePagoFinancieras = async () => {
+    if (isSavingPagoFinancieras) {
+      return;
+    }
+
+    setIsSavingPagoFinancieras(true);
+    try {
+      const maybePromise = onSavePagosFinancieras({
+        pago_financiera: formData.pagoFinancieras || "0",
+      });
+
+      if (maybePromise && typeof maybePromise.then === "function") {
+        const result = await maybePromise;
+        if (result === false) {
+          return;
+        }
+      }
+
+      onClose();
+    } catch (error) {
+      console.error("Error guardando el pago de las financieras:", error);
+    } finally {
+      setIsSavingPagoFinancieras(false);
+    }
   };
 
   const baseHeaders = [
@@ -1489,6 +1524,16 @@ export const RegistroConciliacion = ({
                         </div>
                       ))
                     )}
+                  </div>
+                  <div className="mt-4 flex justify-end">
+                    <BtnGeneral
+                      id="btnGuardarPagoFinancieras"
+                      className="rounded-md bg-lime-9000 h-10 px-8 py-3 text-sm font-semibold text-white transition duration-300 ease-in-out hover:bg-lime-600"
+                      funct={handleSavePagoFinancieras}
+                      isDisabled={isSavingPagoFinancieras}
+                    >
+                      {isSavingPagoFinancieras ? "Guardando..." : "Guardar"}
+                    </BtnGeneral>
                   </div>
                 </div>
               </div>

@@ -287,13 +287,26 @@ export const getConciliacionPolizas = async (filters) => {
         queryRow.fecha_conciliacion,
         queryRow.fecha_conciliado,
       ]),
+      // Prima base parametrizada (aplica_sobre) para cálculos en los modales
+      valor_prima_sin_iva: queryRow.valor_prima_sin_iva ?? null,
+      aplica_sobre: queryRow.aplica_sobre ?? 1,
       saldo: (() => {
-        const primaNeta = Number(String(queryRow.prima_neta_poliza ?? "0").replace(/[^\d.]/g, ""));
+        // El backend ya descuenta contra la prima base según aplica_sobre
+        // (Bolívar suma asistencias, AXA suma gastos de expedición).
+        if (queryRow.saldo_conciliacion != null) {
+          return formatCurrency(queryRow.saldo_conciliacion);
+        }
+
+        const primaBase = Number(
+          String(
+            queryRow.valor_prima_sin_iva ?? queryRow.prima_neta_poliza ?? "0",
+          ).replace(/[^\d.]/g, ""),
+        );
         const totalPlanilla = normalizeArrayField(queryRow.conciliaciones).reduce(
           (sum, c) => sum + Number(String(c.prima_planilla ?? "0").replace(/[^\d.]/g, "")),
           0,
         );
-        const diff = primaNeta - totalPlanilla;
+        const diff = primaBase - totalPlanilla;
         return formatCurrency(diff >= 0 ? diff : 0);
       })(),
       comision_recibida: formatCurrency(

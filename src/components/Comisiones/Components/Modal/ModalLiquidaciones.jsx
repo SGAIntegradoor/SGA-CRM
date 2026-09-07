@@ -596,7 +596,7 @@ const ModalLiquidaciones = ({
                     const id = await handleSaveSettlement();
                     if (id) {
                       const url = new URL(
-                        `crm1/comisiones/liquidacion/impresion?id_liquidacion=${encodeURIComponent(
+                        `crm/comisiones/liquidacion/impresion?id_liquidacion=${encodeURIComponent(
                           id
                         )}`,
                         window.location.origin

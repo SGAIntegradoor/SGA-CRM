@@ -185,13 +185,20 @@ const getTaxRate = (unitRole) =>
   unitRole === "asesor10" ? 0 : DEFAULT_TAX_RATE;
 
 const buildFreelanceRow = (row, index, unitRole, participationPctDefault) => {
-  const { gaCommissionPct: resolvedGAPct, aplica_sobre } = resolveGACommission(row);
+  const { gaCommissionPct: resolvedGAPct, aplica_sobre: resolvedAplicaSobre } =
+    resolveGACommission(row);
+  // El backend ya resuelve aplica_sobre y la prima calculada segun la config
+  // (configuracion_com_ramos); si vienen, mandan sobre el calculo local.
+  const aplica_sobre = Number(row.aplica_sobre) || resolvedAplicaSobre;
   const primaSinIva = Math.round(
     toNumberCOP(
       row.prima_neta_raw ?? row.prima_neta ?? row.prima_sin_iva_asistencia ?? 0,
     ),
   );
-  const base = getBaseForCommission(row, aplica_sobre);
+  const base =
+    row.valor_prima_sin_iva != null
+      ? Math.round(toNumberCOP(row.valor_prima_sin_iva))
+      : getBaseForCommission(row, aplica_sobre);
 
   const gaCommissionPct = (unitRole === "asesorGanador" || unitRole === "asesor10") ? 100 : resolvedGAPct;
 
@@ -254,6 +261,13 @@ const recalcGARow = (row, newGAPct) => {
     total_comision_value: totalComision,
   };
 };
+
+/**
+ * Clave estable por poliza para conservar los % editados a mano
+ * cuando la tabla se reconstruye (p. ej. al quitar una poliza).
+ */
+const getPolizaKey = (row) =>
+  String(row?.id_anexo_poliza ?? row?.id_poliza ?? row?.poliza ?? "");
 
 const sortRows = (rows = []) =>
   [...rows].sort((left, right) => {
@@ -321,6 +335,9 @@ const ModalLiquidacionesFreelance = ({
 }) => {
   const hadSelectedPolizasRef = useRef(selectedPolizas.length > 0);
   const rowsInitializedRef = useRef(false);
+  // % editados manualmente por el area administrativa, por poliza
+  const manualPctOverridesRef = useRef(new Map());
+  const globalPctOverrideRef = useRef(null);
   const [rows, setRows] = useState([]);
   const [globalParticipationPct, setGlobalParticipationPct] = useState(70);
 
@@ -385,11 +402,29 @@ const ModalLiquidacionesFreelance = ({
     const defaultPct =
       totalPrimas >= THRESHOLD_PRIMA && negociosNuevos >= 2 ? 75 : 70;
 
-    setGlobalParticipationPct(defaultPct);
+    const effectivePct = globalPctOverrideRef.current ?? defaultPct;
+
+    setGlobalParticipationPct(effectivePct);
     setRows(
-      sortRows(selectedPolizas).map((row, index) =>
-        buildFreelanceRow(row, index, effectiveUnitRole, defaultPct),
-      ),
+      sortRows(selectedPolizas).map((row, index) => {
+        const built = buildFreelanceRow(
+          row,
+          index,
+          effectiveUnitRole,
+          effectivePct,
+        );
+        const override = manualPctOverridesRef.current.get(getPolizaKey(row));
+        if (!override) return built;
+
+        let next = built;
+        if (override.ga_commission_pct != null) {
+          next = recalcGARow(next, override.ga_commission_pct);
+        }
+        if (override.participation_pct != null) {
+          next = recalcFreelanceRow(next, override.participation_pct);
+        }
+        return next;
+      }),
     );
     rowsInitializedRef.current = true;
   }, [selectedPolizas, effectiveUnitRole]);
@@ -419,7 +454,7 @@ const ModalLiquidacionesFreelance = ({
 
   const summary = useMemo(() => {
     const totalPrimas = activeRows.reduce(
-      (acc, row) => acc + toSafeNumber(row.prima_sin_iva_num),
+      (acc, row) => acc + toSafeNumber(row.base_calculo ?? row.prima_sin_iva_num),
       0,
     );
     const negociosNuevos = activeRows.filter(isNewBusiness).length;
@@ -493,9 +528,24 @@ const ModalLiquidacionesFreelance = ({
     return formatPeriodMonthYear(dates[0]);
   }, [activeRows]);
 
+  const rememberPctOverride = (row, patch) => {
+    const key = getPolizaKey(row);
+    if (!key) return;
+
+    const current = manualPctOverridesRef.current.get(key) || {};
+    manualPctOverridesRef.current.set(key, { ...current, ...patch });
+  };
+
   const handleGlobalParticipationChange = (value) => {
     const nextPct = Number(value);
     const safePct = Number.isFinite(nextPct) ? nextPct : 0;
+
+    // el % global pisa los % por fila: se descartan esos overrides
+    globalPctOverrideRef.current = safePct;
+    manualPctOverridesRef.current.forEach((override) => {
+      delete override.participation_pct;
+    });
+
     setGlobalParticipationPct(safePct);
     setRows((prev) => prev.map((row) => recalcFreelanceRow(row, safePct)));
   };
@@ -503,6 +553,9 @@ const ModalLiquidacionesFreelance = ({
   const handleRowParticipationChange = (modalRowId, value) => {
     const nextPct = Number(value);
     const safePct = Number.isFinite(nextPct) ? nextPct : 0;
+
+    const target = rows.find((row) => row.modal_row_id === modalRowId);
+    if (target) rememberPctOverride(target, { participation_pct: safePct });
 
     setRows((prev) =>
       prev.map((row) =>
@@ -516,6 +569,9 @@ const ModalLiquidacionesFreelance = ({
   const handleRowGAChange = (modalRowId, value) => {
     const nextPct = Number(value);
     const safePct = Number.isFinite(nextPct) ? nextPct : 0;
+
+    const target = rows.find((row) => row.modal_row_id === modalRowId);
+    if (target) rememberPctOverride(target, { ga_commission_pct: safePct });
 
     setRows((prev) =>
       prev.map((row) =>
@@ -612,7 +668,11 @@ const ModalLiquidacionesFreelance = ({
       );
     }
 
-    const totPrima = tableRows.reduce((acc, r) => acc + r.prima_sin_iva_num, 0);
+    // Debe cuadrar con lo que muestra la columna "Prima sin IVA" (base_calculo)
+    const totPrima = tableRows.reduce(
+      (acc, r) => acc + toSafeNumber(r.base_calculo ?? r.prima_sin_iva_num),
+      0,
+    );
     const totGA = tableRows.reduce((acc, r) => acc + r.ga_commission_value, 0);
     const totImp = tableRows.reduce((acc, r) => acc + r.impuestos_value, 0);
     const totNeta = tableRows.reduce(
@@ -697,7 +757,7 @@ const ModalLiquidacionesFreelance = ({
                   {row.placa || "N/A"}
                 </td>
                 <td className="border border-gray-300 px-2 py-2 text-right">
-                  {formatCOP(row.prima_sin_iva_num)}
+                  {formatCOP(row.base_calculo ?? row.prima_sin_iva_num)}
                 </td>
                 <td className="border border-gray-300 px-2 py-1 text-center">
                   <div className="inline-flex items-center rounded border border-gray-300 bg-white px-1 py-1">
@@ -710,7 +770,6 @@ const ModalLiquidacionesFreelance = ({
                       onChange={(e) =>
                         handleRowGAChange(row.modal_row_id, e.target.value)
                       }
-                      readOnly={!isFreelance}
                     />
                     <span className="text-gray-500">%</span>
                   </div>
@@ -738,7 +797,6 @@ const ModalLiquidacionesFreelance = ({
                           e.target.value,
                         )
                       }
-                      readOnly={!isFreelance}
                     />
                     <span className="text-gray-500">%</span>
                   </div>
@@ -1065,7 +1123,7 @@ const ModalLiquidacionesFreelance = ({
                   const id = await handleSaveSettlement();
                   if (id) {
                     const url = new URL(
-                      `crm1/comisiones/liquidacion/impresion?id_liquidacion=${encodeURIComponent(id)}`,
+                      `crm/comisiones/liquidacion/impresion?id_liquidacion=${encodeURIComponent(id)}`,
                       window.location.origin,
                     ).href;
 

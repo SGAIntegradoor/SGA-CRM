@@ -98,7 +98,8 @@ export const TableConsultas = ({
         
         // Si el valor es null, undefined o vacío
         if (value === null || value === undefined || value === "") {
-          return "";
+          // La financiera vacía significa póliza de contado: se exporta igual que en la tabla
+          return h.field === "nombre_financiera" ? "N/A" : "";
         }
         
         // Si es un campo monetario, convertir a número para cálculos
@@ -391,12 +392,7 @@ export const TableConsultas = ({
                 header={col.header}
                 style={{ textAlign: "center" }}
                 headerStyle={{ textAlign: "center" }}
-                body={(rowData) =>
-                  rowData["financiada_por"] == "0" 
-                    ? "N/A"
-                    : rowData["nombre_financiera"]
-                
-                }
+                body={(rowData) => rowData["nombre_financiera"] || "N/A"}
               />
             );
           }

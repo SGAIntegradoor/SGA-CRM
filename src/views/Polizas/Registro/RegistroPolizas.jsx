@@ -10,7 +10,7 @@ import Loader from "../../../components/LoaderFullScreen/Loader";
 import BtnGeneral from "../../../components/BtnGeneral/BtnGeneral";
 import { CardUser } from "../components/CardUser";
 import { GeneralBox } from "../../../components/GeneralBox/GeneralBox";
-import { useContext, useEffect, useState } from "react";
+import { useContext, useEffect, useRef, useState } from "react";
 import { obtenerAseguradoras, obtenerRamo } from "../../../utils/aseguradoras";
 import { getFormasPago } from "../../../utils/getPolizas";
 import { RegistroPago } from "../components/RegistroPago";
@@ -44,6 +44,10 @@ import { getAsesores10 } from "../../../services/Users/getAsesores10";
 export const Polizas = ({ setLoading, loading }) => {
   const navigate = useNavigate();
   const [bodyPoliza, setBodyPoliza] = useState({});
+
+  // Guarda en curso: el ref bloquea el doble envío, el state deshabilita el botón
+  const savingRef = useRef(false);
+  const [saving, setSaving] = useState(false);
   const [insurers, setInsurers] = useState([]);
   const [ramo, setRamo] = useState([]);
   const [formasPago, setFormasPago] = useState([]);
@@ -1164,6 +1168,10 @@ export const Polizas = ({ setLoading, loading }) => {
   };
 
   const handlerSavePoliza = async () => {
+    // Control anti doble-click: el ref es sincrónico, así que bloquea incluso
+    // los clicks que ocurren antes de que React repinte el botón deshabilitado.
+    if (savingRef.current) return;
+
     // Lógica para guardar la póliza
     const polizaData = {
       cabezotePoliza,
@@ -1347,27 +1355,68 @@ export const Polizas = ({ setLoading, loading }) => {
         }
       }
     }
+    // Pasadas todas las validaciones: se bloquea el envío hasta que resuelva
+    savingRef.current = true;
+    setSaving(true);
+    setLoading(true);
 
-    const poliza = await createPoliza(polizaData);
+    // Libera el bloqueo para permitir un nuevo intento
+    const liberarGuarda = () => {
+      savingRef.current = false;
+      setSaving(false);
+    };
 
-    if (poliza.code === 439) {
+    let poliza;
+    try {
+      poliza = await createPoliza(polizaData);
+    } catch (error) {
+      console.error("Error creando la póliza:", error);
+      setLoading(false);
+      liberarGuarda();
+      Swal.fire({
+        icon: "error",
+        title: "Error",
+        text: "No se pudo crear la póliza. Verifique su conexión e intente nuevamente.",
+      });
+      return;
+    }
+
+    setLoading(false);
+
+    if (poliza?.code === 439) {
+      liberarGuarda();
       Swal.fire({
         icon: "warning",
         title: "Conflicto de datos",
         text: "Ya existe un numero de poliza para esa aseguradora, por favor verifique los datos. Operación cancelada.",
       });
-    } else {
-      Swal.fire({
-        icon: "success",
-        title: "Póliza creada",
-        text: `Remision ID # ${poliza.id_remision} con número de poliza ${poliza.numeropoliza} creada exitosamente.`,
-        showConfirmButton: true,
-        confirmButtonText: "Ok",
-        // cancelButtonText: "Cerrar",
-      }).then((isConfirmed) => {
-        window.location.reload();
-      });
+      return;
     }
+
+    if (!poliza?.id_remision) {
+      liberarGuarda();
+      Swal.fire({
+        icon: "error",
+        title: "Error",
+        text:
+          poliza?.message ||
+          "No se pudo crear la póliza. Por favor intente nuevamente.",
+      });
+      return;
+    }
+
+    // Éxito: no se libera la guarda, la vista se recarga
+    Swal.fire({
+      icon: "success",
+      title: "Póliza creada",
+      text: `Remision ID # ${poliza.id_remision} con número de poliza ${poliza.numeropoliza} creada exitosamente.`,
+      showConfirmButton: true,
+      confirmButtonText: "Ok",
+      allowOutsideClick: false,
+      allowEscapeKey: false,
+    }).then(() => {
+      window.location.reload();
+    });
   };
 
   const onCloseModalOneroso = () => {
@@ -2648,8 +2697,9 @@ export const Polizas = ({ setLoading, loading }) => {
               "bg-lime-9000 text-white px-10 h-[35px] m-[2px] rounded hover:bg-lime-600 transition duration-300 ease-in-out"
             }
             funct={handlerSavePoliza}
+            isDisabled={saving}
           >
-            <span>Guardar</span>
+            <span>{saving ? "Guardando..." : "Guardar"}</span>
           </BtnGeneral>
         </section>
       </section>

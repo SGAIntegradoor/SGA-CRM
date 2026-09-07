@@ -170,6 +170,7 @@ export const AdminNegocios = ({ loading, setLoading, isCollapsed }) => {
     { field: "nombre_financiera", header: "Financiera" },
     { field: "no_cuotas", header: "Cuotas" },
     { field: "estado_cartera", header: "Estado Cartera" },
+    { field: "estado_conciliacion_desc", header: "Estado Conciliación" },
     { field: "observaciones_gstn_comercial", header: "Observaciones" },
     { field: "fecha_registro", header: "Fecha Registro" },
   ];
@@ -202,6 +203,7 @@ export const AdminNegocios = ({ loading, setLoading, isCollapsed }) => {
     { field: "nombre_financiera", header: "Financiera" },
     { field: "no_cuotas", header: "Cuotas" },
     { field: "estado_cartera", header: "Estado Cartera" },
+    { field: "estado_conciliacion_desc", header: "Estado Conciliación" },
     { field: "observaciones_gstn_comercial", header: "Observaciones" },
     { field: "fecha_registro", header: "Fecha Registro" },
   ];
@@ -351,7 +353,7 @@ export const AdminNegocios = ({ loading, setLoading, isCollapsed }) => {
 
   // === helpers UI ===
   const optionFromValue = (opts, value) =>
-    opts.find((o) => o.value === value) || null;
+    (Array.isArray(opts) ? opts : []).find((o) => o.value === value) || null;
 
   // (dummy) opciones de ejemplo
   const opcionesUnidad = unidadNegocio;
