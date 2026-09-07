@@ -17,7 +17,14 @@ import {
 import { ExpandLess, ExpandMore, SafetyCheck } from "@mui/icons-material";
 import HomeIcon from "@mui/icons-material/Home";
 import AccountCircleIcon from "@mui/icons-material/AccountCircle";
-import { cloneElement, Children, useContext, useState, useRef } from "react";
+import {
+  cloneElement,
+  Children,
+  isValidElement,
+  useContext,
+  useState,
+  useRef,
+} from "react";
 import { useNavigate } from "react-router-dom";
 import { tokens } from "../../theme";
 import { NavContext } from "../../context/NavContext";
@@ -198,9 +205,11 @@ const SubMenuGroup = ({ title, icon, isCollapsed, children }) => {
           <Collapse in={expanded} timeout="auto" unmountOnExit>
             <List dense disablePadding sx={{ pl: "8px" }}>
               {Children.map(children, (child) =>
-                cloneElement(child, {
-                  onAfterClick: () => setExpanded(false),
-                })
+                isValidElement(child)
+                  ? cloneElement(child, {
+                      onAfterClick: () => setExpanded(false),
+                    })
+                  : null
               )}
             </List>
           </Collapse>
@@ -253,13 +262,15 @@ const SubMenuGroup = ({ title, icon, isCollapsed, children }) => {
             </Typography>
             <List dense disablePadding>
               {Children.map(children, (child) =>
-                cloneElement(child, {
-                  isCollapsed: false,
-                  onAfterClick: () => {
-                    setPopoverAnchor(null);
-                    setExpanded(false);
-                  },
-                })
+                isValidElement(child)
+                  ? cloneElement(child, {
+                      isCollapsed: false,
+                      onAfterClick: () => {
+                        setPopoverAnchor(null);
+                        setExpanded(false);
+                      },
+                    })
+                  : null
               )}
             </List>
           </Box>
@@ -334,15 +345,27 @@ const SidebarContent = ({
           closeOnClick={closeOnItemClick}
         />
 
-        {/* Registro de Póliza */}
-        <Item
-          title="Registro de Póliza"
-          to="/polizas/registro"
+        {/* Pólizas — submenú */}
+        <SubMenuGroup
+          title="Pólizas"
           icon={<SafetyCheck />}
           isCollapsed={isCollapsed}
-          setIsCollapsed={setIsCollapsed}
-          closeOnClick={closeOnItemClick}
-        />
+        >
+          <Item
+            title="Registro de Póliza"
+            to="/polizas/registro"
+            isCollapsed={isCollapsed}
+            setIsCollapsed={setIsCollapsed}
+            closeOnClick={closeOnItemClick}
+          />
+          <Item
+            title="Corrección de Póliza"
+            to="/polizas/correccion"
+            isCollapsed={isCollapsed}
+            setIsCollapsed={setIsCollapsed}
+            closeOnClick={closeOnItemClick}
+          />
+        </SubMenuGroup>
 
         {/* Liquidación de comisiones — submenú */}
         <SubMenuGroup

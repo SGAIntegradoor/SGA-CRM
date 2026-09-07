@@ -214,7 +214,7 @@ export default function PdfServicesImpresion() {
     <!DOCTYPE html>
     <html>
       <head>
-        <title>Cotización</title>
+        <title>Simulación</title>
         <style>
           @page {
             size: ${pageSize};
