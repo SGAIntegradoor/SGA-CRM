@@ -683,7 +683,7 @@ export const CorreccionPoliza = ({ setLoading }) => {
                   className="flex items-center gap-2 px-4 py-2 rounded-md text-sm font-semibold"
                   style={{
                     backgroundColor: cambios.length === 0 ? colors.gray[500] : "#88d600",
-                    color: "#1d1d1d",
+                    color: "#ffffff",
                     opacity: cambios.length === 0 ? 0.6 : 1,
                   }}
                 >
@@ -987,7 +987,7 @@ export const CorreccionPoliza = ({ setLoading }) => {
             onClick={guardar}
             disabled={guardando}
             className="px-4 py-2 rounded-md text-sm font-semibold"
-            style={{ backgroundColor: "#88d600", color: "#1d1d1d" }}
+            style={{ backgroundColor: "#88d600", color: "#ffffff" }}
           >
             {guardando ? "Aplicando…" : "Aplicar corrección"}
           </button>
