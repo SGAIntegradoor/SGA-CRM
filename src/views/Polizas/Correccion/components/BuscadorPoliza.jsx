@@ -86,7 +86,7 @@ export const BuscadorPoliza = ({
       type="button"
       onClick={() => onSeleccionar(row)}
       className="flex items-center gap-1 px-3 py-[6px] rounded-md text-xs font-semibold"
-      style={{ backgroundColor: "#88d600", color: "#1d1d1d" }}
+      style={{ backgroundColor: "#88d600", color: "#ffffff" }}
     >
       <MdOutlineEditNote size={16} /> Corregir
     </button>
@@ -114,7 +114,7 @@ export const BuscadorPoliza = ({
         <div className="flex flex-col gap-1 md:w-[220px]">
           <label
             className="text-[0.72rem] uppercase tracking-wide font-semibold"
-            style={{ color: colors.gray[isDark ? 300 : 600] }}
+            style={{ color: colors.primary[isDark ? 300 : 700] }}
           >
             Buscar por
           </label>
@@ -183,7 +183,7 @@ export const BuscadorPoliza = ({
         <button
           type="submit"
           className="flex items-center justify-center gap-2 px-5 rounded-md text-sm font-semibold"
-          style={{ height: 40, backgroundColor: "#88d600", color: "#1d1d1d" }}
+          style={{ height: 40, backgroundColor: "#88d600", color: "#ffffff" }}
         >
           <PiMagnifyingGlassBold size={16} /> Buscar
         </button>
