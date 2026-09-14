@@ -8,17 +8,10 @@ import { MdOutlineEditNote } from "react-icons/md";
 import { tokens } from "../../../../theme";
 import { buscarPolizasCorreccion } from "../../../../services/Polizas/Query/buscarPolizasCorreccion";
 
+// Únicos criterios del módulo de corrección: identifican la póliza sin ambigüedad.
 const CRITERIOS = [
   { value: "id_remision", label: "ID de remisión" },
   { value: "no_poliza", label: "Número de póliza" },
-  { value: "placa", label: "Placa" },
-  { value: "documento", label: "Documento del cliente" },
-];
-
-const TIPOS_CLIENTE = [
-  { value: "2", label: "Tomador" },
-  { value: "1", label: "Asegurado" },
-  { value: "3", label: "Beneficiario" },
 ];
 
 /**
@@ -37,7 +30,6 @@ export const BuscadorPoliza = ({
   const isDark = theme.palette.mode === "dark";
 
   const [criterio, setCriterio] = useState(criterioInicial);
-  const [tipoCliente, setTipoCliente] = useState("2");
   const [valor, setValor] = useState(valorInicial);
   const [resultados, setResultados] = useState(resultadosIniciales ?? []);
   const [buscado, setBuscado] = useState(resultadosIniciales !== null);
@@ -62,7 +54,6 @@ export const BuscadorPoliza = ({
     const filas = await buscarPolizasCorreccion({
       criterio: criterioBusqueda,
       termino,
-      tipoCliente,
     });
 
     setResultados(filas);
@@ -134,28 +125,6 @@ export const BuscadorPoliza = ({
           </select>
         </div>
 
-        {criterio === "documento" && (
-          <div className="flex flex-col gap-1 md:w-[180px]">
-            <label
-              className="text-[0.72rem] uppercase tracking-wide font-semibold"
-              style={{ color: colors.gray[isDark ? 300 : 600] }}
-            >
-              Rol del cliente
-            </label>
-            <select
-              value={tipoCliente}
-              onChange={(e) => setTipoCliente(e.target.value)}
-              style={inputStyle}
-            >
-              {TIPOS_CLIENTE.map((t) => (
-                <option key={t.value} value={t.value}>
-                  {t.label}
-                </option>
-              ))}
-            </select>
-          </div>
-        )}
-
         <div className="flex flex-col gap-1 flex-1">
           <label
             className="text-[0.72rem] uppercase tracking-wide font-semibold"
@@ -167,15 +136,7 @@ export const BuscadorPoliza = ({
             type="text"
             value={valor}
             onChange={(e) => setValor(e.target.value)}
-            placeholder={
-              criterio === "placa"
-                ? "Ej. ABC123"
-                : criterio === "documento"
-                ? "Ej. 1020304050"
-                : criterio === "id_remision"
-                ? "Ej. 18422"
-                : "Ej. 40045678"
-            }
+            placeholder={criterio === "id_remision" ? "Ej. 18422" : "Ej. 40045678"}
             style={inputStyle}
           />
         </div>
