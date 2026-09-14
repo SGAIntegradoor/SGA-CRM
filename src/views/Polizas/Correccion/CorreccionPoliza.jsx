@@ -26,6 +26,7 @@ import { retrivePolizaById } from "../../../services/Polizas/retrivePolizaById";
 import { correctPoliza } from "../../../services/Polizas/correctPoliza";
 import { buscarPolizasCorreccion } from "../../../services/Polizas/Query/buscarPolizasCorreccion";
 import { getBitacoraPoliza } from "../../../services/Polizas/getBitacoraPoliza";
+import { getCertificadosPoliza } from "../../../services/Polizas/getCertificadosPoliza";
 import { BuscadorPoliza } from "./components/BuscadorPoliza";
 import { CampoCorregible } from "./components/CampoCorregible";
 import { HistorialBitacora } from "./components/HistorialBitacora";
@@ -44,6 +45,22 @@ const AVISO_POLIZA = "Afecta la póliza completa y sus liquidaciones.";
 const AVISO_VIGENCIA = "Recalcula vigencias ya liquidadas o conciliadas.";
 
 const AVISO_VALOR = "Recalcula el valor total del certificado.";
+const AVISO_TIPO_CERT = "Cambia cómo se clasifica este certificado en reportes y comisiones.";
+
+/**
+ * Catálogo tipo_polizas. Los ids son fijos en el CRM y las reglas de
+ * negocio del backend (tiposCertificadoPermitidos) dependen de ellos:
+ *  - cert. 0: solo Nueva o Renovación (única Nueva de la póliza)
+ *  - cert. > 0: Modificación, o Cancelación si es el último y no hay otra
+ */
+const TIPOS_CERTIFICADO = [
+  { value: "1", label: "Nueva" },
+  { value: "2", label: "Renovación" },
+  { value: "3", label: "Modificación" },
+  { value: "4", label: "Cancelación" },
+];
+const etiquetaTipoCert = (v) =>
+  TIPOS_CERTIFICADO.find((t) => t.value === String(v))?.label ?? String(v ?? "");
 
 const soloFecha = (v) => (v ? String(v).slice(0, 10) : "");
 const norm = (v) => (v === null || v === undefined ? "" : String(v));
@@ -88,6 +105,7 @@ const aplanarPoliza = (data) => {
     no_poliza: norm(cab.noPoliza),
     aseguradora_poliza: norm(cab.aseguradora),
     ramo_poliza: norm(cab.ramo),
+    tipo_certificado: norm(cab.tipoCertificado),
     fecha_exp_poliza: soloFecha(cab.fechaExpedicion),
     fecha_inicio_vig_poliza: soloFecha(cab.fechaInicioVigencia),
     fecha_fin_vig_poliza: soloFecha(cab.fechaFinVigencia),
@@ -140,6 +158,9 @@ export const CorreccionPoliza = ({ setLoading }) => {
   const [certificado, setCertificado] = useState(null);
   const [pagosAnexo, setPagosAnexo] = useState([]);
   const [valorTotalOriginal, setValorTotalOriginal] = useState(0);
+  // Todos los certificados de la póliza con los tipos que cada uno admite
+  // (los calcula el backend; aquí solo se usan para deshabilitar opciones).
+  const [certificadosPoliza, setCertificadosPoliza] = useState([]);
 
   const [aseguradoras, setAseguradoras] = useState([]);
   const [ramos, setRamos] = useState([]);
@@ -211,6 +232,61 @@ export const CorreccionPoliza = ({ setLoading }) => {
 
   const totalDescuadrado = !!original && sumaOriginal !== valorTotalOriginal;
 
+  // ── Tipo de certificado ──────────────────────────────────────────────────
+  const certActual = useMemo(
+    () =>
+      certificadosPoliza.find(
+        (c) => String(c.id_anexo_poliza) === String(seleccion?.id_anexo_poliza)
+      ) ?? null,
+    [certificadosPoliza, seleccion]
+  );
+
+  const tiposPermitidos = useMemo(
+    () => (certActual?.tipos_permitidos ?? []).map((t) => String(t)),
+    [certActual]
+  );
+
+  // Cada opción sale deshabilitada si el backend no la admite para ESTE
+  // certificado. La actual siempre se puede ver (aunque hoy ya no sea válida).
+  const opcionesTipoCert = useMemo(
+    () =>
+      TIPOS_CERTIFICADO.map((t) => ({
+        ...t,
+        disabled:
+          !tiposPermitidos.includes(t.value) &&
+          t.value !== norm(original?.tipo_certificado),
+      })),
+    [tiposPermitidos, original]
+  );
+
+  // Sin alternativa válida distinta a la actual → el campo entero va bloqueado.
+  const tipoCertBloqueado =
+    !certActual ||
+    tiposPermitidos.filter((t) => t !== norm(original?.tipo_certificado))
+      .length === 0;
+
+  const hintTipoCert = (() => {
+    if (!certActual) return "No se pudo cargar la lista de certificados de la póliza.";
+    const cert = Number(certActual.no_certificado);
+    if (cert === 0) {
+      return tiposPermitidos.includes("1")
+        ? "Certificado 0: puede ser Nueva o Renovación."
+        : "Certificado 0: la póliza ya tiene otra Nueva, solo admite Renovación.";
+    }
+    if (tiposPermitidos.includes("4")) {
+      return `Certificado ${cert}: es el último de la póliza, admite Modificación o Cancelación.`;
+    }
+    const otraCancel = certificadosPoliza.find(
+      (c) =>
+        Number(c.tipo_certificado) === 4 &&
+        String(c.id_anexo_poliza) !== String(certActual.id_anexo_poliza)
+    );
+    if (otraCancel) {
+      return `Certificado ${cert}: la póliza ya tiene la Cancelación en el certificado ${otraCancel.no_certificado}; solo admite Modificación.`;
+    }
+    return `Certificado ${cert}: no es el último de la póliza, solo admite Modificación.`;
+  })();
+
   const cargarPoliza = async (fila, sincronizarURL = true) => {
     setLoading?.(true);
     const respuesta = await retrivePolizaById(
@@ -239,20 +315,42 @@ export const CorreccionPoliza = ({ setLoading }) => {
         ? recibidos
         : recibidos.filter((p) => Number(p.certificado) === Number(noCert));
 
-    setSeleccion(fila);
+    // Si la fila vino sin id_anexo (deep link por id_poliza), el backend
+    // resolvió el certificado 0: se toma su id para poder aplicar reglas por anexo.
+    const [bitacoraPoliza, certificados] = await Promise.all([
+      getBitacoraPoliza(fila.id_poliza),
+      getCertificadosPoliza(fila.id_poliza),
+    ]);
+    let filaResuelta = fila;
+    if (!fila.id_anexo_poliza && noCert !== null) {
+      const match = certificados.find(
+        (c) => Number(c.no_certificado) === Number(noCert)
+      );
+      if (match) {
+        filaResuelta = {
+          ...fila,
+          id_anexo_poliza: match.id_anexo_poliza,
+          no_certificado: match.no_certificado,
+        };
+      }
+    }
+
+    setSeleccion(filaResuelta);
     setCertificado(noCert);
     setPagosAnexo(delAnexo);
     setValorTotalOriginal(aEntero(respuesta.data?.valoresPoliza?.valortotal));
+    setCertificadosPoliza(certificados);
     setOriginal(plano);
     setValores({ ...plano });
     setMotivo("");
     setAplicarTodos(true);
-    setBitacora(await getBitacoraPoliza(fila.id_poliza));
+    setBitacora(bitacoraPoliza);
 
     // La URL queda compartible / recargable, como en el detalle de negocios
     if (sincronizarURL) {
-      const params = { id_poliza: String(fila.id_poliza) };
-      if (fila.id_anexo_poliza) params.id_anexo = String(fila.id_anexo_poliza);
+      const params = { id_poliza: String(filaResuelta.id_poliza) };
+      if (filaResuelta.id_anexo_poliza)
+        params.id_anexo = String(filaResuelta.id_anexo_poliza);
       setSearchParams(params, { replace: true });
     }
 
@@ -341,6 +439,7 @@ export const CorreccionPoliza = ({ setLoading }) => {
     setCertificado(null);
     setPagosAnexo([]);
     setValorTotalOriginal(0);
+    setCertificadosPoliza([]);
     setOriginal(null);
     setValores(null);
     setMotivo("");
@@ -429,6 +528,23 @@ export const CorreccionPoliza = ({ setLoading }) => {
           warning: AVISO_POLIZA,
         },
         { name: "ramo_poliza", label: "Ramo", options: ramos },
+      ],
+    },
+    {
+      titulo: "Tipo de certificado",
+      descripcion:
+        "Clasificación de este certificado. Solo se aplica al certificado que estás viendo, nunca a toda la póliza.",
+      soloEsteAnexo: false,
+      tipoCertificado: true,
+      campos: [
+        {
+          name: "tipo_certificado",
+          label: "Tipo",
+          options: opcionesTipoCert,
+          disabled: tipoCertBloqueado,
+          hint: hintTipoCert,
+          warning: AVISO_TIPO_CERT,
+        },
       ],
     },
     {
@@ -727,6 +843,7 @@ export const CorreccionPoliza = ({ setLoading }) => {
                       maxLength={c.maxLength}
                       warning={c.warning}
                       hint={c.hint}
+                      disabled={!!c.disabled}
                       value={valores[c.name]}
                       original={original[c.name]}
                       onChange={onChange}
@@ -734,6 +851,43 @@ export const CorreccionPoliza = ({ setLoading }) => {
                     />
                   ))}
                 </div>
+
+                {/* Mapa de certificados: para entender por qué una opción está bloqueada */}
+                {s.tipoCertificado && certificadosPoliza.length > 0 && (
+                  <div
+                    className="mt-4 pt-4 flex flex-wrap gap-2"
+                    style={{
+                      borderTop: `1px solid ${colors.gray[isDark ? 600 : 800]}`,
+                    }}
+                  >
+                    {certificadosPoliza.map((c) => {
+                      const esActual =
+                        String(c.id_anexo_poliza) ===
+                        String(seleccion?.id_anexo_poliza);
+                      return (
+                        <span
+                          key={c.id_anexo_poliza}
+                          className="text-[0.72rem] px-3 py-1 rounded-full"
+                          style={{
+                            color: esActual
+                              ? colors.blueAccent[isDark ? 300 : 500]
+                              : colors.gray[isDark ? 300 : 600],
+                            border: `1px solid ${
+                              esActual
+                                ? colors.blueAccent[400]
+                                : colors.gray[isDark ? 600 : 800]
+                            }`,
+                            fontWeight: esActual ? 600 : 400,
+                          }}
+                          title={soloFecha(c.fecha_registro)}
+                        >
+                          cert. {c.no_certificado} · {etiquetaTipoCert(c.tipo_certificado)}
+                          {esActual ? " (este)" : ""}
+                        </span>
+                      );
+                    })}
+                  </div>
+                )}
 
                 {/* El total guardado no cuadra con sus componentes: avisar antes de tocar nada */}
                 {s.soloEsteAnexo && totalDescuadrado && (
@@ -868,8 +1022,8 @@ export const CorreccionPoliza = ({ setLoading }) => {
                     className="text-[0.75rem]"
                     style={{ color: colors.gray[isDark ? 400 : 500] }}
                   >
-                    Los valores de la póliza nunca entran aquí: siempre se aplican
-                    solo a este certificado. Si lo desmarcas, los datos de tomador,
+                    Los valores de la póliza y el tipo de certificado nunca entran
+                    aquí: siempre se aplican solo a este certificado. Si lo desmarcas, los datos de tomador,
                     asegurado, beneficiario y vigencias sólo cambian en el certificado{" "}
                     {seleccion.no_certificado ?? 0}. Número de póliza, aseguradora y
                     vehículo siempre aplican a toda la póliza.
@@ -961,6 +1115,15 @@ export const CorreccionPoliza = ({ setLoading }) => {
               <br />
               <span className="text-[0.78rem] opacity-80">
                 Los valores se aplican solo al certificado {certificado ?? 0}.
+              </span>
+            </p>
+          )}
+
+          {cambios.includes("tipo_certificado") && (
+            <p className="text-sm mt-3">
+              <span className="text-[0.78rem] opacity-80">
+                El tipo de certificado se aplica solo al certificado{" "}
+                {seleccion?.no_certificado ?? certificado ?? 0}.
               </span>
             </p>
           )}
