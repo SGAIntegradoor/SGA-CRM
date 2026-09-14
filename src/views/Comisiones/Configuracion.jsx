@@ -22,6 +22,7 @@ import { updateParam } from "../../services/Comisiones/uploadParam";
 import { obtainYears } from "../../services/Comisiones/obtainYears";
 import { saveSMMLV } from "../../services/Comisiones/saveSMMLV";
 import { updateSMMLV } from "../../services/Comisiones/updateSMMLV";
+import { useSubmitGuard } from "../../hooks/useSubmitGuard";
 
 export const ConfigComisiones = ({ setLoading, loading }) => {
   const initialFieldErrors = {
@@ -59,6 +60,9 @@ export const ConfigComisiones = ({ setLoading, loading }) => {
   });
 
   const [aseguradoras, setAseguradoras] = useState([]);
+  // Guard anti doble-click compartido por los 3 botones Guardar (el `loading`
+  // por estado no alcanza a bloquear el segundo clic del mismo tick)
+  const { busy: guardando, guard } = useSubmitGuard();
   const [ramos, setRamos] = useState([]);
   const [unidadesNegocio, setUnidadesNegocio] = useState([]);
   const [fieldErrors, setFieldErrors] = useState(initialFieldErrors);
@@ -529,7 +533,7 @@ export const ConfigComisiones = ({ setLoading, loading }) => {
     setFieldErrors(initialFieldErrors);
   };
 
-  const handleGuardarSMMLV = async () => {
+  const handleGuardarSMMLV = guard(async () => {
     if (loading) return;
 
     const errores = [];
@@ -656,9 +660,9 @@ export const ConfigComisiones = ({ setLoading, loading }) => {
     } finally {
       setLoading(false);
     }
-  };
+  });
 
-  const handleGuardarCambiosEditados = async () => {
+  const handleGuardarCambiosEditados = guard(async () => {
     if (loading) return;
 
     if (!editSourceRow) {
@@ -774,9 +778,9 @@ export const ConfigComisiones = ({ setLoading, loading }) => {
     } finally {
       setLoading(false);
     }
-  };
+  });
 
-  const handleGuardarComisiones = async () => {
+  const handleGuardarComisiones = guard(async () => {
     if (loading) return;
 
     // Validación completa del formulario
@@ -920,7 +924,7 @@ export const ConfigComisiones = ({ setLoading, loading }) => {
     } finally {
       setLoading(false);
     }
-  };
+  });
 
   return (
     <div className="flex flex-col">
@@ -1144,7 +1148,7 @@ export const ConfigComisiones = ({ setLoading, loading }) => {
                 type="button"
                 className="bg-lime-500 rounded-md text-white p-1 text-md font-bold w-[175px] h-[40px] hover:bg-lime-600 transition duration-300 ease-in-out flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
                 onClick={handleGuardarComisiones}
-                disabled={loading}
+                disabled={loading || guardando}
               >
                 <p className="text-sm">
                   {loading ? "Guardando..." : "Guardar"}
@@ -1424,7 +1428,7 @@ export const ConfigComisiones = ({ setLoading, loading }) => {
             </Button>
             <Button
               variant="contained"
-              disabled={loading}
+              disabled={loading || guardando}
               sx={{
                 backgroundColor: "#88d600",
                 color: "#ffffff",
@@ -1569,7 +1573,7 @@ export const ConfigComisiones = ({ setLoading, loading }) => {
                 type="button"
                 className="bg-lime-500 rounded-md text-white p-1 text-md font-bold w-[175px] h-[40px] hover:bg-lime-600 transition duration-300 ease-in-out flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
                 onClick={handleGuardarSMMLV}
-                disabled={loading}
+                disabled={loading || guardando}
               >
                 <p className="text-sm">
                   {loading

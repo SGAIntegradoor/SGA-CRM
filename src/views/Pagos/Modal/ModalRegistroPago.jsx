@@ -11,6 +11,7 @@ const ModalRegistroPago = ({
   selectedLiquidaciones,
   setIsLoading,
   onRegister,
+  saving = false,
 }) => {
   const nav = useNavigate();
   const [fechaPago, setFechaPago] = useState("");
@@ -58,8 +59,8 @@ const ModalRegistroPago = ({
 
   const handleSaveSettlement = async () => {
     if (fechaPago && fechaPago !== "") {
-      // Lógica para guardar la liquidación con la fecha de pago
-      onRegister();
+      // Se manda la fecha elegida: el backend cae a NOW() si llega vacía
+      onRegister(fechaPago);
       return;
     }
     Swal.fire("Error", "Debe ingresar una fecha de pago", "error");
@@ -112,11 +113,12 @@ const ModalRegistroPago = ({
               </BtnGeneral>
               <BtnGeneral
                 funct={() => handleSaveSettlement()}
+                isDisabled={saving}
                 className={
                   "bg-lime-9000 text-white px-10 h-[35px] m-[2px] rounded hover:bg-lime-600 transition duration-300 ease-in-out"
                 }
               >
-                Guardar
+                {saving ? "Guardando..." : "Guardar"}
               </BtnGeneral>
             </section>
           </div>

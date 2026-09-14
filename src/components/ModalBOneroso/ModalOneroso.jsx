@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 import { createBeneficiario } from "../../services/Polizas/createBeneficiario";
+import { useSubmitGuard } from "../../hooks/useSubmitGuard";
 import Swal from "sweetalert2";
 
 export const ModalOneroso = ({
@@ -76,9 +77,12 @@ export const ModalOneroso = ({
     },
   };
 
+  // Guard anti doble-click (va antes del return temprano por la regla de hooks)
+  const { busy: guardando, guard } = useSubmitGuard();
+
   if (!show) return null;
 
-  const handleCreateBeneficiario = async () => {
+  const handleCreateBeneficiario = guard(async () => {
     // Aquí puedes manejar la lógica para crear el beneficiario
 
     await createBeneficiario(nuevoBeneficiario)
@@ -126,7 +130,7 @@ export const ModalOneroso = ({
       });
 
     // onClose();
-  };
+  });
 
   return (
     <div style={styles.backdrop}>
@@ -249,8 +253,15 @@ export const ModalOneroso = ({
             >
               Salir
             </button>
-            <button style={styles.button} onClick={handleCreateBeneficiario}>
-              Guardar
+            <button
+              style={{
+                ...styles.button,
+                ...(guardando ? { opacity: 0.5, cursor: "not-allowed" } : {}),
+              }}
+              onClick={handleCreateBeneficiario}
+              disabled={guardando}
+            >
+              {guardando ? "Guardando..." : "Guardar"}
             </button>
           </div>
         </div>

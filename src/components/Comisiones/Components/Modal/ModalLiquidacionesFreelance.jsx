@@ -4,6 +4,7 @@ import Swal from "sweetalert2";
 import BtnGeneral from "../../../BtnGeneral/BtnGeneral";
 import { createSettlementExterno } from "../../../../services/Settlements/createSettlementExterno";
 import { updateSettlementExterno } from "../../../../services/Settlements/updateSettlementExterno";
+import { useSubmitGuard } from "../../../../hooks/useSubmitGuard";
 
 const SMMLV_2026 = 1750905;
 const THRESHOLD_PRIMA = SMMLV_2026 * 8;
@@ -339,6 +340,8 @@ const ModalLiquidacionesFreelance = ({
   const manualPctOverridesRef = useRef(new Map());
   const globalPctOverrideRef = useRef(null);
   const [rows, setRows] = useState([]);
+  // Guard compartido por "Generar" y "Borrador": ambos crean/actualizan la misma liquidación
+  const { busy: guardando, guard } = useSubmitGuard();
   const [globalParticipationPct, setGlobalParticipationPct] = useState(70);
 
   const detectedUnit = useMemo(
@@ -1118,7 +1121,7 @@ const ModalLiquidacionesFreelance = ({
               Cancelar
             </BtnGeneral>
             <BtnGeneral
-              funct={async () => {
+              funct={guard(async () => {
                 try {
                   const id = await handleSaveSettlement();
                   if (id) {
@@ -1151,7 +1154,8 @@ const ModalLiquidacionesFreelance = ({
                 } catch (error) {
                   console.error(error);
                 }
-              }}
+              })}
+              isDisabled={guardando}
               className="rounded bg-lime-9000 px-10 py-[7.5px] text-white transition duration-300 ease-in-out hover:bg-lime-600"
             >
               {mode === "update"
@@ -1159,7 +1163,7 @@ const ModalLiquidacionesFreelance = ({
                 : "Generar liquidacion"}
             </BtnGeneral>
             <BtnGeneral
-              funct={async () => {
+              funct={guard(async () => {
                 try {
                   const id = await handleSaveSettlement("Borrador");
                   if (id) {
@@ -1183,7 +1187,8 @@ const ModalLiquidacionesFreelance = ({
                 } catch (error) {
                   console.error(error);
                 }
-              }}
+              })}
+              isDisabled={guardando}
               className="rounded bg-black px-10 py-[7.5px] text-white transition duration-300 ease-in-out hover:bg-gray-800"
             >
               {mode === "update" ? "Guardar borrador" : "Guardar borrador"}

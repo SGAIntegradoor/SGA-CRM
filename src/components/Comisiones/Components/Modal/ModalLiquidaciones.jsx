@@ -8,6 +8,7 @@ import { useNavigate } from "react-router-dom";
 import { TableDirectos } from "../Tables/TableDirectos";
 import { createSettlement } from "../../../../services/Settlements/createSettlement";
 import { updateSettlement } from "../../../../services/Settlements/updateSettlement";
+import { useSubmitGuard } from "../../../../hooks/useSubmitGuard";
 import { Padding } from "@mui/icons-material";
 
 const ModalLiquidaciones = ({
@@ -40,6 +41,8 @@ const ModalLiquidaciones = ({
   const nav = useNavigate();
   const hadSelectedPolizasRef = useRef(selectedPolizas.length > 0);
   const [id, setId] = useState(0);
+  // Guard compartido por "Generar" y "Borrador": ambos crean/actualizan la misma liquidación
+  const { busy: guardando, guard } = useSubmitGuard();
 
   const showSuccess = (title, text) =>
     Swal.fire({
@@ -591,7 +594,7 @@ const ModalLiquidaciones = ({
                 Cerrar
               </BtnGeneral>
               <BtnGeneral
-                funct={async () => {
+                funct={guard(async () => {
                   try {
                     const id = await handleSaveSettlement();
                     if (id) {
@@ -625,7 +628,8 @@ const ModalLiquidaciones = ({
                   } catch (err) {
                     console.error(err);
                   }
-                }}
+                })}
+                isDisabled={guardando}
                 className={
                   "bg-lime-9000 text-white px-10 h-[35px] m-[2px] rounded hover:bg-lime-600 transition duration-300 ease-in-out"
                 }
@@ -633,7 +637,7 @@ const ModalLiquidaciones = ({
                 {mode === "update" ? "Actualizar Liquidación" : "Generar Liquidación"}
               </BtnGeneral>
               <BtnGeneral
-                funct={async () => {
+                funct={guard(async () => {
                   try {
                     const id = await handleSaveSettlement("Borrador");
                     if (id) {
@@ -657,7 +661,8 @@ const ModalLiquidaciones = ({
                   } catch (err) {
                     console.error(err);
                   }
-                }}
+                })}
+                isDisabled={guardando}
                 className={
                   "bg-black text-white px-10 h-[35px] m-[2px] rounded hover:bg-gray-800 transition duration-300 ease-in-out"
                 }
