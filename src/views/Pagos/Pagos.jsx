@@ -16,6 +16,7 @@ import { getAsesoresSGA } from "../../services/Users/getAsesoresSGA";
 import { getAsesoresGanadores } from "../../services/Users/getAsesoresGanadores";
 import { getAsesores10 } from "../../services/Users/getAsesores10";
 import { getFreelances } from "../../services/Users/getFreelance";
+import { useSubmitGuard } from "../../hooks/useSubmitGuard";
 
 export const Pagos = ({ loading, setLoading, isCollapsed }) => {
   const [liquidaciones, setLiquidaciones] = useState([]);
@@ -37,6 +38,9 @@ export const Pagos = ({ loading, setLoading, isCollapsed }) => {
   const [selectedLiquidaciones, setSelectedLiquidaciones] = useState([]);
   const [unidadesNegocio, setUnidadesNegocio] = useState([]);
   const [pagoLiqModal, setPagoLiqModal] = useState(false);
+  // Guards anti doble-click: registrar pago y anular pago escriben en BD
+  const { busy: registrando, guard: guardRegistrar } = useSubmitGuard();
+  const { guard: guardAnular } = useSubmitGuard();
   const userData = JSON.parse(localStorage.getItem("userData"));
 
   const handlerLoadUnidadesNegocio = async () => {
@@ -292,25 +296,30 @@ export const Pagos = ({ loading, setLoading, isCollapsed }) => {
   };
 
   useEffect(() => {
-    if (!Array.isArray(liquidaciones) || liquidaciones?.length === 0) return;
+    if (!Array.isArray(liquidaciones) || liquidaciones?.length === 0) {
+      setSelectedLiquidaciones([]);
+      return;
+    }
 
     const isSelected = (v) => v === true || v === 1 || v === "1";
 
+    // Solo cuenta como seleccionada una liquidación que todavía se puede pagar:
+    // las anuladas/pagadas/borrador pueden venir con seleccionada_liq = 1 viejo.
+    const isPayable = (p) =>
+      p?.estado !== "Anulada" &&
+      p?.estado !== "Pagada" &&
+      p?.estado !== "Borrador" &&
+      !isSelected(p?.pagada);
+
     const preselected = liquidaciones
-      .filter(
-        (p) =>
-          isSelected(p?.seleccionada_liq) || isSelected(p?.seleccionada_liq),
-      )
+      .filter((p) => isSelected(p?.seleccionada_liq) && isPayable(p))
       .map((p) => ({
         id: p?.id_liquidacion,
         ...p,
       }));
 
-    setSelectedLiquidaciones((prev) => {
-      const byId = new Map(prev.map((x) => [x.id, x]));
-      preselected.forEach((x) => byId.set(x.id, x));
-      return Array.from(byId.values());
-    });
+    // Se reemplaza (no se mezcla con prev): la tabla es la fuente de verdad
+    setSelectedLiquidaciones(preselected);
   }, [liquidaciones]);
 
   const headers = [
@@ -384,7 +393,7 @@ export const Pagos = ({ loading, setLoading, isCollapsed }) => {
   //   };
   // }, []);
 
-  const handlerRegistarPago = async (fecha_pago) => {
+  const handlerRegistarPago = guardRegistrar(async (fecha_pago) => {
     setLoading(true);
     const liquidaciones = selectedLiquidaciones.map((l) => ({
       id_liquidacion: l.id_liquidacion,
@@ -433,11 +442,11 @@ export const Pagos = ({ loading, setLoading, isCollapsed }) => {
       });
       return;
     }
-  };
+  });
 
   console.log(filtros);
 
-  const handlerAnularPago = async (id_liquidacion, id_usuario_liq) => {
+  const handlerAnularPago = guardAnular(async (id_liquidacion, id_usuario_liq) => {
     const body = {
       id_usuario: userData.usu_documento,
       debug: true,
@@ -449,7 +458,7 @@ export const Pagos = ({ loading, setLoading, isCollapsed }) => {
       ],
     };
 
-    Swal.fire({
+    await Swal.fire({
       title: "¿Está seguro?",
       text: "Esta acción no se puede deshacer.",
       icon: "warning",
@@ -498,7 +507,7 @@ export const Pagos = ({ loading, setLoading, isCollapsed }) => {
         return;
       }
     });
-  };
+  });
 
   return (
     <div>
@@ -512,6 +521,7 @@ export const Pagos = ({ loading, setLoading, isCollapsed }) => {
           pagoLiqModal={pagoLiqModal}
           setPagoLiqModal={setPagoLiqModal}
           onRegister={handlerRegistarPago}
+          saving={registrando}
           // onAnulation={handlerAnularPago}
         />
       )}

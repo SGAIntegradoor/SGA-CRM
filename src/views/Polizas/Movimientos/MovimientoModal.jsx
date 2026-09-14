@@ -6,6 +6,7 @@ import { createAnexo } from "../../../services/Polizas/createAnexo";
 import { getMovimiento } from "../../../services/Polizas/getMovimiento";
 import { NavContext } from "../../../context/NavContext";
 import { updateAnexo } from "../../../services/Polizas/updateAnexo";
+import { KEEP_LOCKED, useSubmitGuard } from "../../../hooks/useSubmitGuard";
 
 export const MovimientoModal = ({
   titulo,
@@ -45,6 +46,9 @@ export const MovimientoModal = ({
   };
 
   const [ivaManual, setIvaManual] = useState(false);
+
+  // Guard anti doble-click del botón Guardar (crea/actualiza anexo)
+  const { busy: guardando, guard } = useSubmitGuard();
 
   // ⬇️ añade esto cerca de tus useState
   const initialForm = {
@@ -569,7 +573,7 @@ export const MovimientoModal = ({
     [customStyles, errors.razonmovimiento]
   );
 
-  const handlerSave = async () => {
+  const handlerSave = guard(async () => {
     if (!handlerValidateFields()) return;
     if (isFromContext) {
       // el body manda todo y en el Backend se distingue por el tipo de movimiento
@@ -610,11 +614,12 @@ export const MovimientoModal = ({
           onCloseModal();
           window.location.reload();
         });
+        return KEEP_LOCKED; // la vista se recarga: no reabrir el botón
       } else {
         Swal.fire({
           icon: "error",
           title: "Error",
-          text: updateAnexo.message || "No se pudo actualizar el anexo.",
+          text: updateAnexoPoliza.message || "No se pudo actualizar el anexo.",
           didOpen: () => {
             const container = Swal.getContainer();
             if (container) container.style.zIndex = "2147483647";
@@ -686,6 +691,7 @@ export const MovimientoModal = ({
           onCloseModal();
           window.location.reload();
         });
+        return KEEP_LOCKED; // la vista se recarga: no reabrir el botón
       } else {
         Swal.fire({
           icon: "error",
@@ -698,7 +704,7 @@ export const MovimientoModal = ({
         });
       }
     }
-  };
+  });
 
   return (
     <div style={styles.backdrop}>
@@ -730,15 +736,16 @@ export const MovimientoModal = ({
               }}
               styles={stylesTipoMov}
               placeholder=""
+              // "Modificación" siempre disponible. Solo "Nuevo" se bloquea cuando
+              // la póliza ya tiene pagos (valoresRecibidos trae los pagos de TODOS
+              // los certificados, no solo del anexo abierto).
               isOptionDisabled={(option) =>
+                option.value === "0" &&
                 loadedPoliza.valoresRecibidos.length > 0 &&
                 loadedPoliza.valoresRecibidos.some(
                   (item) => item.valor != ""
-                ) &&
-                (option.value === "1" ||
-                  (loadedPoliza.cabezotePoliza.noCertificado >= "0" &&
-                    option.value === "0"))
-              } 
+                )
+              }
             />
           </div>
 
@@ -1009,8 +1016,19 @@ export const MovimientoModal = ({
             </button>
           </div>
           <div className="flex flex-col w-1/5 mt-1">
-            <button style={styles.button} onClick={handlerSave}>
-              {isFromContext ? "Actualizar" : "Guardar"}
+            <button
+              style={{
+                ...styles.button,
+                ...(guardando ? { opacity: 0.5, cursor: "not-allowed" } : {}),
+              }}
+              onClick={handlerSave}
+              disabled={guardando}
+            >
+              {guardando
+                ? "Guardando..."
+                : isFromContext
+                ? "Actualizar"
+                : "Guardar"}
             </button>
           </div>
           <div className="flex flex-col w-1/5" />

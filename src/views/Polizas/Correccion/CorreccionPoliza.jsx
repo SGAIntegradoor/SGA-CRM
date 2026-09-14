@@ -29,6 +29,7 @@ import { getBitacoraPoliza } from "../../../services/Polizas/getBitacoraPoliza";
 import { BuscadorPoliza } from "./components/BuscadorPoliza";
 import { CampoCorregible } from "./components/CampoCorregible";
 import { HistorialBitacora } from "./components/HistorialBitacora";
+import { useSubmitGuard } from "../../../hooks/useSubmitGuard";
 
 const PERMISO_REQUERIDO = "registro_poliza";
 
@@ -130,6 +131,8 @@ export const CorreccionPoliza = ({ setLoading }) => {
   const [aplicarTodos, setAplicarTodos] = useState(true);
   const [confirmando, setConfirmando] = useState(false);
   const [guardando, setGuardando] = useState(false);
+  // Ref síncrono: `guardando` por estado no frena el segundo clic del mismo tick
+  const { guard } = useSubmitGuard();
   const [bitacora, setBitacora] = useState([]);
 
   // Contexto del certificado que se está viendo. Los valores solo se pueden
@@ -367,7 +370,7 @@ export const CorreccionPoliza = ({ setLoading }) => {
     setConfirmando(true);
   };
 
-  const guardar = async () => {
+  const guardar = guard(async () => {
     setGuardando(true);
     setLoading?.(true);
 
@@ -406,7 +409,7 @@ export const CorreccionPoliza = ({ setLoading }) => {
     });
 
     await cargarPoliza(seleccion);
-  };
+  });
 
   /* ── Secciones del formulario ─────────────────────────────────────────── */
   const secciones = [

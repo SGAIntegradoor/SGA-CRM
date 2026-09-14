@@ -13,6 +13,7 @@ export const GeneralBox = ({
   onClose,
   headerBox = null,
   classname,
+  btnDisabled = false,
 }) => {
   return (
     // poner boxshadow recibido por props
@@ -40,9 +41,11 @@ export const GeneralBox = ({
                   (stateHeader
                     ? "bg-lime-400 hover:bg-lime-500 border-[1px]"
                     : "bg-gray-400 hover:bg-gray-300") +
-                  " text-white font-bold py-2 px-4 rounded transition-colors duration-300 ease-in-out"
+                  " text-white font-bold py-2 px-4 rounded transition-colors duration-300 ease-in-out" +
+                  (btnDisabled ? " opacity-50 cursor-not-allowed" : "")
                 }
                 onClick={(e) => setStatePago(readyToSave, e)}
+                disabled={btnDisabled}
               >
                 <span className="text-white">
                   {statePago ? textButton[1] : textButton[0]}

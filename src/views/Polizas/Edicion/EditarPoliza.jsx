@@ -46,6 +46,7 @@ import { getAsesores10 } from "../../../services/Users/getAsesores10";
 import { getAsesoresGanadores } from "../../../services/Users/getAsesoresGanadores";
 import { getAsesoresSGA } from "../../../services/Users/getAsesoresSGA";
 import { getQuotesFinancieras } from "../../../services/Polizas/getQuotesFinancieras";
+import { KEEP_LOCKED, useSubmitGuard } from "../../../hooks/useSubmitGuard";
 
 /* Helpers */
 const noop = () => {};
@@ -499,6 +500,10 @@ export const EditarPoliza = ({ setLoading, loading }) => {
   // Pagos existentes (DB)
   const [valoresRecibidos, setValoresRecibidos] = useState([]);
 
+  // Guards anti doble-click: uno por botón que escribe en BD
+  const { busy: guardandoPago, guard: guardPago } = useSubmitGuard();
+  const { busy: actualizando, guard: guardActualizar } = useSubmitGuard();
+
   // Pagos nuevos (temporales)
   const [valoresRecibidosTemp, setValoresRecibidosTemp] = useState([
     {
@@ -658,7 +663,7 @@ export const EditarPoliza = ({ setLoading, loading }) => {
 
   const [stateHeader, setStateHeader] = useState(false);
 
-  const handleRegistrarPago = async (readyToSaveFlag, event) => {
+  const handleRegistrarPago = guardPago(async (readyToSaveFlag, event) => {
     const accion = event?.target?.textContent?.trim() || "";
 
     if (accion === "Guardar Pago") {
@@ -708,6 +713,7 @@ export const EditarPoliza = ({ setLoading, loading }) => {
           setRegistrarPagos(false);
           window.location.reload();
         });
+        return KEEP_LOCKED; // la vista se recarga: no reabrir el botón
       } else {
         Swal.fire({
           icon: "error",
@@ -732,7 +738,7 @@ export const EditarPoliza = ({ setLoading, loading }) => {
 
     // Toggle genérico
     setRegistrarPagos((s) => !s);
-  };
+  });
 
   // Habilitar botón de header cuando hay datos completos y consistentes
   useEffect(() => {
@@ -1249,7 +1255,7 @@ export const EditarPoliza = ({ setLoading, loading }) => {
     calculateTotalSaldo();
   }, [numeroPagos, valoresRecibidos, valorTotal, valoresRecibidosTemp]);
 
-  const handlerUpdatePoliza = async () => {
+  const handlerUpdatePoliza = guardActualizar(async () => {
     // Lógica para guardar la póliza
     const polizaData = {
       cabezotePoliza,
@@ -1446,7 +1452,7 @@ export const EditarPoliza = ({ setLoading, loading }) => {
         text: `Remision ID # ${updatedPoliza.id_remision} con número de póliza ${updatedPoliza.id_poliza} actualizada exitosamente.`,
       });
     }
-  };
+  });
 
   // Spinner minimalista inline (sin dependencias)
   const InlineSpinner = ({ size = 18 }) => (
@@ -2752,6 +2758,7 @@ export const EditarPoliza = ({ setLoading, loading }) => {
             setStatePago={handleRegistrarPago}
             textButton={["Agregar Pago", "Guardar Pago"]}
             readyToSave={readyToSave}
+            btnDisabled={guardandoPago}
           >
             {/* 1) Pagos EXISTENTES (solo lectura) */}
             {valoresRecibidos.map((pago, index) => (
@@ -2858,8 +2865,9 @@ export const EditarPoliza = ({ setLoading, loading }) => {
                   "bg-lime-9000 text-white px-10 h-[35px] m-[2px] rounded hover:bg-lime-600 transition duration-300 ease-in-out"
                 }
                 funct={handlerUpdatePoliza}
+                isDisabled={actualizando}
               >
-                <span>Actualizar</span>
+                <span>{actualizando ? "Actualizando..." : "Actualizar"}</span>
               </BtnGeneral>
             </section>
           )}

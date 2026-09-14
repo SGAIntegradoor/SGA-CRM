@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Box, Modal } from "@mui/material";
 import BtnGeneral from "../../../components/BtnGeneral/BtnGeneral";
+import { useSubmitGuard } from "../../../hooks/useSubmitGuard";
 import { BsFloppy2Fill } from "react-icons/bs";
 import { FaPen } from "react-icons/fa";
 import { getRazonesModificaciones } from "../../../services/Polizas/getRazonesModificaciones";
@@ -287,6 +288,8 @@ export const CancelacionConciliacion = ({
   const [pendingSaveComentarioIndex, setPendingSaveComentarioIndex] =
     useState(null);
   const [isSavingPagoFinancieras, setIsSavingPagoFinancieras] = useState(false);
+  // Guard anti doble-click compartido por todos los botones que escriben en BD
+  const { busy: guardando, guard } = useSubmitGuard();
   const comentarioInputRefs = useRef({});
 
   const handleGetRazonesCancelacion = async () => {
@@ -607,7 +610,7 @@ export const CancelacionConciliacion = ({
     [conciliacionesTabla],
   );
 
-  const handleSubmit = async () => {
+  const handleSubmit = guard(async () => {
     const nextTouched = {
       factura: true,
       comision: true,
@@ -665,9 +668,9 @@ export const CancelacionConciliacion = ({
     setErrors({});
     setTouched({});
     setIsComisionRecibidaManual(false);
-  };
+  });
 
-  const handleSavePagoFinancieras = async () => {
+  const handleSavePagoFinancieras = guard(async () => {
     if (isSavingPagoFinancieras) {
       return;
     }
@@ -691,7 +694,7 @@ export const CancelacionConciliacion = ({
     } finally {
       setIsSavingPagoFinancieras(false);
     }
-  };
+  });
 
   const baseHeaders = [
     { label: "Cuota", field: "poliza" },
@@ -710,7 +713,7 @@ export const CancelacionConciliacion = ({
       hasError(field) ? "border-red-500" : "border-gray-300"
     } ${extraClassName}`;
 
-  const handleAddSeguimiento = async () => {
+  const handleAddSeguimiento = guard(async () => {
     const comentarioTrimmed = comentario.trim();
     if (!comentarioTrimmed) {
       return;
@@ -769,7 +772,7 @@ export const CancelacionConciliacion = ({
 
     setComentarios((prev) => [...prev, comentarioToAdd]);
     setComentario("");
-  };
+  });
 
   const handleEditComentarioClick = (index) => {
     if (editingComentarioIndex !== index) {
@@ -836,7 +839,7 @@ export const CancelacionConciliacion = ({
     }));
   };
 
-  const saveEditConciliacionRow = async () => {
+  const saveEditConciliacionRow = guard(async () => {
     if (editingConciliacionIndex === null || !editingConciliacionDraft) {
       return;
     }
@@ -932,14 +935,14 @@ export const CancelacionConciliacion = ({
     );
 
     cancelEditConciliacionRow();
-  };
+  });
 
   const closeSaveDialog = () => {
     setIsSaveDialogOpen(false);
     setPendingSaveComentarioIndex(null);
   };
 
-  const confirmSaveComentario = async () => {
+  const confirmSaveComentario = guard(async () => {
     if (pendingSaveComentarioIndex === null) {
       closeSaveDialog();
       return;
@@ -1004,7 +1007,7 @@ export const CancelacionConciliacion = ({
     setEditingComentarioIndex(null);
     setEditingComentarioTexto("");
     closeSaveDialog();
-  };
+  });
 
   const razonCancelacionSeleccionada = razonesCancelacion.find(
     (razon) => String(razon?.id_razones ?? "") === String(poliza?.razon_cancelacion ?? ""),
@@ -1209,8 +1212,9 @@ export const CancelacionConciliacion = ({
               id="btnRegistrarConciliacion"
               className="mt-6 rounded-md bg-lime-9000 h-10 px-5 py-3 text-sm font-semibold text-white transition duration-300 ease-in-out hover:bg-lime-600"
               funct={handleSubmit}
+              isDisabled={guardando}
             >
-              Registrar
+              {guardando ? "Guardando..." : "Registrar"}
             </BtnGeneral>
 
             <div className="mt-8 overflow-x-auto">
@@ -1375,6 +1379,7 @@ export const CancelacionConciliacion = ({
                                 type="button"
                                 className="rounded bg-lime-600 px-2 py-1 text-xs font-semibold text-white hover:bg-lime-700"
                                 onClick={saveEditConciliacionRow}
+                                disabled={guardando}
                               >
                                 Guardar
                               </button>
@@ -1461,8 +1466,9 @@ export const CancelacionConciliacion = ({
                     id="btnAgregarSeguimiento"
                     className="mt-6 rounded-md bg-lime-9000 h-10 px-5 py-3 text-sm font-semibold text-white transition duration-300 ease-in-out hover:bg-lime-600 w-[30%]"
                     funct={handleAddSeguimiento}
+                    isDisabled={guardando}
                   >
-                    Agregar
+                    {guardando ? "Guardando..." : "Agregar"}
                   </BtnGeneral>
                 </div>
                 <div className="flex flex-col w-[75%]">
@@ -1541,9 +1547,9 @@ export const CancelacionConciliacion = ({
                       id="btnGuardarPagoFinancieras"
                       className="rounded-md bg-lime-9000 h-10 px-8 py-3 text-sm font-semibold text-white transition duration-300 ease-in-out hover:bg-lime-600"
                       funct={handleSavePagoFinancieras}
-                      isDisabled={isSavingPagoFinancieras}
+                      isDisabled={isSavingPagoFinancieras || guardando}
                     >
-                      {isSavingPagoFinancieras ? "Guardando..." : "Guardar"}
+                      {isSavingPagoFinancieras || guardando ? "Guardando..." : "Guardar"}
                     </BtnGeneral>
                   </div>
                 </div>
@@ -1569,7 +1575,8 @@ export const CancelacionConciliacion = ({
                   <button
                     type="button"
                     onClick={confirmSaveComentario}
-                    className="rounded-md bg-lime-9000 px-4 py-2 text-sm font-semibold text-white hover:bg-lime-600"
+                    disabled={guardando}
+                    className="rounded-md bg-lime-9000 px-4 py-2 text-sm font-semibold text-white hover:bg-lime-600 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     Guardar
                   </button>

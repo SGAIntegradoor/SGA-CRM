@@ -82,10 +82,10 @@ export const getPolizasExternos = async (dataFilters) => {
     16: "Assist 1",
     17: "Los Olivos",
     18: "Sura",
-    19: "Cesce",
-    20: "Colmena",
-    21: "Coomeva",
-    22: "Palig",
+    19: "Colmena",
+    20: "Coomeva",
+    21: "Palig",
+    22: "Cesce",
   };
 
   // --------- Normalizadores / parsers ---------

@@ -18,6 +18,7 @@ import { getClientEdit } from "../../services/Clientes/getCliente";
 import useValidateClient from "../../hooks/Clients/useValidateClient";
 import Swal from "sweetalert2";
 import { updateClient } from "../../services/Clientes/updateCliente";
+import { useSubmitGuard } from "../../hooks/useSubmitGuard";
 import { getClientById } from "../../services/Clientes/getClientById";
 import { getClientByIdIntegradoor } from "../../services/Clientes/getClientByIdIntegradoor";
 import { capitalizeWords } from "../../utils/utils";
@@ -60,6 +61,8 @@ const ModalCliente = ({
   const [apellido, setApellido] = useState("");
   const [razonSocial, setRazonSocial] = useState(""); // <-- NUEVO
   const [inputLoader, setInputLoader] = useState(false);
+  // Guard anti doble-click del botón Guardar/Actualizar cliente
+  const { busy: guardando, guard } = useSubmitGuard();
   const [debouncedValue, setDebouncedValue] = useState(documento);
   const [clientById, setClientById] = useState(null);
   const [clienteTemp, setClienteTemp] = useState(null);
@@ -626,7 +629,7 @@ const ModalCliente = ({
   };
   // ====================================================
 
-  const handleSave = async () => {
+  const handleSave = guard(async () => {
     const fechaNacimientoInput =
       document.querySelector("#fechaNacimiento")?.value ?? "";
     const fechaNacimientoSafe = toISODate(
@@ -804,7 +807,7 @@ const ModalCliente = ({
     } catch (error) {
       console.error("Error al crear o actualizar el cliente:", error);
     }
-  };
+  });
 
   const cleanFields = () => {
     setNombre("");
@@ -1175,8 +1178,11 @@ const ModalCliente = ({
               "bg-lime-9000 text-white px-10 py-2 rounded mt-4 hover:bg-lime-600 transition duration-300 ease-in-out"
             }
             funct={handleSave}
+            isDisabled={guardando}
           >
-            {selectedClientId && idClienteIntegradoor !== "Cliente Nuevo"
+            {guardando
+              ? "Guardando..."
+              : selectedClientId && idClienteIntegradoor !== "Cliente Nuevo"
               ? "Actualizar"
               : "Guardar"}
           </BtnGeneral>
