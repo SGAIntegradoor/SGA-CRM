@@ -18,6 +18,7 @@ import { RetomaLiquidacion } from "./views/Comisiones/RetomaLiquidacion";
 import LiquidacionImpresion from "./views/Comisiones/Impresion/LiquidacionImpresion";
 import { Pagos } from "./views/Pagos/Pagos";
 import { AdminNegocios } from "./views/AdminNegocios/AdminNegocios";
+import PdfServicesImpresion from "./views/Comisiones/Impresion/PdfPhp";
 import { ConfigComisiones } from "./views/Comisiones/Configuracion";
 import { Conciliacion } from "./views/Conciliaciones/Consulta/Conciliacion";
 import { RegistroConciliacion } from "./views/Conciliaciones/Registro/RegistroConciliacion";
@@ -58,6 +59,10 @@ function App() {
         <Routes>
           {/* Ruta SSO - accesible sin autenticación */}
           <Route path="/sso" element={<SSOCallback />} />
+          <Route
+            path="/comisiones/liquidacion/pdfservice"
+            element={<PdfServicesImpresion />}
+          />
 
           {!log ? (
             <>
