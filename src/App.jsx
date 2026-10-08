@@ -11,6 +11,7 @@ import { Inicio } from "./views/Inicio/Inicio";
 import { Clientes } from "./views/Clientes/Clientes";
 import { Polizas } from "./views/Polizas/Registro/RegistroPolizas";
 import { EditarPoliza } from "./views/Polizas/Edicion/EditarPoliza";
+import { CorreccionPoliza } from "./views/Polizas/Correccion/CorreccionPoliza";
 import { Comisiones } from "./views/Comisiones/Comisiones";
 import { LiquidacionFreelance } from "./views/Comisiones/LiquidacionFreelance";
 import { RetomaLiquidacion } from "./views/Comisiones/RetomaLiquidacion";
@@ -102,6 +103,10 @@ function App() {
                     element={
                       <Polizas setLoading={setIsLoading} loading={isLoading} />
                     }
+                  />
+                  <Route
+                    path="correccion"
+                    element={<CorreccionPoliza setLoading={setIsLoading} />}
                   />
                   <Route
                     path="consulta/detalle"

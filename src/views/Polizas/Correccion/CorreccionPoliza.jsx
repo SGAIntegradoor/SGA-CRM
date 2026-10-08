@@ -32,7 +32,7 @@ import { CampoCorregible } from "./components/CampoCorregible";
 import { HistorialBitacora } from "./components/HistorialBitacora";
 import { useSubmitGuard } from "../../../hooks/useSubmitGuard";
 
-const PERMISO_REQUERIDO = "registro_poliza";
+const PERMISO_REQUERIDO = "correccion_poliza";
 
 const TIPOS_DOCUMENTO = [
   { value: "1", label: "C.C" },
@@ -46,6 +46,7 @@ const AVISO_VIGENCIA = "Recalcula vigencias ya liquidadas o conciliadas.";
 
 const AVISO_VALOR = "Recalcula el valor total del certificado.";
 const AVISO_TIPO_CERT = "Cambia cómo se clasifica este certificado en reportes y comisiones.";
+const ANIO_VACIO = "sin fecha";
 
 /**
  * Catálogo tipo_polizas. Los ids son fijos en el CRM y las reglas de
@@ -161,6 +162,9 @@ export const CorreccionPoliza = ({ setLoading }) => {
   // Todos los certificados de la póliza con los tipos que cada uno admite
   // (los calcula el backend; aquí solo se usan para deshabilitar opciones).
   const [certificadosPoliza, setCertificadosPoliza] = useState([]);
+  // Contexto de la póliza (backend): bloqueo por liquidaciones y "familia"
+  // (otras pólizas con el mismo número y aseguradora en otras remisiones).
+  const [polizaCtx, setPolizaCtx] = useState(null);
 
   const [aseguradoras, setAseguradoras] = useState([]);
   const [ramos, setRamos] = useState([]);
@@ -232,6 +236,9 @@ export const CorreccionPoliza = ({ setLoading }) => {
 
   const totalDescuadrado = !!original && sumaOriginal !== valorTotalOriginal;
 
+  // Póliza Nueva que ya entró en una liquidación no anulada: solo lectura.
+  const bloqueada = !!polizaCtx?.bloqueada;
+
   // ── Tipo de certificado ──────────────────────────────────────────────────
   const certActual = useMemo(
     () =>
@@ -269,9 +276,17 @@ export const CorreccionPoliza = ({ setLoading }) => {
     if (!certActual) return "No se pudo cargar la lista de certificados de la póliza.";
     const cert = Number(certActual.no_certificado);
     if (cert === 0) {
-      return tiposPermitidos.includes("1")
-        ? "Certificado 0: puede ser Nueva o Renovación."
-        : "Certificado 0: la póliza ya tiene otra Nueva, solo admite Renovación.";
+      const reglaRenov =
+        " Renovación: año de expedición único en la familia y al menos un año después de la Nueva.";
+      if (tiposPermitidos.includes("1")) {
+        return `Certificado 0: puede ser Nueva o Renovación.${reglaRenov}`;
+      }
+      const razon = polizaCtx?.nueva_en_familia
+        ? "ya existe otra póliza Nueva con este número y aseguradora"
+        : polizaCtx?.nueva_en_remision
+        ? "la remisión ya tiene otro registro Nueva"
+        : "la póliza ya tiene otra Nueva";
+      return `Certificado 0: ${razon}, solo admite Renovación.${reglaRenov}`;
     }
     if (tiposPermitidos.includes("4")) {
       return `Certificado ${cert}: es el último de la póliza, admite Modificación o Cancelación.`;
@@ -317,7 +332,7 @@ export const CorreccionPoliza = ({ setLoading }) => {
 
     // Si la fila vino sin id_anexo (deep link por id_poliza), el backend
     // resolvió el certificado 0: se toma su id para poder aplicar reglas por anexo.
-    const [bitacoraPoliza, certificados] = await Promise.all([
+    const [bitacoraPoliza, { certificados, poliza: ctxPoliza }] = await Promise.all([
       getBitacoraPoliza(fila.id_poliza),
       getCertificadosPoliza(fila.id_poliza),
     ]);
@@ -340,6 +355,7 @@ export const CorreccionPoliza = ({ setLoading }) => {
     setPagosAnexo(delAnexo);
     setValorTotalOriginal(aEntero(respuesta.data?.valoresPoliza?.valortotal));
     setCertificadosPoliza(certificados);
+    setPolizaCtx(ctxPoliza);
     setOriginal(plano);
     setValores({ ...plano });
     setMotivo("");
@@ -440,6 +456,7 @@ export const CorreccionPoliza = ({ setLoading }) => {
     setPagosAnexo([]);
     setValorTotalOriginal(0);
     setCertificadosPoliza([]);
+    setPolizaCtx(null);
     setOriginal(null);
     setValores(null);
     setMotivo("");
@@ -450,6 +467,7 @@ export const CorreccionPoliza = ({ setLoading }) => {
   };
 
   const abrirConfirmacion = () => {
+    if (bloqueada) return;
     if (cambios.length === 0) {
       Swal.fire({
         icon: "info",
@@ -514,7 +532,9 @@ export const CorreccionPoliza = ({ setLoading }) => {
   const secciones = [
     {
       titulo: "Identificación de la póliza",
-      descripcion: "Datos maestros. Aplican a la póliza completa.",
+      descripcion:
+        "Datos maestros. Número y aseguradora aplican a la póliza completa; el tipo de póliza solo al certificado que estás viendo.",
+      tipoCertificado: true,
       campos: [
         {
           name: "no_poliza",
@@ -527,24 +547,15 @@ export const CorreccionPoliza = ({ setLoading }) => {
           options: aseguradoras,
           warning: AVISO_POLIZA,
         },
-        { name: "ramo_poliza", label: "Ramo", options: ramos },
-      ],
-    },
-    {
-      titulo: "Tipo de certificado",
-      descripcion:
-        "Clasificación de este certificado. Solo se aplica al certificado que estás viendo, nunca a toda la póliza.",
-      soloEsteAnexo: false,
-      tipoCertificado: true,
-      campos: [
         {
           name: "tipo_certificado",
-          label: "Tipo",
+          label: "Tipo de póliza",
           options: opcionesTipoCert,
           disabled: tipoCertBloqueado,
           hint: hintTipoCert,
           warning: AVISO_TIPO_CERT,
         },
+        { name: "ramo_poliza", label: "Ramo", options: ramos },
       ],
     },
     {
@@ -741,10 +752,15 @@ export const CorreccionPoliza = ({ setLoading }) => {
 
         {seleccion && valores && (
           <>
-            {/* Barra de contexto */}
+            {/* Barra de contexto: sticky para guardar sin volver arriba */}
             <div
-              className="rounded-xl px-5 py-4 flex flex-wrap items-center justify-between gap-3"
-              style={cardStyle}
+              className="sticky top-2 z-20 rounded-xl px-5 py-4 flex flex-wrap items-center justify-between gap-3"
+              style={{
+                ...cardStyle,
+                boxShadow: isDark
+                  ? "0 6px 16px rgba(0,0,0,0.45)"
+                  : "0 6px 16px rgba(0,0,0,0.12)",
+              }}
             >
               <div className="flex items-center gap-4">
                 <button
@@ -798,18 +814,49 @@ export const CorreccionPoliza = ({ setLoading }) => {
                 <button
                   type="button"
                   onClick={abrirConfirmacion}
-                  disabled={cambios.length === 0}
+                  disabled={bloqueada || cambios.length === 0}
                   className="flex items-center gap-2 px-4 py-2 rounded-md text-sm font-semibold"
                   style={{
-                    backgroundColor: cambios.length === 0 ? colors.gray[500] : "#88d600",
+                    backgroundColor:
+                      bloqueada || cambios.length === 0 ? colors.gray[500] : "#88d600",
                     color: "#ffffff",
-                    opacity: cambios.length === 0 ? 0.6 : 1,
+                    opacity: bloqueada || cambios.length === 0 ? 0.6 : 1,
                   }}
                 >
                   <MdSave size={16} /> Guardar corrección
                 </button>
               </div>
             </div>
+
+            {/* Póliza Nueva ya liquidada: no se corrige nada */}
+            {bloqueada && (
+              <div
+                className="rounded-xl px-5 py-4 flex items-start gap-3"
+                style={{
+                  backgroundColor: isDark ? "#2e1a1a" : "#fdecec",
+                  border: `1px solid ${colors.redAccent[isDark ? 400 : 300]}`,
+                }}
+              >
+                <MdLockOutline
+                  size={22}
+                  style={{ color: colors.redAccent[isDark ? 300 : 500], marginTop: 2, flexShrink: 0 }}
+                />
+                <div className="flex flex-col gap-1">
+                  <span className="text-sm font-semibold" style={{ color: colors.gray[100] }}>
+                    Póliza Nueva con liquidaciones: no se puede corregir
+                  </span>
+                  <span className="text-[0.8rem]" style={{ color: colors.gray[isDark ? 300 : 600] }}>
+                    Está en {polizaCtx.liquidaciones.length} liquidación(es):{" "}
+                    <strong>
+                      {polizaCtx.liquidaciones
+                        .map((l) => `${l.id_liquidacion} (${l.estado})`)
+                        .join(", ")}
+                    </strong>
+                    . Para corregirla hay que anular primero esas liquidaciones.
+                  </span>
+                </div>
+              </div>
+            )}
 
             {/* Secciones del formulario */}
             {secciones.map((s) => (
@@ -843,7 +890,7 @@ export const CorreccionPoliza = ({ setLoading }) => {
                       maxLength={c.maxLength}
                       warning={c.warning}
                       hint={c.hint}
-                      disabled={!!c.disabled}
+                      disabled={bloqueada || !!c.disabled}
                       value={valores[c.name]}
                       original={original[c.name]}
                       onChange={onChange}
@@ -886,6 +933,31 @@ export const CorreccionPoliza = ({ setLoading }) => {
                         </span>
                       );
                     })}
+                  </div>
+                )}
+
+                {/* Familia: mismo número y aseguradora en otras remisiones */}
+                {s.tipoCertificado && polizaCtx?.familia?.length > 0 && (
+                  <div className="mt-3 flex flex-wrap items-center gap-2">
+                    <span
+                      className="text-[0.72rem]"
+                      style={{ color: colors.gray[isDark ? 400 : 500] }}
+                    >
+                      Mismo número y aseguradora:
+                    </span>
+                    {polizaCtx.familia.map((f) => (
+                      <span
+                        key={f.id_poliza}
+                        className="text-[0.72rem] px-3 py-1 rounded-full"
+                        style={{
+                          color: colors.gray[isDark ? 300 : 600],
+                          border: `1px dashed ${colors.gray[isDark ? 600 : 800]}`,
+                        }}
+                      >
+                        remisión {f.id_remision} · {etiquetaTipoCert(f.tipo) || "—"} ·{" "}
+                        {f.anio ?? ANIO_VACIO}
+                      </span>
+                    ))}
                   </div>
                 )}
 
@@ -1012,6 +1084,7 @@ export const CorreccionPoliza = ({ setLoading }) => {
                   type="checkbox"
                   checked={aplicarTodos}
                   onChange={(e) => setAplicarTodos(e.target.checked)}
+                  disabled={bloqueada}
                   className="mt-1"
                 />
                 <span className="flex flex-col">
@@ -1022,7 +1095,7 @@ export const CorreccionPoliza = ({ setLoading }) => {
                     className="text-[0.75rem]"
                     style={{ color: colors.gray[isDark ? 400 : 500] }}
                   >
-                    Los valores de la póliza y el tipo de certificado nunca entran
+                    Los valores de la póliza y el tipo de póliza nunca entran
                     aquí: siempre se aplican solo a este certificado. Si lo desmarcas, los datos de tomador,
                     asegurado, beneficiario y vigencias sólo cambian en el certificado{" "}
                     {seleccion.no_certificado ?? 0}. Número de póliza, aseguradora y
@@ -1044,6 +1117,7 @@ export const CorreccionPoliza = ({ setLoading }) => {
                   rows={3}
                   value={motivo}
                   onChange={(e) => setMotivo(e.target.value)}
+                  disabled={bloqueada}
                   placeholder="Ej. La aseguradora expidió la póliza con el documento del tomador errado; soporte en el caso #4521."
                   style={{
                     width: "100%",
@@ -1122,7 +1196,7 @@ export const CorreccionPoliza = ({ setLoading }) => {
           {cambios.includes("tipo_certificado") && (
             <p className="text-sm mt-3">
               <span className="text-[0.78rem] opacity-80">
-                El tipo de certificado se aplica solo al certificado{" "}
+                El tipo de póliza se aplica solo al certificado{" "}
                 {seleccion?.no_certificado ?? certificado ?? 0}.
               </span>
             </p>

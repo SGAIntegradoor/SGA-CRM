@@ -358,6 +358,13 @@ const SidebarContent = ({
             setIsCollapsed={setIsCollapsed}
             closeOnClick={closeOnItemClick}
           />
+          <Item
+            title="Corrección de Póliza"
+            to="/polizas/correccion"
+            isCollapsed={isCollapsed}
+            setIsCollapsed={setIsCollapsed}
+            closeOnClick={closeOnItemClick}
+          />
         </SubMenuGroup>
 
         {/* Liquidación de comisiones — submenú */}
