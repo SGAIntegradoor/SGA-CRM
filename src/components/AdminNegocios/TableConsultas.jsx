@@ -59,12 +59,13 @@ export const TableConsultas = ({
     
     // Campos de póliza que pueden ser numéricos o alfanuméricos
     const polizaFields = [
-      "no_poliza",
       "id_poliza",
     ];
-    
+
     // Campos que deben ser texto para evitar problemas
+    // no_poliza va tal cual: como número Excel le quita los ceros a la izquierda (Allianz 0xxxxxxx)
     const textFields = [
+      "no_poliza",
       "numero_documento_tomador",
       "numero_documento_asegurado", 
       "numero_documento_beneficiario",

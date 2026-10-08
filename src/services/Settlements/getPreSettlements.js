@@ -30,8 +30,8 @@ export const getPreSettlements = async () => {
         nombre_emisor_liq: item?.nombre_emisor_liq ?? "",
         ids_anexos: anexos.map((anexo) => anexo.id_remision).join(", "),
         usuario_data: {
-          id: item?.usuario_data.cargo ?? null,
-          rol: item?.usuario_data.rol ?? null,
+          id: item?.usuario_data?.cargo ?? null,
+          rol: item?.usuario_data?.rol ?? null,
         },
       };
 

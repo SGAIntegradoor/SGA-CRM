@@ -20,6 +20,7 @@ import Swal from "sweetalert2";
  *  - onToggleSelect(row, checked): callback para selección individual (debe manejar backend y actualizar 'data' en el padre)
  *  - setIsLoading(boolean): función para manejar loader del padre
  *  - loading: boolean opcional del padre
+ *  - showSelectAll: muestra "Seleccionar todas" (usa onTogglePageSelect con todas las filas filtradas)
  */
 export const TableComisiones = ({
   data = [],
@@ -30,6 +31,7 @@ export const TableComisiones = ({
   onRowAction = () => {},
   setIsLoading = () => {},
   loading,
+  showSelectAll = false,
 }) => {
   const dt = useRef(null);
 
@@ -179,6 +181,46 @@ export const TableComisiones = ({
     }
   };
 
+  // Todas las filas que dejó la búsqueda (y el filtro de texto), sin las ya liquidadas
+  const selectableRows = filtered.filter(
+    (r) =>
+      !isWasSettled(r.ya_liquidada_para_usuario) &&
+      r.id_anexo_poliza !== undefined &&
+      r.id_anexo_poliza !== null,
+  );
+
+  const allSelected =
+    selectableRows.length > 0 &&
+    selectableRows.every(
+      (r) => selectedMap[r.id_anexo_poliza] ?? isChecked(r.seleccionado),
+    );
+
+  // SELECT / DESELECT ALL (batch sobre todas las filas encontradas, no solo la página)
+  const toggleAllRows = async () => {
+    const checked = !allSelected;
+    const ids = selectableRows.map((r) => r.id_anexo_poliza);
+    if (!ids.length) return;
+
+    const prevSelectedMap = { ...selectedMap };
+    const newSelectedMap = { ...selectedMap };
+    ids.forEach((id) => (newSelectedMap[id] = checked));
+    setSelectedMap(newSelectedMap);
+
+    try {
+      setIsLoading(true);
+      const maybePromise = onTogglePageSelect(selectableRows, checked);
+      if (maybePromise && typeof maybePromise.then === "function") {
+        await maybePromise;
+      }
+    } catch (err) {
+      console.error("Error batch select all:", err);
+      setSelectedMap(prevSelectedMap);
+      Swal.fire("Error", err.message || "No se pudo actualizar la selección de las pólizas", "error");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   // Manejo de checkbox individual: mantiene comportamiento existente llamando al prop onToggleSelect
   // y además sincroniza selectedMap localmente para consistencia UI.
   const handleSingleToggle = async (row, checked) => {
@@ -228,6 +270,19 @@ export const TableComisiones = ({
       </div>
 
       <div className="flex flex-row items-center gap-3">
+        {showSelectAll && (
+          <Button
+            label={
+              allSelected
+                ? "Deseleccionar todas"
+                : `Seleccionar todas (${selectableRows.length})`
+            }
+            icon={allSelected ? "pi pi-times" : "pi pi-check-square"}
+            className="!text-[10px] h-[32px] bg-lime-9000 border-lime-9000 hover:border-lime-600 hover:bg-lime-600 ml-1 !p-2"
+            onClick={toggleAllRows}
+            disabled={Boolean(loading) || selectableRows.length === 0}
+          />
+        )}
         <Button
           label="Seleccionar página"
           icon="pi pi-check-square"

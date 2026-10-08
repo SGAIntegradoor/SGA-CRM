@@ -1161,6 +1161,7 @@ export const LiquidacionFreelance = ({ setLoading, loading }) => {
                 onTogglePageSelect={handleTogglePageSelect}
                 setIsLoading={setLoading}
                 loading={loading}
+                showSelectAll
               />
             </section>
             <section className="flex flex-row justify-end mt-7">

@@ -317,6 +317,49 @@ export const MovimientoModal = ({
     else setRazones([]);
   }, [formModificacion.tipomovimiento]);
 
+  // ====== Signo por tipo de movimiento ======
+  // En una Cancelacion los valores del anexo van en negativo (prima,
+  // asistencia y gastos de expedicion). El prellenado de la poliza llega en
+  // positivo y no se vuelve a ejecutar al cambiar el tipo, asi que aqui se
+  // normaliza el signo cada vez que cambia 'tipomovimiento'.
+  useEffect(() => {
+    if (!show || isFromContext) return;
+
+    const esCancelacion = formModificacion.tipomovimiento === "2";
+    const aplicarSigno = (v) => {
+      if (v === "" || v === null || v === undefined) return v;
+      const n = parseCOP(v);
+      if (n === 0) return v;
+      return formatCOP(esCancelacion ? -Math.abs(n) : Math.abs(n));
+    };
+
+    setFormModificacion((p) => {
+      const asistencia = aplicarSigno(p.asistenciaotrosmovimiento);
+      const gastos = aplicarSigno(p.gastosexpedicionmovimiento);
+      const primaCancelacion = aplicarSigno(p.valorprimacancelacion);
+      const primaMovimiento = aplicarSigno(p.valorprimamovimiento);
+
+      if (
+        asistencia === p.asistenciaotrosmovimiento &&
+        gastos === p.gastosexpedicionmovimiento &&
+        primaCancelacion === p.valorprimacancelacion &&
+        primaMovimiento === p.valorprimamovimiento
+      ) {
+        return p;
+      }
+
+      return {
+        ...p,
+        asistenciaotrosmovimiento: asistencia,
+        gastosexpedicionmovimiento: gastos,
+        valorprimacancelacion: primaCancelacion,
+        valorprimamovimiento: primaMovimiento,
+      };
+    });
+
+    setLockTotal(false); // el total se recalcula con el signo nuevo
+  }, [show, isFromContext, formModificacion.tipomovimiento]);
+
   // ====== Recalcular IVA auto (si NO es manual)
   useEffect(() => {
     if (!show || ivaManual) return;
@@ -902,7 +945,7 @@ export const MovimientoModal = ({
                   name="valorprimamovimiento"
                   id="valorprimamovimiento"
                   type="text"
-                  value={formModificacion.valorprimamovimiento || -""}
+                  value={formModificacion.valorprimamovimiento || ""}
                   className={`text-md border-[1px] focus:outline-none h-[35px] rounded-md p-2
                   ${
                     errors.valorprimamovimiento
