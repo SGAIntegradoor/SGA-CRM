@@ -242,6 +242,7 @@ export const PERMISSIONS = {
   REGISTRO_POLIZA: 'registro_poliza',
   EDITAR_REMISIONES: 'editar_remisiones',
   CONSULTAR_POLIZA_CERTIFICADO: 'consultar_poliza_certificado',
+  CORRECCION_POLIZA: 'correccion_poliza',
   
   // Movimientos
   REGISTAR_MOVIMIENTO: 'registar_movimiento',
