@@ -22,6 +22,7 @@ export const CampoCorregible = ({
   warning = "",
   maxLength,
   uppercase = false,
+  loading = false,
 }) => {
   const theme = useTheme();
   const colors = tokens(theme.palette.mode);
@@ -97,21 +98,38 @@ export const CampoCorregible = ({
           ))}
         </select>
       ) : (
-        <input
-          id={name}
-          name={name}
-          type={type}
-          value={norm(value)}
-          disabled={disabled}
-          maxLength={maxLength}
-          onChange={(e) =>
-            onChange(
-              name,
-              uppercase ? e.target.value.toUpperCase() : e.target.value
-            )
-          }
-          style={{ ...baseInput, opacity: disabled ? 0.6 : 1 }}
-        />
+        <div className="relative">
+          <input
+            id={name}
+            name={name}
+            type={type}
+            value={norm(value)}
+            disabled={disabled}
+            maxLength={maxLength}
+            onChange={(e) =>
+              onChange(
+                name,
+                uppercase ? e.target.value.toUpperCase() : e.target.value
+              )
+            }
+            style={{
+              ...baseInput,
+              opacity: disabled ? 0.6 : 1,
+              paddingRight: loading ? 34 : baseInput.padding?.split(" ")[1],
+            }}
+          />
+          {/* Búsqueda en curso (p. ej. cliente por documento) */}
+          {loading && (
+            <span
+              className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 rounded-full animate-spin"
+              style={{
+                border: `2px solid ${colors.gray[isDark ? 600 : 800]}`,
+                borderTopColor: colors.blueAccent[500],
+              }}
+              aria-label="Buscando…"
+            />
+          )}
+        </div>
       )}
 
       {dirty && (

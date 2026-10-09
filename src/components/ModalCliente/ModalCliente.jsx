@@ -39,6 +39,8 @@ const ModalCliente = ({
   setProcedenciaCliente,
   setDatosUsuarios = null,
   searchMethod,
+  // Opcional: documento con el que abre el formulario (p. ej. desde Corrección de Póliza)
+  documentoInicial = null,
 }) => {
   const {
     selectedClientId,
@@ -570,6 +572,13 @@ const ModalCliente = ({
       cancelled = true;
     };
   }, [debouncedValue]);
+
+  // --- DOCUMENTO INICIAL (opcional) ---
+  useEffect(() => {
+    if (show && documentoInicial) {
+      setDocumento(String(documentoInicial));
+    }
+  }, [show, documentoInicial]);
 
   if (!show) return null;
 
