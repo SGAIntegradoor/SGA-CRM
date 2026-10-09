@@ -10,6 +10,8 @@ export const ModalOneroso = ({
   setBeneficiarios,
   nuevoBeneficiario,
   setNuevoBeneficiario,
+  // Opcional: se llama con los datos del beneficiario recién creado
+  onCreated = null,
 }) => {
   // Efecto para manejar el scroll del fondo
   useEffect(() => {
@@ -104,6 +106,7 @@ export const ModalOneroso = ({
             text: "El beneficiario ha sido creado exitosamente.",
           });
           setBeneficiarios((prev) => ({ ...prev, nuevoBeneficiario }));
+          onCreated?.({ ...nuevoBeneficiario });
           setNuevoBeneficiario({
             tipoIdentificacion: "1",
             numeroIdentificacion: "",

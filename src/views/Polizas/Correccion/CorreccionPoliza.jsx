@@ -31,6 +31,9 @@ import { BuscadorPoliza } from "./components/BuscadorPoliza";
 import { CampoCorregible } from "./components/CampoCorregible";
 import { HistorialBitacora } from "./components/HistorialBitacora";
 import { useSubmitGuard } from "../../../hooks/useSubmitGuard";
+import ModalCliente from "../../../components/ModalCliente/ModalCliente";
+import { ModalOneroso } from "../../../components/ModalBOneroso/ModalOneroso";
+import { useBusquedaPersonas } from "./hooks/useBusquedaPersonas";
 
 const PERMISO_REQUERIDO = "correccion_poliza";
 
@@ -142,6 +145,14 @@ export const CorreccionPoliza = ({ setLoading }) => {
 
   const autorizado = hasPermission(PERMISO_REQUERIDO);
   const userData = loggedData() ?? {};
+  // ModalCliente lee los permisos de cliente del userData de localStorage (igual que Registro)
+  const userDataLocal = useMemo(() => {
+    try {
+      return JSON.parse(localStorage.getItem("userData")) ?? {};
+    } catch {
+      return {};
+    }
+  }, []);
 
   const [seleccion, setSeleccion] = useState(null); // fila del buscador
   const [original, setOriginal] = useState(null);
@@ -238,6 +249,14 @@ export const CorreccionPoliza = ({ setLoading }) => {
 
   // Póliza Nueva que ya entró en una liquidación no anulada: solo lectura.
   const bloqueada = !!polizaCtx?.bloqueada;
+
+  // Tomador / Asegurado / Beneficiario: búsqueda por documento y creación
+  const personas = useBusquedaPersonas({
+    valores,
+    original,
+    setValores,
+    activo: !!seleccion && !bloqueada,
+  });
 
   // ── Tipo de certificado ──────────────────────────────────────────────────
   const certActual = useMemo(
@@ -355,6 +374,7 @@ export const CorreccionPoliza = ({ setLoading }) => {
     setPagosAnexo(delAnexo);
     setValorTotalOriginal(aEntero(respuesta.data?.valoresPoliza?.valortotal));
     setCertificadosPoliza(certificados);
+    personas.reiniciar();
     setPolizaCtx(ctxPoliza);
     setOriginal(plano);
     setValores({ ...plano });
@@ -462,6 +482,7 @@ export const CorreccionPoliza = ({ setLoading }) => {
     setMotivo("");
     setBitacora([]);
     setResultadosURL(null);
+    personas.reiniciar();
     yaCargoDesdeURL.current = true; // no volver a resolver la URL al soltar el form
     setSearchParams({}, { replace: true });
   };
@@ -502,6 +523,8 @@ export const CorreccionPoliza = ({ setLoading }) => {
       aplicar_todos_anexos: aplicarTodos,
       motivo: motivo.trim(),
       campos,
+      // Clientes / beneficiarios creados desde la corrección: van a la bitácora
+      personas_creadas: personas.personasCreadas(cambios),
       userData: { id_usuario: userData?.id_usuario },
     });
 
@@ -616,6 +639,9 @@ export const CorreccionPoliza = ({ setLoading }) => {
       : []),
     {
       titulo: "Tomador",
+      rol: "Tomador",
+      descripcion:
+        "Escribe el documento: se busca el cliente y se completan tipo y nombre. Si no existe, puedes crearlo.",
       campos: [
         {
           name: "tipo_documento_tomador",
@@ -628,6 +654,9 @@ export const CorreccionPoliza = ({ setLoading }) => {
     },
     {
       titulo: "Asegurado",
+      rol: "Asegurado",
+      descripcion:
+        "Escribe el documento: se busca el cliente y se completan tipo y nombre. Si no existe, puedes crearlo.",
       campos: [
         {
           name: "tipo_documento_asegurado",
@@ -640,6 +669,9 @@ export const CorreccionPoliza = ({ setLoading }) => {
     },
     {
       titulo: "Beneficiario",
+      rol: "Beneficiario",
+      descripcion:
+        "Beneficiario oneroso: escribe el NIT y se busca en los beneficiarios registrados. Si no existe, puedes crearlo.",
       campos: [
         {
           name: "tipo_documento_beneficiario",
@@ -724,6 +756,15 @@ export const CorreccionPoliza = ({ setLoading }) => {
   return (
     <Box>
       <HeaderPage title="Corrección de Póliza" />
+
+      {/* Crear cliente / beneficiario: los mismos modales de Registro de Pólizas */}
+      <ModalCliente
+        {...personas.modalCliente}
+        userData={userDataLocal}
+        setIsLoading={setLoading}
+        from="polizas"
+      />
+      <ModalOneroso {...personas.modalBeneficiario} />
 
       <div className="w-full px-6 pb-10 flex flex-col gap-5">
         {!seleccion && (
@@ -891,6 +932,7 @@ export const CorreccionPoliza = ({ setLoading }) => {
                       warning={c.warning}
                       hint={c.hint}
                       disabled={bloqueada || !!c.disabled}
+                      loading={personas.estaBuscando(c.name)}
                       value={valores[c.name]}
                       original={original[c.name]}
                       onChange={onChange}
@@ -898,6 +940,27 @@ export const CorreccionPoliza = ({ setLoading }) => {
                     />
                   ))}
                 </div>
+
+                {/* Persona creada en esta corrección: queda en el historial al guardar */}
+                {s.rol &&
+                  personas
+                    .personasCreadas(cambios)
+                    .filter((p) => p.rol === s.rol)
+                    .map((p) => (
+                      <div
+                        key={p.rol}
+                        className="mt-4 rounded-lg px-4 py-2 text-[0.78rem]"
+                        style={{
+                          backgroundColor: isDark ? "#1f2a14" : "#f3fae6",
+                          border: "1px solid #88d600",
+                          color: colors.gray[100],
+                        }}
+                      >
+                        {p.entidad === "cliente" ? "Cliente" : "Beneficiario"} creado
+                        en esta corrección: <strong>{p.documento}</strong> · {p.nombre}.
+                        Al guardar quedará en el historial de la póliza.
+                      </div>
+                    ))}
 
                 {/* Mapa de certificados: para entender por qué una opción está bloqueada */}
                 {s.tipoCertificado && certificadosPoliza.length > 0 && (
@@ -1191,6 +1254,20 @@ export const CorreccionPoliza = ({ setLoading }) => {
                 Los valores se aplican solo al certificado {certificado ?? 0}.
               </span>
             </p>
+          )}
+
+          {personas.personasCreadas(cambios).length > 0 && (
+            <div className="text-sm mt-3">
+              <strong>Se registrará en el historial:</strong>
+              <ul className="list-disc pl-5">
+                {personas.personasCreadas(cambios).map((p) => (
+                  <li key={p.rol}>
+                    {p.entidad === "cliente" ? "Cliente" : "Beneficiario"} creado
+                    y asignado como {p.rol}: {p.documento} · {p.nombre}
+                  </li>
+                ))}
+              </ul>
+            </div>
           )}
 
           {cambios.includes("tipo_certificado") && (
