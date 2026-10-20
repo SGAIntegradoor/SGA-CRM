@@ -41,6 +41,8 @@ import { getFasecoldaBrands, getFasecoldaClass } from "../../../utils/utils";
 import { sumarAFecha, validarFechasPoliza } from "../../../utils/fechas";
 import { getAsesoresGanadores } from "../../../services/Users/getAsesoresGanadores";
 import { getAsesores10 } from "../../../services/Users/getAsesores10";
+import { ModalLectorPoliza } from "../../../components/ModalLectorPoliza/ModalLectorPoliza";
+import { MdOutlineDocumentScanner } from "react-icons/md";
 
 export const Polizas = ({ setLoading, loading }) => {
   const navigate = useNavigate();
@@ -1423,6 +1425,232 @@ export const Polizas = ({ setLoading, loading }) => {
     });
   };
 
+  // Lector de pólizas PDF con IA INICIO
+
+  const [showLector, setShowLector] = useState(false);
+  const [pdfLeidoUrl, setPdfLeidoUrl] = useState(null);
+
+  // Libera el blob anterior al leer otro PDF o al salir de la vista
+  useEffect(() => {
+    return () => {
+      if (pdfLeidoUrl) URL.revokeObjectURL(pdfLeidoUrl);
+    };
+  }, [pdfLeidoUrl]);
+
+  // Los switches de Asegurado/Beneficiario limpian sus datos en un efecto de
+  // CardUser; lo leído se reaplica después de ese efecto (los del hijo corren primero).
+  const usuariosPendientesRef = useRef(null);
+  // Marca y clase son selects que cargan al cambiar el ramo: se resuelven cuando lleguen.
+  const vehiculoPendienteRef = useRef(null);
+
+  useEffect(() => {
+    if (!usuariosPendientesRef.current) return;
+    const pendientes = usuariosPendientesRef.current;
+    usuariosPendientesRef.current = null;
+    setDatosUsuarios(pendientes);
+  }, [buttonSwitch]);
+
+  const normalizarTexto = (texto) =>
+    String(texto || "")
+      .normalize("NFD")
+      .replace(/[̀-ͯ]/g, "")
+      .toUpperCase()
+      .replace(/\s+/g, " ")
+      .trim();
+
+  const buscarOpcion = (opciones, texto) => {
+    const buscado = normalizarTexto(texto);
+    if (!buscado) return "";
+    const exacta = opciones.find((o) => normalizarTexto(o.label) === buscado);
+    if (exacta) return exacta.value;
+    const parecida = opciones.find((o) => {
+      const label = normalizarTexto(o.label);
+      return label && (buscado.startsWith(label) || label.startsWith(buscado));
+    });
+    return parecida ? parecida.value : "";
+  };
+
+  const resolverMarcaClase = (pendiente) => {
+    const marca = buscarOpcion(marcas, pendiente.marca);
+    const clase = buscarOpcion(clases, pendiente.clase);
+    setVehiculo((prev) => ({
+      ...prev,
+      marca: marca || prev.marca,
+      clase: clase || prev.clase,
+    }));
+  };
+
+  useEffect(() => {
+    if (!vehiculoPendienteRef.current || !marcas.length || !clases.length) return;
+    resolverMarcaClase(vehiculoPendienteRef.current);
+    vehiculoPendienteRef.current = null;
+  }, [marcas, clases]);
+
+  // Toma el value de la opción del select (mismo tipo que usa el Select) a partir del id leído
+  const opcionPorId = (opciones, id) =>
+    id === "" || id == null
+      ? ""
+      : opciones.find((o) => String(o.value) === String(id))?.value ?? "";
+
+  const tieneDatos = (persona) =>
+    Boolean(persona?.numeroIdentificacion || persona?.nombre);
+
+  const aplicarLecturaPdf = async (resultado, archivo) => {
+    const { cabezotePoliza: c, datosUsuarios: u, vehiculo: v, valoresPoliza: val } =
+      resultado.data;
+
+    setShowLector(false);
+    setPdfLeidoUrl(URL.createObjectURL(archivo));
+
+    // Cabezote (directo con setState: handleCabezotePolizaChange pisaría la vigencia)
+    const aseguradora = opcionPorId(insurers, c.aseguradora);
+    const ramoLeido = opcionPorId(ramo, c.ramo);
+    const tipoCertificado = opcionPorId(tiposPoliza, c.tipoCertificado);
+    let fechaFin = c.fechaFinVigencia;
+    if (!fechaFin && c.fechaInicioVigencia) {
+      const fin = new Date(c.fechaInicioVigencia);
+      fin.setFullYear(fin.getFullYear() + 1);
+      fechaFin = fin.toISOString().split("T")[0];
+    }
+    setCabezotePoliza((prev) => ({
+      ...prev,
+      noPoliza: c.noPoliza || prev.noPoliza,
+      noCertificado: c.noCertificado || prev.noCertificado,
+      aseguradora: aseguradora || prev.aseguradora,
+      ramo: ramoLeido || prev.ramo,
+      tipoCertificado: tipoCertificado || prev.tipoCertificado,
+      fechaExpedicion: c.fechaExpedicion || prev.fechaExpedicion,
+      fechaInicioVigencia: c.fechaInicioVigencia || prev.fechaInicioVigencia,
+      fechaFinVigencia: fechaFin || prev.fechaFinVigencia,
+      renovable: c.renovable || prev.renovable,
+    }));
+
+    // Tomador / Asegurado / Beneficiario
+    const tomador = tieneDatos(u.Tomador) ? u.Tomador : datosUsuarios.Tomador;
+    const asegurado = tieneDatos(u.Asegurado) ? u.Asegurado : datosUsuarios.Asegurado;
+    const beneficiario = tieneDatos(u.Beneficiario)
+      ? u.Beneficiario
+      : datosUsuarios.Beneficiario;
+    const nuevosUsuarios = {
+      Tomador: tomador,
+      Asegurado: asegurado,
+      Beneficiario: beneficiario,
+    };
+    const nuevosSwitch = {
+      Asegurado:
+        Boolean(tomador.numeroIdentificacion) &&
+        tomador.numeroIdentificacion === asegurado.numeroIdentificacion &&
+        tomador.tipoIdentificacion === asegurado.tipoIdentificacion,
+      Beneficiario: Boolean(beneficiario.numeroIdentificacion),
+    };
+    setDatosUsuarios(nuevosUsuarios);
+    if (
+      nuevosSwitch.Asegurado !== buttonSwitch.Asegurado ||
+      nuevosSwitch.Beneficiario !== buttonSwitch.Beneficiario
+    ) {
+      usuariosPendientesRef.current = nuevosUsuarios;
+      setButtonSwitch(nuevosSwitch);
+    }
+
+    // Valores. La financiera NUNCA se toma del PDF (Coomeva es id 0 = default de contado)
+    const ramoFinal = ramoLeido || cabezotePoliza.ramo;
+    const formapago = NOT_ALLOWED_FORMA_PAGO_FINAN.includes(Number(ramoFinal))
+      ? "2"
+      : val.formapago;
+    const moneda = (n) => (n === null || n === undefined ? null : formatCOP(n));
+    setValoresPoliza((prev) => ({
+      ...prev,
+      primaneta: moneda(val.primaneta) ?? prev.primaneta,
+      asistenciasotros: moneda(val.asistenciasotros) ?? prev.asistenciasotros,
+      gastosexpedicion: moneda(val.gastosexpedicion) ?? prev.gastosexpedicion,
+      // El IVA del PDF se respeta como manual; sin IVA se calcula por porcentaje
+      iva: moneda(val.iva) ?? prev.iva,
+      ivaManual: val.iva !== null && val.iva !== undefined ? true : prev.ivaManual,
+      formapago: formapago || prev.formapago,
+      ...(formapago === "2" ? { financiada: "", nocuotas: "" } : {}),
+    }));
+    if (formapago === "1") {
+      handleChangesFinanciera();
+    } else if (formapago === "2") {
+      setQuotesFinancieras([]);
+    }
+
+    // Vehículo (solo ramos con placa)
+    if (INPUT_PLACA_ALLOW.includes(Number(ramoFinal))) {
+      setVehiculo((prev) => ({
+        ...prev,
+        placa: v.placa || prev.placa,
+        fasecolda: v.fasecolda || prev.fasecolda,
+        modelo: v.modelo || prev.modelo,
+        linea: v.linea || prev.linea,
+        valorFasecolda: v.valorFasecolda ?? prev.valorFasecolda,
+      }));
+      const pendiente = { marca: v.marca, clase: v.clase };
+      if (marcas.length && clases.length) {
+        resolverMarcaClase(pendiente);
+      } else {
+        vehiculoPendienteRef.current = pendiente;
+      }
+
+      // Lo que el PDF no trajo se completa con la cotización de la placa, si existe
+      if (v.placa) {
+        const cotizado = await getVehiculo(v.placa);
+        if (cotizado?.status === "Ok" && cotizado.data) {
+          setVehiculo((prev) => ({
+            ...prev,
+            fasecolda: prev.fasecolda || cotizado.data.fasecolda || "",
+            modelo: prev.modelo || cotizado.data.modelo || "",
+            linea: prev.linea || cotizado.data.linea || "",
+            marca: prev.marca || cotizado.data.marca || "",
+            clase: prev.clase || cotizado.data.clase || "",
+          }));
+        }
+      }
+    }
+
+    mostrarResumenLectura(resultado, nuevosSwitch.Beneficiario, formapago);
+  };
+
+  const escaparHtml = (texto) =>
+    String(texto).replace(/[&<>"']/g, (ch) => ({
+      "&": "&amp;",
+      "<": "&lt;",
+      ">": "&gt;",
+      '"': "&quot;",
+      "'": "&#39;",
+    })[ch]);
+
+  const mostrarResumenLectura = (resultado, conBeneficiario, formapago) => {
+    const lista = (items) =>
+      `<ul style="text-align:left;margin:4px 0 12px 18px;list-style:disc">${items
+        .map((i) => `<li>${escaparHtml(i)}</li>`)
+        .join("")}</ul>`;
+
+    const pendientes = [
+      "Validar el tomador y el asegurado con la lupa.",
+      "Completar la Gestión Comercial.",
+    ];
+    if (conBeneficiario) pendientes.push("Validar el beneficiario oneroso con la lupa.");
+    if (formapago === "1") pendientes.push("Seleccionar la financiera y las cuotas.");
+
+    const faltantes = resultado.camposFaltantes || [];
+    const advertencias = resultado.advertencias || [];
+
+    let html = "";
+    if (advertencias.length) html += `<b>Revisar</b>${lista(advertencias)}`;
+    if (faltantes.length) html += `<b>No se encontraron en el PDF</b>${lista(faltantes)}`;
+    html += `<b>Pendiente</b>${lista(pendientes)}`;
+
+    Swal.fire({
+      icon: advertencias.length ? "warning" : "success",
+      title: "Póliza leída",
+      html: `<div style="font-size:14px">${html}</div>`,
+      confirmButtonText: "Revisar formulario",
+    });
+  };
+
+  // Lector de pólizas PDF con IA FIN
+
   const onCloseModalOneroso = () => {
     setModalOneroso(false);
     setNuevoBeneficiario({
@@ -1466,6 +1694,11 @@ export const Polizas = ({ setLoading, loading }) => {
         setProcedenciaCliente={setProcedenciaCliente}
         setDatosUsuarios={setDatosUsuarios}
         searchMethod={calledFrom}
+      />
+      <ModalLectorPoliza
+        show={showLector}
+        onClose={() => setShowLector(false)}
+        onLectura={aplicarLecturaPdf}
       />
       <Loader isLoading={loading} />
 
@@ -1512,6 +1745,27 @@ export const Polizas = ({ setLoading, loading }) => {
         >
           <span>Busqueda Avanzada</span>
         </BtnGeneral>
+
+        <BtnGeneral
+          className={
+            "bg-lime-9000 text-white px-6 h-[35px] m-[2px] rounded hover:bg-lime-600 transition duration-300 ease-in-out flex flex-row items-center gap-2"
+          }
+          funct={() => setShowLector(true)}
+        >
+          <MdOutlineDocumentScanner size={20} />
+          <span>Leer póliza (PDF)</span>
+        </BtnGeneral>
+
+        {pdfLeidoUrl && (
+          <a
+            href={pdfLeidoUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="self-center text-blue-500 font-bold underline"
+          >
+            Ver PDF leído
+          </a>
+        )}
       </section>
 
       {/* Seccion 2 Datos tomador/asegurado/beneficiario */}
@@ -1600,6 +1854,7 @@ export const Polizas = ({ setLoading, loading }) => {
                 <input
                   id="noCertificado"
                   type="text"
+                  name="noCertificado"
                   value={cabezotePoliza.noCertificado}
                   className="text-md border-[1px] w-[65px] border-gray-300 text-gray-900 focus:outline-none h-[30px] rounded-md p-2"
                   onChange={handleCabezotePolizaChange}
@@ -1658,8 +1913,8 @@ export const Polizas = ({ setLoading, loading }) => {
                   id="tipoCertificado"
                   options={tiposPoliza}
                   value={tiposPoliza.find(
-                    (opt) => opt.value === tiposPoliza.value
-                  ) }
+                    (opt) => opt.value === cabezotePoliza.tipoCertificado
+                  ) || ""}
                   onChange={(selectedOption, meta) => {
                     const value = selectedOption ? selectedOption.value : "";
                     handleCabezotePolizaChange({
@@ -1746,6 +2001,7 @@ export const Polizas = ({ setLoading, loading }) => {
                 id="renovableNo"
                 name="renovable"
                 value="No"
+                checked={cabezotePoliza.renovable === "No"}
                 className=" text-md border-[1px] border-gray-300 text-gray-900 focus:outline-none  rounded-md p-2"
                 onChange={handleCabezotePolizaChange}
               />
