@@ -38,6 +38,7 @@ import { getBeneficiarios } from "../../../services/Polizas/getBeneficiarios";
 import { getFinancieras } from "../../../services/Polizas/getFinancieras";
 import { getQuotesFinancieras } from "../../../services/Polizas/getQuotesFinancieras";
 import { getFasecoldaBrands, getFasecoldaClass } from "../../../utils/utils";
+import { sumarAFecha, validarFechasPoliza } from "../../../utils/fechas";
 import { getAsesoresGanadores } from "../../../services/Users/getAsesoresGanadores";
 import { getAsesores10 } from "../../../services/Users/getAsesores10";
 
@@ -141,12 +142,11 @@ export const Polizas = ({ setLoading, loading }) => {
   const handleCabezotePolizaChange = (e) => {
     const { name, value } = e.target;
     if (name === "fechaInicioVigencia") {
-      let fechaVigencia = new Date(value);
-      fechaVigencia.setFullYear(fechaVigencia.getFullYear() + 1);
-      setCabezotePoliza((prev) => ({
-        ...prev,
-        fechaFinVigencia: fechaVigencia?.toISOString()?.split("T")[0],
-      }));
+      // Solo se autocompleta la fecha fin si la de inicio es válida
+      const fechaFin = sumarAFecha(value, { anios: 1 });
+      if (fechaFin) {
+        setCabezotePoliza((prev) => ({ ...prev, fechaFinVigencia: fechaFin }));
+      }
     }
     setCabezotePoliza((prev) => ({ ...prev, [name]: value }));
   };
@@ -1160,12 +1160,7 @@ export const Polizas = ({ setLoading, loading }) => {
     }
   };
 
-  const sumarDias = (fecha, dias) => {
-    if (fecha == null || fecha == "") return null;
-    const nuevaFecha = new Date(fecha);
-    nuevaFecha.setDate(nuevaFecha.getDate() + dias);
-    return nuevaFecha.toISOString().split("T")[0]; // Formato YYYY-MM-DD
-  };
+  const sumarDias = (fecha, dias) => sumarAFecha(fecha, { dias }); // YYYY-MM-DD o null
 
   const handlerSavePoliza = async () => {
     // Control anti doble-click: el ref es sincrónico, así que bloquea incluso
@@ -1195,6 +1190,15 @@ export const Polizas = ({ setLoading, loading }) => {
         });
         return;
       }
+    }
+    const errorFechas = validarFechasPoliza(cabezotePoliza);
+    if (errorFechas) {
+      Swal.fire({
+        icon: "warning",
+        title: "Fecha inválida",
+        text: errorFechas,
+      });
+      return;
     }
     // Valida los campos del tomador y del asegurado, el beneficiario es opcional
     for (const role of ["Tomador", "Asegurado"]) {
