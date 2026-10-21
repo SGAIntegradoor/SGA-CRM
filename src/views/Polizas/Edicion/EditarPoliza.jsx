@@ -47,6 +47,7 @@ import { getAsesoresGanadores } from "../../../services/Users/getAsesoresGanador
 import { getAsesoresSGA } from "../../../services/Users/getAsesoresSGA";
 import { getQuotesFinancieras } from "../../../services/Polizas/getQuotesFinancieras";
 import { KEEP_LOCKED, useSubmitGuard } from "../../../hooks/useSubmitGuard";
+import { sumarAFecha, validarFechasPoliza } from "../../../utils/fechas";
 
 /* Helpers */
 const noop = () => {};
@@ -207,12 +208,11 @@ export const EditarPoliza = ({ setLoading, loading }) => {
   const handleCabezotePolizaChange = (e) => {
     const { name, value } = e.target;
     if (name === "fechaInicioVigencia") {
-      let fechaVigencia = new Date(value);
-      fechaVigencia.setFullYear(fechaVigencia.getFullYear() + 1);
-      setCabezotePoliza((prev) => ({
-        ...prev,
-        fechaFinVigencia: fechaVigencia.toISOString().split("T")[0],
-      }));
+      // Solo se autocompleta la fecha fin si la de inicio es válida
+      const fechaFin = sumarAFecha(value, { anios: 1 });
+      if (fechaFin) {
+        setCabezotePoliza((prev) => ({ ...prev, fechaFinVigencia: fechaFin }));
+      }
     }
     setCabezotePoliza((prev) => ({ ...prev, [name]: value }));
   };
@@ -1279,6 +1279,15 @@ export const EditarPoliza = ({ setLoading, loading }) => {
         return;
       }
     }
+    const errorFechas = validarFechasPoliza(cabezotePoliza);
+    if (errorFechas) {
+      Swal.fire({
+        icon: "warning",
+        title: "Fecha inválida",
+        text: errorFechas,
+      });
+      return;
+    }
     // Valida los campos del tomador y del asegurado, el beneficiario es opcional
     for (const role of ["Tomador", "Asegurado"]) {
       for (const field of Object.keys(datosUsuarios[role])) {
@@ -1439,11 +1448,21 @@ export const EditarPoliza = ({ setLoading, loading }) => {
     }
     const updatedPoliza = await updatePoliza(polizaData);
 
-    if (updatedPoliza.code === 439) {
+    if (updatedPoliza?.code === 439) {
       Swal.fire({
         icon: "warning",
         title: "Conflicto de datos",
         text: "No se actualizo la poliza, valide la información e intente nuevamente.",
+      });
+    } else if (updatedPoliza?.code === 422 || updatedPoliza?.status !== "Ok") {
+      // 422 = validación del backend; sin status Ok = error de red/servidor
+      Swal.fire({
+        icon: "error",
+        title: "No se actualizó la póliza",
+        text:
+          updatedPoliza?.code === 422
+            ? updatedPoliza.message
+            : "Ocurrió un error al actualizar la póliza. Intente nuevamente.",
       });
     } else {
       Swal.fire({
@@ -1504,12 +1523,8 @@ export const EditarPoliza = ({ setLoading, loading }) => {
     }
   }, [gestionComercial.unidadnegocio]);
 
-  const sumarDias = (fecha, dias) => {
-    if (fecha == null || fecha == "") return null;
-    const nuevaFecha = new Date(fecha);
-    nuevaFecha.setDate(nuevaFecha.getDate() + dias);
-    return nuevaFecha.toISOString().split("T")[0]; // Formato YYYY-MM-DD
-  };
+  // YYYY-MM-DD o null: una fecha inválida en BD (0000-00-00) ya no tumba la vista
+  const sumarDias = (fecha, dias) => sumarAFecha(fecha, { dias });
 
   return (
     <div className="flex flex-col">
