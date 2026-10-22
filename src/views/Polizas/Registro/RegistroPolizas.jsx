@@ -1506,12 +1506,8 @@ export const Polizas = ({ setLoading, loading }) => {
     const aseguradora = opcionPorId(insurers, c.aseguradora);
     const ramoLeido = opcionPorId(ramo, c.ramo);
     const tipoCertificado = opcionPorId(tiposPoliza, c.tipoCertificado);
-    let fechaFin = c.fechaFinVigencia;
-    if (!fechaFin && c.fechaInicioVigencia) {
-      const fin = new Date(c.fechaInicioVigencia);
-      fin.setFullYear(fin.getFullYear() + 1);
-      fechaFin = fin.toISOString().split("T")[0];
-    }
+    const fechaFin =
+      c.fechaFinVigencia || sumarAFecha(c.fechaInicioVigencia, { anios: 1 });
     setCabezotePoliza((prev) => ({
       ...prev,
       noPoliza: c.noPoliza || prev.noPoliza,
