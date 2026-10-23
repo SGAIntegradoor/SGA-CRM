@@ -169,10 +169,16 @@ export const getPolizas = async (dataFilters) => {
   //   pctNum: número en unidades de % (0.07 significa 0.07%)
   //   pctFrac: fracción para multiplicar la base (0.07% = 0.0007)
   //
+  // En Integradoor (Usuarios > Comisiones) cada campo se guarda como el texto
+  // de la opción: ramo, unidad_negocio, tipo_negocio y tipo_expedicion pueden
+  // venir con "Todos", que aplica a cualquier valor de ese campo.
+  //
   // Prioridad:
   //   1. Comisión con ramo "Todos" (aplica a cualquier ramo) que coincida en tipo_expedicion y unidad_negocio
   //   2. Comisión con ramo específico que coincida en tipo_expedicion y unidad_negocio
   //   3. Igual sin filtro de unidad_negocio (fallback si no hay unidad)
+  // Dentro de cada paso gana el valor explícito sobre "Todos"
+  // (tipo_expedicion, luego unidad_negocio, luego tipo_negocio).
   const selectComision = (
     comisiones = [],
     ramoPolizaNombre,
@@ -194,23 +200,31 @@ export const getPolizas = async (dataFilters) => {
       ? (unidadNegocioAliases[unidadNorm] ?? [unidadNorm])
       : null;
 
-    const tipoOk = (c) => {
-      const tiposC = parseListFromJsonish(c?.tipo_expedicion).map(norm);
-      return tiposC.length > 0
-        ? tiposC.includes(tipoPoliza)
-        : norm(c?.tipo_expedicion) === tipoPoliza;
+    // Las pólizas aún no traen tipo de negocio: hoy todas son individuales
+    const tipoNegocioPoliza = "individual";
+
+    const esComodin = (v) => v === "todos" || v === "todas";
+
+    // 2 = coincide explícito, 1 = coincide por "Todos" (o sin restricción), 0 = no aplica
+    const nivel = (raw, aceptados, vacioAplica) => {
+      const valores = parseListFromJsonish(raw).map(norm);
+      if (valores.length === 0) return vacioAplica ? 1 : 0;
+      if (valores.some((v) => aceptados.includes(v))) return 2;
+      if (valores.some(esComodin)) return 1;
+      return 0;
     };
 
-    const unidadOk = (c) => {
-      if (!unidadAliases) return true; // sin filtro de unidad
-      const unidadesC = parseListFromJsonish(c?.unidad_negocio).map(norm);
-      if (unidadesC.length === 0) return true; // comisión sin restricción de unidad
-      return unidadesC.some((u) => unidadAliases.includes(u));
-    };
+    const nivelTipo = (c) => nivel(c?.tipo_expedicion, [tipoPoliza], false);
+
+    const nivelUnidad = (c) =>
+      unidadAliases ? nivel(c?.unidad_negocio, unidadAliases, true) : 1; // sin filtro de unidad
+
+    const nivelTipoNegocio = (c) =>
+      nivel(c?.tipo_negocio, [tipoNegocioPoliza], true);
 
     const esTodos = (c) => {
       const ramsC = parseListFromJsonish(c?.ramo).map(norm);
-      return ramsC.some((r) => r === "todos");
+      return ramsC.some(esComodin);
     };
 
     const esRamoEspecifico = (c) => {
@@ -220,22 +234,41 @@ export const getPolizas = async (dataFilters) => {
 
     const lista = comisiones || [];
 
+    // Mejor comisión que cumpla el filtro de ramo; en empate, la primera de la lista
+    const buscar = (ramoOk, conUnidad) => {
+      let mejor = null;
+      let mejorPuntaje = 0;
+      for (const c of lista) {
+        if (!ramoOk(c)) continue;
+        const t = nivelTipo(c);
+        const u = conUnidad ? nivelUnidad(c) : 1;
+        const n = nivelTipoNegocio(c);
+        if (!t || !u || !n) continue;
+        const puntaje = t * 100 + u * 10 + n;
+        if (puntaje > mejorPuntaje) {
+          mejor = c;
+          mejorPuntaje = puntaje;
+        }
+      }
+      return mejor;
+    };
+
     // 1. "Todos" + tipo_expedicion coincide + unidad_negocio coincide
-    let match = lista.find((c) => tipoOk(c) && unidadOk(c) && esTodos(c));
+    let match = buscar(esTodos, true);
 
     // 2. Ramo específico + tipo_expedicion coincide + unidad_negocio coincide
     if (!match) {
-      match = lista.find((c) => tipoOk(c) && unidadOk(c) && esRamoEspecifico(c));
+      match = buscar(esRamoEspecifico, true);
     }
 
     // 3. Fallback sin filtro de unidad: "Todos" + tipo_expedicion
     if (!match) {
-      match = lista.find((c) => tipoOk(c) && esTodos(c));
+      match = buscar(esTodos, false);
     }
 
     // 4. Fallback sin filtro de unidad: ramo específico + tipo_expedicion
     if (!match) {
-      match = lista.find((c) => tipoOk(c) && esRamoEspecifico(c));
+      match = buscar(esRamoEspecifico, false);
     }
 
     if (!match) return { pctStr: "0", pctNum: 0, pctFrac: 0 };
