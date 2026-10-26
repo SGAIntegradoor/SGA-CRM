@@ -9,21 +9,18 @@ import { IoWarningOutline } from "react-icons/io5";
 import Loader from "../../../components/LoaderFullScreen/Loader";
 import BtnGeneral from "../../../components/BtnGeneral/BtnGeneral";
 import { CardUser } from "../components/CardUser";
+import { SeccionPersona } from "../components/SeccionPersona/SeccionPersona";
 import { GeneralBox } from "../../../components/GeneralBox/GeneralBox";
-import { useContext, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { obtenerAseguradoras, obtenerRamo } from "../../../utils/aseguradoras";
 import { getFormasPago } from "../../../utils/getPolizas";
 import { RegistroPago } from "../components/RegistroPago";
 import Swal from "sweetalert2";
-import { NavContext } from "../../../context/NavContext";
-import ModalCliente from "../../../components/ModalCliente/ModalCliente";
-import { getClientById } from "../../../services/Clientes/getClientById";
 import { getVehiculo } from "../../../services/Polizas/getVehiculo";
 import { getAnalistas } from "../../../services/Users/getAnalistas";
 import { getFreelances } from "../../../services/Users/getFreelance";
 import Select from "react-select";
 import { getAnalistaByFreelance } from "../../../services/Users/getAnalistaByFreelance";
-import { ModalOneroso } from "../../../components/ModalBOneroso/ModalOneroso";
 import { getTecnicos } from "../../../services/Users/getTecnicoEmisores";
 import { getCoordinadores } from "../../../services/Users/getCoordinadores";
 import { getDirectores } from "../../../services/Users/getDirectores";
@@ -55,8 +52,6 @@ export const Polizas = ({ setLoading, loading }) => {
   const [ramo, setRamo] = useState([]);
   const [formasPago, setFormasPago] = useState([]);
 
-  const [calledFrom, setCalledFrom] = useState("");
-
   const [valorTotal, setValorTotal] = useState("");
 
   const [quotesFinancieras, setQuotesFinancieras] = useState([]);
@@ -64,21 +59,9 @@ export const Polizas = ({ setLoading, loading }) => {
   const [numeroPagos, setNumeroPagos] = useState(1);
   const [registrarPagos, setRegistrarPagos] = useState(false);
 
-  const [cliente, setCliente] = useState([]);
-
-  const [idClienteIntegradoor, setIdClienteIntegradoor] = useState(null);
-
-  const [documentoTemp, setDocumentoTemp] = useState(null);
-
   const [buttonSwitch, setButtonSwitch] = useState({
     Asegurado: false,
     Beneficiario: false,
-  });
-
-  const [procedenciaCliente, setProcedenciaCliente] = useState({
-    procedenciaCliente: "",
-    system: "",
-    idCliente: "",
   });
 
   // Estados Tomador, Asegurado, Beneficiario INICIO
@@ -111,16 +94,8 @@ export const Polizas = ({ setLoading, loading }) => {
     }));
   };
 
-  const [modalOneroso, setModalOneroso] = useState(false);
-
-  const [nuevoBeneficiario, setNuevoBeneficiario] = useState({
-    tipoIdentificacion: "1",
-    numeroIdentificacion: "",
-    razon_social: "",
-    correo1: "",
-    correo2: "",
-    observaciones: "",
-  });
+  // Sección de datos que se despliega debajo de las cards (Ver / Editar)
+  const [seccionPersona, setSeccionPersona] = useState(null);
 
   // Estados Tomador, Asegurado, Beneficiario FIN
 
@@ -628,12 +603,6 @@ export const Polizas = ({ setLoading, loading }) => {
   };
   // Estados de Pagos Poliza FIN
 
-  const {
-    selectedClientId,
-    setSelectedClientId,
-    isModalOpenCliente,
-    setIsModalOpenCliente,
-  } = useContext(NavContext);
   const userData = JSON.parse(localStorage.getItem("userData"));
 
   useEffect(() => {
@@ -993,76 +962,79 @@ export const Polizas = ({ setLoading, loading }) => {
     });
   };
 
-  const searchProspecto = async (numeroIdentificacion, tipoIdentificacion, calledFrom) => {
-    if (
-      numeroIdentificacion == "" ||
-      numeroIdentificacion == null ||
-      numeroIdentificacion.length < 6
-    ) {
-      Swal.fire({
-        icon: "warning",
-        title: "Campos incompletos",
-        text: "Por favor complete todos los campos requeridos.",
-      });
-      return;
-    }
-    
-    if(tipoIdentificacion == "2" && numeroIdentificacion.length > 9){
-      Swal.fire({
-        icon: "warning",
-        title: "Documento NIT",
-        text: "Por favor complete el campo de documento de identificación con un NIT válido (máximo 9 dígitos) sin dígito de verificación.",
-      });
-      return;
-    }
+  // Ver / Editar de las cards: mismas validaciones que tenía la búsqueda del
+  // modal y despliega la sección de datos debajo de las cards
+  const abrirSeccionPersona = (rol, modo) => {
+    const { tipoIdentificacion, numeroIdentificacion, nombre } =
+      datosUsuarios[rol];
+    const documento = String(numeroIdentificacion ?? "").trim();
 
-    setCalledFrom(calledFrom);
-    setLoading(true);
-    setSelectedClientId(null);
-    setIsModalOpenCliente(true);
-    setIdClienteIntegradoor(numeroIdentificacion);
-
-    await getClientById("x", numeroIdentificacion).then((response) => {
-      if (response.status === "Ok") {
-        if (response.data === "Cliente Nuevo") {
-          setIdClienteIntegradoor("Cliente Nuevo");
-          setDocumentoTemp(datosUsuarios.Tomador.numeroIdentificacion);
-          setLoading(false);
-          return;
-        }
-        if (calledFrom === "Tomador") {
-          setDatosUsuarios((prev) => ({
-            ...prev,
-            Tomador: {
-              ...prev.Tomador,
-              tipoIdentificacion: response.data.tipoDocumento,
-              numeroIdentificacion: response.data.documento,
-              nombre: `${response.data.nombres} ${response.data.apellidos}`,
-            },
-          }));
-        } else if (calledFrom === "Asegurado") {
-          setDatosUsuarios((prev) => ({
-            ...prev,
-            Asegurado: {
-              ...prev.Asegurado,
-              tipoIdentificacion: response.data.tipoDocumento,
-              numeroIdentificacion: response.data.documento,
-              nombre: `${response.data.nombres} ${response.data.apellidos}`,
-            },
-          }));
-        }
-        setSelectedClientId(response.data.id_cliente);
-        setCliente(response.data);
-        setLoading(false);
-      } else {
+    if (rol === "Beneficiario") {
+      if (documento === "") {
         Swal.fire({
-          icon: "error",
-          title: "Error",
-          text: response.message,
+          icon: "warning",
+          title: "Campo vacío",
+          text: "Por favor ingrese numero de identificación del beneficiario para validarlo.",
         });
+        return;
       }
+    } else {
+      if (documento === "" || documento.length < 6) {
+        Swal.fire({
+          icon: "warning",
+          title: "Campos incompletos",
+          text: "Por favor complete todos los campos requeridos.",
+        });
+        return;
+      }
+      if (tipoIdentificacion == "2" && documento.length > 9) {
+        Swal.fire({
+          icon: "warning",
+          title: "Documento NIT",
+          text: "Por favor complete el campo de documento de identificación con un NIT válido (máximo 9 dígitos) sin dígito de verificación.",
+        });
+        return;
+      }
+    }
+
+    setSeccionPersona({
+      rol,
+      modo,
+      tipoIdentificacion: rol === "Beneficiario" ? "2" : tipoIdentificacion,
+      numeroIdentificacion: documento,
+      nombre,
+      token: Date.now(),
     });
   };
+
+  // Lo que la sección confirma (cliente encontrado o guardado) vuelve a la card
+  const sincronizarPersona = (rol, datos) => {
+    setDatosUsuarios((prev) => ({
+      ...prev,
+      [rol]: { ...prev[rol], ...datos },
+    }));
+    if (datos.numeroIdentificacion !== undefined) {
+      setSeccionPersona((prev) =>
+        prev?.rol === rol
+          ? { ...prev, numeroIdentificacion: datos.numeroIdentificacion }
+          : prev
+      );
+    }
+  };
+
+  // Si cambia el documento de la card o se apaga el beneficiario, la sección
+  // ya no corresponde
+  useEffect(() => {
+    if (!seccionPersona) return;
+    const { rol, numeroIdentificacion } = seccionPersona;
+    const actual = String(datosUsuarios[rol]?.numeroIdentificacion ?? "").trim();
+    if (
+      actual !== numeroIdentificacion ||
+      (rol === "Beneficiario" && !buttonSwitch.Beneficiario)
+    ) {
+      setSeccionPersona(null);
+    }
+  }, [datosUsuarios, buttonSwitch, seccionPersona]);
 
   const INPUT_PLACA_ALLOW = [1, 7, 8, 14, 15, 24, 25, 26, 27, 31];
 
@@ -1647,50 +1619,10 @@ export const Polizas = ({ setLoading, loading }) => {
 
   // Lector de pólizas PDF con IA FIN
 
-  const onCloseModalOneroso = () => {
-    setModalOneroso(false);
-    setNuevoBeneficiario({
-      tipoIdentificacion: "2",
-      numeroIdentificacion: "",
-      razon_social: "",
-      correo1: "",
-      correo2: "",
-      observaciones: "",
-    });
-  };
-
   const NOT_ALLOWED_FORMA_PAGO_FINAN = [6, 44, 45, 46, 47];
 
   return (
     <div className="flex flex-col">
-      <ModalOneroso
-        show={modalOneroso}
-        onClose={onCloseModalOneroso}
-        valores={datosUsuarios.Beneficiario}
-        setBeneficiarios={setBeneficiarios}
-        onChange={(campo, valor) =>
-          handleDatosChange("Beneficiario", campo, valor)
-        }
-        setIsLoading={setLoading}
-        isLoading={loading}
-        nuevoBeneficiario={nuevoBeneficiario}
-        setNuevoBeneficiario={setNuevoBeneficiario}
-      />
-      <ModalCliente
-        show={isModalOpenCliente}
-        onClose={() => setIsModalOpenCliente(false)}
-        userData={userData}
-        setIsLoading={setLoading}
-        from={"polizas"}
-        idClienteIntegradoor={idClienteIntegradoor}
-        setIdClienteIntegradoor={setIdClienteIntegradoor}
-        documentoTemp={documentoTemp}
-        setDocumentoTemp={setDocumentoTemp}
-        procedenciaCliente={procedenciaCliente}
-        setProcedenciaCliente={setProcedenciaCliente}
-        setDatosUsuarios={setDatosUsuarios}
-        searchMethod={calledFrom}
-      />
       <ModalLectorPoliza
         show={showLector}
         onClose={() => setShowLector(false)}
@@ -1770,13 +1702,9 @@ export const Polizas = ({ setLoading, loading }) => {
         <CardUser
           titulo="Tomador"
           placeholderNombre="Nombre del Tomador"
-          searchProspecto={() =>
-            searchProspecto(
-              datosUsuarios.Tomador.numeroIdentificacion,
-              datosUsuarios.Tomador.tipoIdentificacion,
-              "Tomador"
-            )
-          }
+          onVer={() => abrirSeccionPersona("Tomador", "ver")}
+          onEditar={() => abrirSeccionPersona("Tomador", "editar")}
+          activo={seccionPersona?.rol === "Tomador"}
           buttonSwitch={buttonSwitch}
           setButtonSwitch={setButtonSwitch}
           valores={datosUsuarios.Tomador}
@@ -1785,19 +1713,13 @@ export const Polizas = ({ setLoading, loading }) => {
           }
           beneficiarios={beneficiarios}
           setBeneficiarios={setBeneficiarios}
-          modalOneroso={modalOneroso}
-          setModalOneroso={setModalOneroso}
         />
         <CardUser
           titulo="Asegurado"
           placeholderNombre="Nombre del Asegurado"
-          searchProspecto={() =>
-            searchProspecto(
-              datosUsuarios.Asegurado.numeroIdentificacion,
-              datosUsuarios.Asegurado.tipoIdentificacion,
-              "Asegurado"
-            )
-          }
+          onVer={() => abrirSeccionPersona("Asegurado", "ver")}
+          onEditar={() => abrirSeccionPersona("Asegurado", "editar")}
+          activo={seccionPersona?.rol === "Asegurado"}
           buttonSwitch={buttonSwitch}
           setButtonSwitch={setButtonSwitch}
           valores={datosUsuarios.Asegurado}
@@ -1806,12 +1728,13 @@ export const Polizas = ({ setLoading, loading }) => {
           }
           beneficiarios={beneficiarios}
           setBeneficiarios={setBeneficiarios}
-          modalOneroso={modalOneroso}
-          setModalOneroso={setModalOneroso}
         />
         <CardUser
           titulo="Beneficiario"
           placeholderNombre="Nombre del Beneficiario"
+          onVer={() => abrirSeccionPersona("Beneficiario", "ver")}
+          onEditar={() => abrirSeccionPersona("Beneficiario", "editar")}
+          activo={seccionPersona?.rol === "Beneficiario"}
           buttonSwitch={buttonSwitch}
           setButtonSwitch={setButtonSwitch}
           valores={datosUsuarios.Beneficiario}
@@ -1820,11 +1743,21 @@ export const Polizas = ({ setLoading, loading }) => {
           }
           beneficiarios={beneficiarios}
           setBeneficiarios={setBeneficiarios}
-          modalOneroso={modalOneroso}
-          setModalOneroso={setModalOneroso}
-          setNuevoBeneficiario={setNuevoBeneficiario}
         />
       </section>
+
+      {/* Seccion 2.1 Datos del tomador/asegurado/beneficiario (Ver / Editar) */}
+      <SeccionPersona
+        seccion={seccionPersona}
+        userData={userData}
+        beneficiarios={beneficiarios}
+        setBeneficiarios={setBeneficiarios}
+        onClose={() => setSeccionPersona(null)}
+        onCambiarModo={(modo) =>
+          setSeccionPersona((prev) => (prev ? { ...prev, modo } : prev))
+        }
+        onSincronizar={sincronizarPersona}
+      />
       {/* <button onClick={seeBodySF}>Ver cuerpo de la póliza</button> */}
       {/* Seccion 3 Cabezote de Póliza */}
 

@@ -23,6 +23,10 @@ export const CardUser = ({
   setModalOneroso,
   isDisabled = false,
   setNuevoBeneficiario,
+  // Opcionales: si llegan, Ver/Editar/lupa abren la sección de datos en la vista
+  onVer = null,
+  onEditar = null,
+  activo = false,
 }) => {
   // Efecto para precargar los datos del cliente (solo Tomador)
   useEffect(() => {
@@ -143,7 +147,11 @@ export const CardUser = ({
   };
   return (
     <Box padding={3}>
-      <section className="shadow-lg rounded-3xl w-[357.1px] border-l border-r border-b border-gray-400">
+      <section
+        className={`shadow-lg rounded-3xl w-[357.1px] border-l border-r border-b border-gray-400 transition-all duration-300 ${
+          activo ? "ring-2 ring-lime-9000 ring-offset-2 -translate-y-1" : ""
+        }`}
+      >
         <div className="flex flex-row gap-5 items-center bg-lime-9000 p-3 rounded-t-3xl border-gray-400 border justify-between">
           <p className="text-[17px] pl-1 text-white font-semibold">{titulo}</p>
           {titulo !== "Tomador" && (
@@ -235,7 +243,9 @@ export const CardUser = ({
                 <button
                   className="ml-[-30px] align-middle mt-[-3px]"
                   onClick={
-                    titulo === "Tomador"
+                    onVer
+                      ? onVer
+                      : titulo === "Tomador"
                       ? () =>
                           searchProspecto &&
                           searchProspecto(valores.numeroIdentificacion)
@@ -248,9 +258,12 @@ export const CardUser = ({
               {titulo === "Asegurado" && (
                 <button
                   className="ml-[-30px] align-middle mt-[-3px]"
-                  onClick={() =>
-                    searchProspecto &&
-                    searchProspecto(valores.numeroIdentificacion)
+                  onClick={
+                    onVer
+                      ? onVer
+                      : () =>
+                          searchProspecto &&
+                          searchProspecto(valores.numeroIdentificacion)
                   }
                 >
                   <PiMagnifyingGlass style={{ fontSize: 21 }} />
@@ -259,8 +272,11 @@ export const CardUser = ({
               {titulo === "Beneficiario" && (
                 <button
                   className="ml-[-30px] align-middle mt-[-3px]"
-                  onClick={() =>
-                    handleSearchBeneficiario(valores.numeroIdentificacion)
+                  onClick={
+                    onVer
+                      ? onVer
+                      : () =>
+                          handleSearchBeneficiario(valores.numeroIdentificacion)
                   }
                 >
                   <PiMagnifyingGlass style={{ fontSize: 21 }} />
@@ -301,7 +317,9 @@ export const CardUser = ({
                   : ""
               }`}
               onClick={
-                titulo === "Tomador"
+                onVer
+                  ? onVer
+                  : titulo === "Tomador"
                   ? () =>
                       searchProspecto &&
                       searchProspecto(valores.numeroIdentificacion)
@@ -326,7 +344,9 @@ export const CardUser = ({
                   : ""
               }`}
               onClick={
-                titulo === "Tomador"
+                onEditar
+                  ? onEditar
+                  : titulo === "Tomador"
                   ? () =>
                       searchProspecto &&
                       searchProspecto(valores.numeroIdentificacion)
