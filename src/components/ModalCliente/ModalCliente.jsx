@@ -45,6 +45,8 @@ const ModalCliente = ({
   searchMethod,
   // Opcional: documento con el que abre el formulario (p. ej. desde Corrección de Póliza)
   documentoInicial = null,
+  // Un cliente ya registrado solo se ve, aunque el usuario pueda modificar clientes
+  soloLectura = false,
 }) => {
   const {
     selectedClientId,
@@ -540,7 +542,8 @@ const ModalCliente = ({
 
   if (!show) return null;
 
-  const soloConsulta = Boolean(selectedClientId) && !puedeEditarClientes();
+  const soloConsulta =
+    Boolean(selectedClientId) && (soloLectura || !puedeEditarClientes());
 
   const handleChangeTypeDocument = (e) => {
     setTipoDocumento(e.target.value);
@@ -887,7 +890,9 @@ const ModalCliente = ({
         </div>
         {soloConsulta && (
           <p className="w-full pl-2 mt-2 text-sm text-gray-500">
-            Solo consulta: tu usuario no tiene permiso para modificar clientes.
+            {soloLectura
+              ? "Solo consulta: el cliente se modifica desde el módulo Clientes."
+              : "Solo consulta: tu usuario no tiene permiso para modificar clientes."}
           </p>
         )}
 

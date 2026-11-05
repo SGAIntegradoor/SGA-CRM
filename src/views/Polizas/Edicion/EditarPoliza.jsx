@@ -1573,6 +1573,7 @@ export const EditarPoliza = ({ setLoading, loading }) => {
         userData={userData}
         setIsLoading={setLoading}
         from={"polizas"}
+        soloLectura
         idClienteIntegradoor={idClienteIntegradoor}
         setIdClienteIntegradoor={setIdClienteIntegradoor}
         documentoTemp={documentoTemp}
