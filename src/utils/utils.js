@@ -25,6 +25,21 @@ export const coincideDocumento = (cliente, doc) => {
   );
 };
 
+// El login ya no trae Editaruncliente: el permiso real es modificar_clientes
+export const puedeEditarClientes = () => {
+  try {
+    const permisos = JSON.parse(localStorage.getItem("permisos"));
+    return Number(permisos?.modificar_clientes) === 1;
+  } catch {
+    return false;
+  }
+};
+
+// El controlador siempre responde status Ok; el fallo real viene en data.statusCode:
+// -2 sin permiso o error de BD, -1 algún dato no se guardó (o el cliente no existe)
+export const clienteActualizado = (response) =>
+  response?.status === "Ok" && !(response?.data?.statusCode < 0);
+
 // Sin más datos, la primera palabra (dos si son 4 o más) son los nombres
 export const partirNombre = (nombreCompleto = "") => {
   const partes = String(nombreCompleto ?? "").trim().split(/\s+/).filter(Boolean);

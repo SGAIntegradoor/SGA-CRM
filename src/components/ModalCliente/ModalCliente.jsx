@@ -21,12 +21,16 @@ import { updateClient } from "../../services/Clientes/updateCliente";
 import { useSubmitGuard } from "../../hooks/useSubmitGuard";
 import { getClientById } from "../../services/Clientes/getClientById";
 import { getClientByIdIntegradoor } from "../../services/Clientes/getClientByIdIntegradoor";
-import { capitalizeWords } from "../../utils/utils";
+import {
+  capitalizeWords,
+  clienteActualizado,
+  coincideDocumento,
+  puedeEditarClientes,
+} from "../../utils/utils";
 
 const ModalCliente = ({
   show,
   onClose,
-  userData,
   setIsLoading,
   setReloadScreen = null,
   reloadScreen = null,
@@ -149,6 +153,9 @@ const ModalCliente = ({
     setIsModalOpenCliente(true);
     try {
       const response = await getClientEdit(id, granted);
+      if (response?.status !== "Ok" || !response?.data?.documento) {
+        throw new Error(response?.message || "Cliente no disponible");
+      }
       return response.data;
     } catch (error) {
       console.error("Error al cargar cliente:", error);
@@ -313,137 +320,86 @@ const ModalCliente = ({
   useEffect(() => {
     if (selectedClientId) {
       setIsLoading(true);
-      handlerLoadClient(selectedClientId, userData["Editaruncliente"])
+      // Consultar no exige modificar_clientes (el backend solo pide "x")
+      handlerLoadClient(selectedClientId, "x")
         .then(async (response) => {
           if (response) {
-            if (from !== "polizas") {
-              setNombre(response.nombres || "");
-              setApellido(response.apellidos || "");
-              setRazonSocial(
+            setNombre(capitalizeWords(response.nombres || ""));
+            setApellido(capitalizeWords(response.apellidos || ""));
+            setRazonSocial(
+              capitalizeWords(
                 `${response.nombres || ""} ${response.apellidos || ""}`.trim()
-              );
-              setTipoDocumento(response.tipoDocumento || "1");
-              setDocumento(response.documento || "");
-              setFechaNacimiento(toISODate(response.fechaNacimiento || ""));
-              setGenero(response.genero || "1");
-              setEstadoCivil(response.estadoCivil || "");
-              setProcedencia(response.procedencia || "");
+              )
+            );
+            setTipoDocumento(response.tipoDocumento || "1");
+            setDocumento(response.documento || "");
+            setFechaNacimiento(toISODate(response.fechaNacimiento || ""));
+            setGenero(response.genero || "");
+            setEstadoCivil(response.estadoCivil || "");
+            setProcedencia(response.procedencia || "");
 
-              setDireccion({
-                numero1: response.direcciones[0] || "",
-                numero2: response.direcciones[1] || "",
-                numero3: response.direcciones[2] || "",
-                numero4: response.direcciones[3] || "",
-                numero5: response.direcciones[4] || "",
-              });
+            setDireccion({
+              numero1: response.direcciones[0] || "",
+              numero2: response.direcciones[1] || "",
+              numero3: response.direcciones[2] || "",
+              numero4: response.direcciones[3] || "",
+              numero5: response.direcciones[4] || "",
+            });
 
-              setDepartamento({
-                departamento1: response.departamentos[0] || "",
-                departamento2: response.departamentos[1] || "",
-                departamento3: response.departamentos[2] || "",
-                departamento4: response.departamentos[3] || "",
-                departamento5: response.departamentos[4] || "",
-              });
+            setDepartamento({
+              departamento1: response.departamentos[0] || "",
+              departamento2: response.departamentos[1] || "",
+              departamento3: response.departamentos[2] || "",
+              departamento4: response.departamentos[3] || "",
+              departamento5: response.departamentos[4] || "",
+            });
 
-              setCiudad({
-                ciudad1: response.ciudades[0] || "",
-                ciudad2: response.ciudades[1] || "",
-                ciudad3: response.ciudades[2] || "",
-                ciudad4: response.ciudades[3] || "",
-                ciudad5: response.ciudades[4] || "",
-              });
+            setCiudad({
+              ciudad1: response.ciudades[0] || "",
+              ciudad2: response.ciudades[1] || "",
+              ciudad3: response.ciudades[2] || "",
+              ciudad4: response.ciudades[3] || "",
+              ciudad5: response.ciudades[4] || "",
+            });
 
-              setCelular({
-                celular1: response.celulares[0] || "",
-                celular2: response.celulares[1] || "",
-                celular3: response.celulares[2] || "",
-                celular4: response.celulares[3] || "",
-                celular5: response.celulares[4] || "",
-              });
+            setCelular({
+              celular1: response.celulares[0] || "",
+              celular2: response.celulares[1] || "",
+              celular3: response.celulares[2] || "",
+              celular4: response.celulares[3] || "",
+              celular5: response.celulares[4] || "",
+            });
 
-              setEmail({
-                email1: response.emails[0] || "",
-                email2: response.emails[1] || "",
-                email3: response.emails[2] || "",
-                email4: response.emails[3] || "",
-                email5: response.emails[4] || "",
-              });
+            setEmail({
+              email1: response.emails[0] || "",
+              email2: response.emails[1] || "",
+              email3: response.emails[2] || "",
+              email4: response.emails[3] || "",
+              email5: response.emails[4] || "",
+            });
 
-              setPrincipalSeleccionado(response.departamentoSelected || "");
-              setPrincipalCelularSeleccionado(
-                response.principalCelularSeleccionado || ""
-              );
-              setPrincipalEmailSeleccionado(
-                response.principalEmailSeleccionado || ""
-              );
-              setDebouncedValue("");
-              setInputLoader(false);
-            } else {
-              setNombre(response.nombres || "");
-              setApellido(response.apellidos || "");
-              setRazonSocial(
-                `${response.nombres || ""} ${response.apellidos || ""}`.trim()
-              );
-              setTipoDocumento(response.tipoDocumento || "1");
-              setDocumento(response.documento || "");
-              setFechaNacimiento(toISODate(response.fechaNacimiento || ""));
-              setGenero(response.genero || "");
-
-              setDireccion({
-                numero1: response.direcciones[0] || "",
-                numero2: response.direcciones[1] || "",
-                numero3: response.direcciones[2] || "",
-                numero4: response.direcciones[3] || "",
-                numero5: response.direcciones[4] || "",
-              });
-
-              setDepartamento({
-                departamento1: response.departamentos[0] || "",
-                departamento2: response.departamentos[1] || "",
-                departamento3: response.departamentos[2] || "",
-                departamento4: response.departamentos[3] || "",
-                departamento5: response.departamentos[4] || "",
-              });
-
-              setCiudad({
-                ciudad1: response.ciudades[0] || "",
-                ciudad2: response.ciudades[1] || "",
-                ciudad3: response.ciudades[2] || "",
-                ciudad4: response.ciudades[3] || "",
-                ciudad5: response.ciudades[4] || "",
-              });
-
-              setCelular({
-                celular1: response.celulares[0] || "",
-                celular2: response.celulares[1] || "",
-                celular3: response.celulares[2] || "",
-                celular4: response.celulares[3] || "",
-                celular5: response.celulares[4] || "",
-              });
-
-              setEmail({
-                email1: response.emails[0] || "",
-                email2: response.emails[1] || "",
-                email3: response.emails[2] || "",
-                email4: response.emails[3] || "",
-                email5: response.emails[4] || "",
-              });
-
-              setPrincipalSeleccionado(response.departamentoSelected || "");
-              setPrincipalCelularSeleccionado(
-                response.principalCelularSeleccionado || ""
-              );
-              setPrincipalEmailSeleccionado(
-                response.principalEmailSeleccionado || ""
-              );
-              setDebouncedValue("");
-              setInputLoader(false);
-            }
+            setPrincipalSeleccionado(response.departamentoSelected || "");
+            setPrincipalCelularSeleccionado(
+              response.principalCelularSeleccionado || ""
+            );
+            setPrincipalEmailSeleccionado(
+              response.principalEmailSeleccionado || ""
+            );
+            setDebouncedValue("");
+            setInputLoader(false);
           }
         })
         .catch((error) => {
           console.error("Error al cargar los datos del cliente:", error);
           setIsLoading(false);
+          setSelectedClientId(null);
+          onClose();
+          Swal.fire({
+            icon: "error",
+            title: "Error",
+            text: "No fue posible cargar los datos del cliente.",
+            confirmButtonText: "Cerrar",
+          });
         })
         .finally(() => {
           setIsLoading(false);
@@ -547,12 +503,14 @@ const ModalCliente = ({
     const fetchCliente = async () => {
       try {
         setClientById("");
-        const response = await getClientById(
-          userData["Editaruncliente"],
-          debouncedValue
-        );
+        const response = await getClientById("x", debouncedValue);
         if (!cancelled) {
-          setClientById(response.data);
+          // La búsqueda es por LIKE: solo avisa si es ese mismo documento
+          setClientById(
+            coincideDocumento(response?.data, debouncedValue)
+              ? response.data
+              : null
+          );
         }
       } catch (error) {
         console.error("Error en getClientById:", error);
@@ -581,6 +539,8 @@ const ModalCliente = ({
   }, [show, documentoInicial]);
 
   if (!show) return null;
+
+  const soloConsulta = Boolean(selectedClientId) && !puedeEditarClientes();
 
   const handleChangeTypeDocument = (e) => {
     setTipoDocumento(e.target.value);
@@ -694,17 +654,12 @@ const ModalCliente = ({
 
     try {
       if (selectedClientId) {
-        const response = await updateClient(
-          selectedClientId,
-          body,
-          userData["Editaruncliente"]
-        );
-        if (response.status === "Ok") {
+        const response = await updateClient(selectedClientId, body, "x");
+        if (clienteActualizado(response)) {
           Swal.fire({
             icon: "success",
             title: "Éxito",
-            text:
-              response.message_cliente || "Cliente actualizado correctamente",
+            text: "Cliente actualizado correctamente",
             confirmButtonText: "Cerrar",
             willOpen: () => {
               const container = document.querySelector(".swal2-container");
@@ -723,7 +678,7 @@ const ModalCliente = ({
           Swal.fire({
             icon: "error",
             title: "Error",
-            text: response.message_cliente || "Error al actualizar el cliente",
+            text: "No fue posible guardar todos los datos del cliente. Revísalo e inténtalo nuevamente.",
             confirmButtonText: "Cerrar",
             willOpen: () => {
               const container = document.querySelector(".swal2-container");
@@ -821,6 +776,7 @@ const ModalCliente = ({
   const cleanFields = () => {
     setNombre("");
     setApellido("");
+    setRazonSocial("");
     setTipoDocumento("1");
     setDocumento("");
     setFechaNacimiento("");
@@ -929,6 +885,11 @@ const ModalCliente = ({
         <div className="flex justify-between w-full border-b h-[60px] pl-2 pr-2">
           <p className="align-middle text-lg mt-7 text-black">Crear/Editar</p>
         </div>
+        {soloConsulta && (
+          <p className="w-full pl-2 mt-2 text-sm text-gray-500">
+            Solo consulta: tu usuario no tiene permiso para modificar clientes.
+          </p>
+        )}
 
         <div className=" ml-6 flex flex-row w-full items-center gap-8  justify-between">
           <LiaIdCard size={"61"} className="mt-7" />
@@ -1182,19 +1143,21 @@ const ModalCliente = ({
           >
             Cerrar
           </BtnGeneral>
-          <BtnGeneral
-            className={
-              "bg-lime-9000 text-white px-10 py-2 rounded mt-4 hover:bg-lime-600 transition duration-300 ease-in-out"
-            }
-            funct={handleSave}
-            isDisabled={guardando}
-          >
-            {guardando
-              ? "Guardando..."
-              : selectedClientId && idClienteIntegradoor !== "Cliente Nuevo"
-              ? "Actualizar"
-              : "Guardar"}
-          </BtnGeneral>
+          {!soloConsulta && (
+            <BtnGeneral
+              className={
+                "bg-lime-9000 text-white px-10 py-2 rounded mt-4 hover:bg-lime-600 transition duration-300 ease-in-out"
+              }
+              funct={handleSave}
+              isDisabled={guardando}
+            >
+              {guardando
+                ? "Guardando..."
+                : selectedClientId && idClienteIntegradoor !== "Cliente Nuevo"
+                ? "Actualizar"
+                : "Guardar"}
+            </BtnGeneral>
+          )}
         </div>
       </div>
     </div>

@@ -18,6 +18,7 @@ import Swal from "sweetalert2";
 import { NavContext } from "../../../context/NavContext";
 import ModalCliente from "../../../components/ModalCliente/ModalCliente";
 import { getClientById } from "../../../services/Clientes/getClientById";
+import { coincideDocumento } from "../../../utils/utils";
 import { getVehiculo } from "../../../services/Polizas/getVehiculo";
 import { getAnalistas } from "../../../services/Users/getAnalistas";
 import { getFreelances } from "../../../services/Users/getFreelance";
@@ -858,7 +859,11 @@ export const EditarPoliza = ({ setLoading, loading }) => {
 
     await getClientById("x", numeroIdentificacion).then((response) => {
       if (response.status === "Ok") {
-        if (response.data === "Cliente Nuevo") {
+        // La búsqueda es por LIKE: otro documento que lo contenga no es este cliente
+        if (
+          response.data === "Cliente Nuevo" ||
+          !coincideDocumento(response.data, numeroIdentificacion)
+        ) {
           setIdClienteIntegradoor("Cliente Nuevo");
           setDocumentoTemp(datosUsuarios.Tomador.numeroIdentificacion);
           setLoading(false);

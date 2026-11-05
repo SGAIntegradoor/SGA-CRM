@@ -53,6 +53,12 @@ export const Clientes = ({ setLoading, loading }) => {
   //   console.log(clients);
   // }, [clients]);
 
+  // Tras crear o actualizar, la tabla ya consultada se refresca con los mismos filtros
+  useEffect(() => {
+    if (clients.length > 0) handlerSearchFilters();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [reloadScreen]);
+
   let client =
     clients?.map((item) => ({
       ...item,

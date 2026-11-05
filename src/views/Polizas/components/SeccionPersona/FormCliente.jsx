@@ -9,7 +9,9 @@ import { mapaDepartamentos } from "../../../../utils/getDepto";
 import { obtenerCiudades } from "../../../../utils/getCities";
 import {
   capitalizeWords,
+  clienteActualizado,
   coincideDocumento,
+  puedeEditarClientes,
   partirNombre,
 } from "../../../../utils/utils";
 import { getClientById } from "../../../../services/Clientes/getClientById";
@@ -88,16 +90,6 @@ const quitarEn = (lista, i) => lista.filter((_, idx) => idx !== i);
 
 const principalTrasQuitar = (principal, i) =>
   principal === i ? -1 : principal > i ? principal - 1 : principal;
-
-// El login ya no trae Editaruncliente: el permiso real es modificar_clientes
-const puedeEditarClientes = () => {
-  try {
-    const permisos = JSON.parse(localStorage.getItem("permisos"));
-    return Number(permisos?.modificar_clientes) === 1;
-  } catch {
-    return false;
-  }
-};
 
 const celVacio = (v) => !String(v || "").trim();
 const dirSinDatos = (d) => !d.direccion.trim() && !d.departamento && !d.ciudad;
@@ -466,8 +458,7 @@ export const FormCliente = ({
     try {
       if (estado === "existente" && idCliente) {
         const response = await updateClient(idCliente, body, "x");
-        // El controlador siempre responde status Ok; el fallo real viene en data
-        if (response?.status === "Ok" && response?.data?.statusCode !== -2) {
+        if (clienteActualizado(response)) {
           await Swal.fire({
             icon: "success",
             title: "Éxito",
