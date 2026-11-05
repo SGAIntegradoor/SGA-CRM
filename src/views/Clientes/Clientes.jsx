@@ -10,6 +10,7 @@ import { NavContext } from "../../context/NavContext";
 import Loader from "../../components/LoaderFullScreen/Loader";
 import { color } from "framer-motion";
 import { GetClientByFilters } from "../../services/Clientes/getClientByFilters";
+import Swal from "sweetalert2";
 
 export const Clientes = ({ setLoading, loading }) => {
   const [clients, setClients] = useState([]);
@@ -182,7 +183,20 @@ export const Clientes = ({ setLoading, loading }) => {
       GetClientByFilters(filtrosAplicados)
         .then((response) => {
 
-          setClients([response.data]);
+          // Sin coincidencias data es "Cliente Nuevo" y con error no viene:
+          // meterlo a la tabla pintaba "undefined undefined"
+          const encontrado = response?.status === "Ok" && response?.statusCode === 1;
+          setClients(encontrado ? [response.data] : []);
+          if (!encontrado) {
+            Swal.fire({
+              icon: response?.status === "Ok" ? "info" : "error",
+              title: response?.status === "Ok" ? "Sin resultados" : "Error",
+              text:
+                response?.status === "Ok"
+                  ? "No se encontró ningún cliente con esos datos."
+                  : "No fue posible consultar el cliente. Inténtalo nuevamente.",
+            });
+          }
           
         })
         .catch(() => {

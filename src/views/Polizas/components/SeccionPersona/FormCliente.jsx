@@ -3,10 +3,15 @@ import { AnimatePresence, motion } from "framer-motion";
 import { FaRegIdCard } from "react-icons/fa";
 import { LiaMobileSolid, LiaEnvelope } from "react-icons/lia";
 import { IoClose } from "react-icons/io5";
+import Select from "react-select";
 import Swal from "sweetalert2";
 import { mapaDepartamentos } from "../../../../utils/getDepto";
 import { obtenerCiudades } from "../../../../utils/getCities";
-import { capitalizeWords } from "../../../../utils/utils";
+import {
+  capitalizeWords,
+  coincideDocumento,
+  partirNombre,
+} from "../../../../utils/utils";
 import { getClientById } from "../../../../services/Clientes/getClientById";
 import { getClientEdit } from "../../../../services/Clientes/getCliente";
 import { getClientByIdIntegradoor } from "../../../../services/Clientes/getClientByIdIntegradoor";
@@ -84,18 +89,14 @@ const quitarEn = (lista, i) => lista.filter((_, idx) => idx !== i);
 const principalTrasQuitar = (principal, i) =>
   principal === i ? -1 : principal > i ? principal - 1 : principal;
 
-// getClientById busca con LIKE %doc%: solo vale la coincidencia exacta
-// (o el NIT guardado con su dígito de verificación)
-const coincideDocumento = (cliente, doc) => {
-  const a = String(cliente?.documento ?? "").trim();
-  const b = String(doc ?? "").trim();
-  if (!a || !b) return false;
-  if (a === b) return true;
-  return (
-    String(cliente?.tipoDocumento) === "2" &&
-    a.length === b.length + 1 &&
-    a.startsWith(b)
-  );
+// El login ya no trae Editaruncliente: el permiso real es modificar_clientes
+const puedeEditarClientes = () => {
+  try {
+    const permisos = JSON.parse(localStorage.getItem("permisos"));
+    return Number(permisos?.modificar_clientes) === 1;
+  } catch {
+    return false;
+  }
 };
 
 const celVacio = (v) => !String(v || "").trim();
@@ -103,12 +104,14 @@ const dirSinDatos = (d) => !d.direccion.trim() && !d.departamento && !d.ciudad;
 
 export const FormCliente = ({
   seccion,
-  userData,
+  cerrado,
   onClose,
   onCambiarModo,
+  onCambiarAbierta,
   onSincronizar,
+  onGuardado,
 }) => {
-  const { rol, modo } = seccion;
+  const { rol, modo, abierta, foco } = seccion;
   const { validateClientData } = useValidateClient();
   const { busy: guardando, guard } = useSubmitGuard();
 
@@ -144,7 +147,9 @@ export const FormCliente = ({
   const [duplicado, setDuplicado] = useState(false);
 
   const esNuevo = estado === "nuevo";
-  const soloLectura = modo === "ver" && estado === "existente";
+  const puedeEditar = useMemo(puedeEditarClientes, []);
+  const soloLectura =
+    estado === "existente" && (modo === "ver" || cerrado || !puedeEditar);
   const bloqueado = soloLectura || estado === "consultando" || guardando;
   // Un cliente existente no cambia de identidad desde aquí
   const identidadBloqueada = bloqueado || estado === "existente";
@@ -168,9 +173,11 @@ export const FormCliente = ({
   const cargarCliente = (c) => {
     setTipoDocumento(String(c.tipoDocumento || "1"));
     setDocumento(String(c.documento || ""));
-    setNombre(c.nombres || "");
-    setApellido(c.apellidos || "");
-    setRazonSocial(`${c.nombres || ""} ${c.apellidos || ""}`.trim());
+    setNombre(capitalizeWords(c.nombres || ""));
+    setApellido(capitalizeWords(c.apellidos || ""));
+    setRazonSocial(
+      capitalizeWords(`${c.nombres || ""} ${c.apellidos || ""}`.trim())
+    );
     setFechaNacimiento(toISODate(c.fechaNacimiento || ""));
     setGenero(c.genero ? String(c.genero) : "");
     setEstadoCivil(c.estadoCivil ? String(c.estadoCivil) : "");
@@ -208,6 +215,7 @@ export const FormCliente = ({
       if (res?.status !== "Ok") {
         setMensajeError(res?.message || "No fue posible consultar el cliente.");
         setEstado("error");
+        onCambiarAbierta(true);
         return;
       }
 
@@ -215,10 +223,21 @@ export const FormCliente = ({
         res.data === "Cliente Nuevo" ||
         !coincideDocumento(res.data, seccion.numeroIdentificacion)
       ) {
-        if (String(seccion.tipoIdentificacion) === "2" && seccion.nombre) {
-          setRazonSocial(seccion.nombre);
+        // Lo que ya está en la card pasa al formulario; el lector trae los
+        // nombres y apellidos separados
+        if (String(seccion.tipoIdentificacion) === "2") {
+          setRazonSocial(capitalizeWords(seccion.nombre || ""));
+        } else {
+          const partes =
+            seccion.nombres || seccion.apellidos
+              ? seccion
+              : partirNombre(seccion.nombre);
+          setNombre(capitalizeWords(partes.nombres || ""));
+          setApellido(capitalizeWords(partes.apellidos || ""));
         }
         setEstado("nuevo");
+        // Un cliente nuevo siempre se muestra: si no, parece ya registrado
+        onCambiarAbierta(true);
         return;
       }
 
@@ -228,10 +247,7 @@ export const FormCliente = ({
       });
       setIdCliente(res.data.id_cliente);
 
-      const detalle = await getClientEdit(
-        res.data.id_cliente,
-        userData?.["Editaruncliente"]
-      );
+      const detalle = await getClientEdit(res.data.id_cliente, "x");
       if (cancelado) return;
 
       if (detalle?.status !== "Ok" || !detalle?.data) {
@@ -239,6 +255,7 @@ export const FormCliente = ({
           detalle?.message || "No fue posible cargar los datos del cliente."
         );
         setEstado("error");
+        onCambiarAbierta(true);
         return;
       }
       cargarCliente(detalle.data);
@@ -250,6 +267,7 @@ export const FormCliente = ({
       if (!cancelado) {
         setMensajeError("No fue posible consultar el cliente.");
         setEstado("error");
+        onCambiarAbierta(true);
       }
     });
 
@@ -272,7 +290,7 @@ export const FormCliente = ({
     setVerificandoDoc(true);
     const t = setTimeout(async () => {
       try {
-        const res = await getClientById(userData?.["Editaruncliente"], doc);
+        const res = await getClientById("x", doc);
         if (!cancelado) {
           setDuplicado(
             res?.status === "Ok" &&
@@ -331,9 +349,11 @@ export const FormCliente = ({
       const res = await getClientByIdIntegradoor(doc);
       if (res?.status === "Ok" && res.data && res.data !== "Cliente Nuevo") {
         const p = res.data;
-        setNombre(p.nombres || "");
-        setApellido(p.apellidos || "");
-        setRazonSocial(`${p.nombres || ""} ${p.apellidos || ""}`.trim());
+        setNombre(capitalizeWords(p.nombres || ""));
+        setApellido(capitalizeWords(p.apellidos || ""));
+        setRazonSocial(
+          capitalizeWords(`${p.nombres || ""} ${p.apellidos || ""}`.trim())
+        );
         setTipoDocumento(String(p.tipoDocumento || tipoDocumento));
         setDocumento(String(p.documento || documento));
         setFechaNacimiento(toISODate(p.fechaNacimiento || ""));
@@ -427,39 +447,39 @@ export const FormCliente = ({
       return;
     }
 
-    const sincronizarCard = () =>
+    // La sección queda contraída y ya no se puede editar desde esta vista
+    const cerrarTrasGuardar = () => {
+      // La card trabaja el NIT sin dígito de verificación
+      const documentoCard = tipoDocumento === "2" ? nitBase : documento;
       onSincronizar({
         tipoIdentificacion: tipoDocumento,
-        // La card trabaja el NIT sin dígito de verificación
-        numeroIdentificacion: tipoDocumento === "2" ? nitBase : documento,
+        numeroIdentificacion: documentoCard,
         nombre:
           tipoDocumento === "2" && razonSocial.trim()
             ? razonSocial.trim()
             : `${nombre} ${apellido}`.trim(),
       });
+      setEstado("existente");
+      onGuardado(documentoCard);
+    };
 
     try {
       if (estado === "existente" && idCliente) {
-        const response = await updateClient(
-          idCliente,
-          body,
-          userData?.["Editaruncliente"]
-        );
-        if (response?.status === "Ok") {
+        const response = await updateClient(idCliente, body, "x");
+        // El controlador siempre responde status Ok; el fallo real viene en data
+        if (response?.status === "Ok" && response?.data?.statusCode !== -2) {
           await Swal.fire({
             icon: "success",
             title: "Éxito",
-            text:
-              response.message_cliente || "Cliente actualizado correctamente",
+            text: "Cliente actualizado correctamente",
             confirmButtonText: "Cerrar",
           });
-          sincronizarCard();
-          onClose();
+          cerrarTrasGuardar();
         } else {
           Swal.fire({
             icon: "error",
             title: "Error",
-            text: response?.message_cliente || "Error al actualizar el cliente",
+            text: response?.data?.message || "Error al actualizar el cliente",
             confirmButtonText: "Cerrar",
           });
         }
@@ -474,8 +494,7 @@ export const FormCliente = ({
           text: response.message_cliente || "Cliente creado correctamente",
           confirmButtonText: "Cerrar",
         });
-        sincronizarCard();
-        onClose();
+        cerrarTrasGuardar();
       } else if (response?.data?.statusCode == 1062) {
         Swal.fire({
           icon: "error",
@@ -527,7 +546,9 @@ export const FormCliente = ({
     ) : soloLectura ? (
       <>
         <BtnCancelar onClick={onClose}>Cerrar</BtnCancelar>
-        <BtnGuardar onClick={() => onCambiarModo("editar")}>Editar</BtnGuardar>
+        {!cerrado && puedeEditar && (
+          <BtnGuardar onClick={() => onCambiarModo("editar")}>Editar</BtnGuardar>
+        )}
       </>
     ) : (
       <>
@@ -558,8 +579,11 @@ export const FormCliente = ({
     <SeccionShell
       titulo={tituloSeccion(rol, tipoDocumento, esNit ? nitBase : documento)}
       badge={badge}
-      modo={modo}
+      modo={soloLectura ? "ver" : "editar"}
       footer={footer}
+      abierta={abierta}
+      onCambiarAbierta={onCambiarAbierta}
+      foco={foco}
     >
       {estado === "consultando" && <Esqueleto />}
 
@@ -571,6 +595,13 @@ export const FormCliente = ({
 
       {(estado === "nuevo" || estado === "existente") && (
         <>
+          {cerrado && (
+            <Bloque className="rounded-lg bg-lime-50 px-4 py-2.5 text-sm text-lime-700">
+              Cliente guardado. Sus datos ya no se pueden editar desde el
+              registro de pólizas.
+            </Bloque>
+          )}
+
           {esNuevo && (
             <Bloque className="flex flex-wrap items-center justify-between gap-3 rounded-lg bg-[#e8f0fb] px-4 py-2.5">
               <AnimatePresence mode="wait">
@@ -843,38 +874,20 @@ export const FormCliente = ({
                       }
                       disabled={bloqueado}
                     />
-                    <select
-                      aria-label={`Departamento ${i + 1}`}
-                      className={inputCls}
-                      value={d.departamento}
-                      onChange={(e) =>
-                        cambiarDireccion(i, "departamento", e.target.value)
-                      }
+                    <SelectBuscable
+                      etiqueta={`Departamento ${i + 1}`}
+                      opciones={optionsDeptos}
+                      valor={d.departamento}
+                      onCambiar={(v) => cambiarDireccion(i, "departamento", v)}
                       disabled={bloqueado}
-                    >
-                      <option value="">Seleccione</option>
-                      {optionsDeptos.map((o) => (
-                        <option key={o.value} value={o.value}>
-                          {o.label}
-                        </option>
-                      ))}
-                    </select>
-                    <select
-                      aria-label={`Ciudad ${i + 1}`}
-                      className={inputCls}
-                      value={d.ciudad}
-                      onChange={(e) =>
-                        cambiarDireccion(i, "ciudad", e.target.value)
-                      }
+                    />
+                    <SelectBuscable
+                      etiqueta={`Ciudad ${i + 1}`}
+                      opciones={ciudadesPorDepto[d.departamento] || []}
+                      valor={d.ciudad}
+                      onCambiar={(v) => cambiarDireccion(i, "ciudad", v)}
                       disabled={bloqueado || !d.departamento}
-                    >
-                      <option value="">Seleccione</option>
-                      {(ciudadesPorDepto[d.departamento] || []).map((o) => (
-                        <option key={o.value} value={String(o.value)}>
-                          {o.label}
-                        </option>
-                      ))}
-                    </select>
+                    />
                     <div className="flex items-center justify-between gap-2">
                       <Principal
                         activo={principalDir === i}
@@ -907,6 +920,44 @@ export const FormCliente = ({
     </SeccionShell>
   );
 };
+
+const estilosSelect = {
+  control: (base, { isFocused, isDisabled }) => ({
+    ...base,
+    minHeight: 32,
+    height: 32,
+    fontSize: 14,
+    backgroundColor: isDisabled ? "#f9fafb" : "#fff",
+    borderColor: isFocused ? "#88d600" : "#9ca3af",
+    boxShadow: isFocused ? "0 0 0 2px rgba(136, 214, 0, 0.2)" : "none",
+  }),
+  valueContainer: (base) => ({ ...base, padding: "0 8px" }),
+  input: (base) => ({ ...base, margin: 0, padding: 0 }),
+  indicatorSeparator: () => ({ display: "none" }),
+  indicatorsContainer: (base) => ({ ...base, height: 30 }),
+  dropdownIndicator: (base) => ({ ...base, padding: 4 }),
+  clearIndicator: (base) => ({ ...base, padding: 4 }),
+  menu: (base) => ({ ...base, fontSize: 14 }),
+  menuPortal: (base) => ({ ...base, zIndex: 5100 }),
+};
+
+// Va al body porque la sección y las filas animadas recortan con overflow-hidden
+const SelectBuscable = ({ etiqueta, opciones, valor, onCambiar, disabled }) => (
+  <Select
+    aria-label={etiqueta}
+    styles={estilosSelect}
+    options={opciones}
+    value={opciones.find((o) => String(o.value) === String(valor)) || null}
+    onChange={(opcion) => onCambiar(opcion ? String(opcion.value) : "")}
+    isDisabled={disabled}
+    isClearable
+    placeholder="Seleccione"
+    noOptionsMessage={() => "Sin resultados"}
+    menuPortalTarget={document.body}
+    menuPosition="fixed"
+    closeMenuOnScroll
+  />
+);
 
 const BotonQuitar = ({ onClick }) => (
   <button

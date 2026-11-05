@@ -1,10 +1,38 @@
 import axios from "axios";
 
 export const capitalizeWords = (value = "") => {
-  return value
+  return String(value ?? "")
     .toLowerCase()
     .replace(/\s+/g, " ") // evita múltiples espacios
-    .replace(/\b\w/g, (char) => char.toUpperCase());
+    // \b no reconoce tildes ni ñ: "muñoz" salía "MuñOz"
+    .replace(
+      /(^|[\s.'’-])(\p{L})/gu,
+      (_, separador, letra) => separador + letra.toUpperCase()
+    );
+};
+
+// getClientById busca con LIKE %doc%: solo vale la coincidencia exacta
+// (o el NIT guardado con su dígito de verificación)
+export const coincideDocumento = (cliente, doc) => {
+  const a = String(cliente?.documento ?? "").trim();
+  const b = String(doc ?? "").trim();
+  if (!a || !b) return false;
+  if (a === b) return true;
+  return (
+    String(cliente?.tipoDocumento) === "2" &&
+    a.length === b.length + 1 &&
+    a.startsWith(b)
+  );
+};
+
+// Sin más datos, la primera palabra (dos si son 4 o más) son los nombres
+export const partirNombre = (nombreCompleto = "") => {
+  const partes = String(nombreCompleto ?? "").trim().split(/\s+/).filter(Boolean);
+  const corte = partes.length >= 4 ? 2 : 1;
+  return {
+    nombres: partes.slice(0, corte).join(" "),
+    apellidos: partes.slice(corte).join(" "),
+  };
 };
 
 export const getFasecoldaBrands = async (codigo = null) => {

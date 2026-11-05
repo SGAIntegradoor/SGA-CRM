@@ -4,6 +4,7 @@ import Swal from "sweetalert2";
 import { createBeneficiario } from "../../../../services/Polizas/createBeneficiario";
 import { getBeneficiarios } from "../../../../services/Polizas/getBeneficiarios";
 import { useSubmitGuard } from "../../../../hooks/useSubmitGuard";
+import { capitalizeWords } from "../../../../utils/utils";
 import {
   Badge,
   Bloque,
@@ -26,13 +27,16 @@ const MSG_AUTORIZACION =
 
 export const FormBeneficiario = ({
   seccion,
+  cerrado,
   beneficiarios,
   setBeneficiarios,
   onClose,
   onCambiarModo,
+  onCambiarAbierta,
   onSincronizar,
+  onGuardado,
 }) => {
-  const { modo } = seccion;
+  const { modo, abierta, foco } = seccion;
   const { busy: guardando, guard } = useSubmitGuard();
 
   // consultando | nuevo | existente | error
@@ -45,7 +49,7 @@ export const FormBeneficiario = ({
     observaciones: "",
   });
 
-  const soloLectura = modo === "ver" && estado === "existente";
+  const soloLectura = estado === "existente" && (modo === "ver" || cerrado);
   const bloqueado = soloLectura || estado === "consultando" || guardando;
   // backend solo actualiza correos de un NIT existente
   const identidadBloqueada = bloqueado || estado === "existente";
@@ -61,6 +65,7 @@ export const FormBeneficiario = ({
         if (cancelado) return;
         if (!Array.isArray(lista?.data)) {
           setEstado("error");
+          onCambiarAbierta(true);
           return;
         }
         setBeneficiarios(lista);
@@ -71,13 +76,18 @@ export const FormBeneficiario = ({
           String(ben.nit_beneficiario).trim() === seccion.numeroIdentificacion
       );
       if (!b) {
-        setDatos((prev) => ({ ...prev, razon_social: seccion.nombre || "" }));
+        setDatos((prev) => ({
+          ...prev,
+          razon_social: capitalizeWords(seccion.nombre || ""),
+        }));
         setEstado("nuevo");
+        // Un beneficiario nuevo siempre se muestra: si no, parece ya registrado
+        onCambiarAbierta(true);
         return;
       }
       setDatos({
         numeroIdentificacion: String(b.nit_beneficiario),
-        razon_social: b.razon_social_beneficiario || "",
+        razon_social: capitalizeWords(b.razon_social_beneficiario || ""),
         correo1: b.correo_beneficiario || "",
         correo2: b.correo_beneficiario_2 || "",
         observaciones: b.observaciones || "",
@@ -91,7 +101,10 @@ export const FormBeneficiario = ({
 
     consultar().catch((error) => {
       console.error("Error al consultar beneficiarios:", error);
-      if (!cancelado) setEstado("error");
+      if (!cancelado) {
+        setEstado("error");
+        onCambiarAbierta(true);
+      }
     });
 
     return () => {
@@ -153,7 +166,9 @@ export const FormBeneficiario = ({
           numeroIdentificacion: datos.numeroIdentificacion.trim(),
           nombre: datos.razon_social.trim(),
         });
-        onClose();
+        // La sección queda contraída y ya no se puede editar desde esta vista
+        setEstado("existente");
+        onGuardado(datos.numeroIdentificacion.trim());
       } else if (response?.message === MSG_AUTORIZACION) {
         await Swal.fire({
           icon: "info",
@@ -203,7 +218,9 @@ export const FormBeneficiario = ({
     ) : soloLectura ? (
       <>
         <BtnCancelar onClick={onClose}>Cerrar</BtnCancelar>
-        <BtnGuardar onClick={() => onCambiarModo("editar")}>Editar</BtnGuardar>
+        {!cerrado && (
+          <BtnGuardar onClick={() => onCambiarModo("editar")}>Editar</BtnGuardar>
+        )}
       </>
     ) : (
       <>
@@ -218,8 +235,11 @@ export const FormBeneficiario = ({
     <SeccionShell
       titulo={tituloSeccion("Beneficiario", "2", datos.numeroIdentificacion)}
       badge={badge}
-      modo={modo}
+      modo={soloLectura ? "ver" : "editar"}
       footer={footer}
+      abierta={abierta}
+      onCambiarAbierta={onCambiarAbierta}
+      foco={foco}
     >
       {estado === "consultando" && <Esqueleto />}
 
@@ -281,7 +301,12 @@ export const FormBeneficiario = ({
                 type="text"
                 className={inputCls}
                 value={datos.razon_social}
-                onChange={cambiar("razon_social")}
+                onChange={(e) =>
+                  setDatos((prev) => ({
+                    ...prev,
+                    razon_social: capitalizeWords(e.target.value),
+                  }))
+                }
                 disabled={identidadBloqueada}
               />
             </Campo>

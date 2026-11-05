@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { AiOutlineUser } from "react-icons/ai";
 import { FiChevronUp } from "react-icons/fi";
@@ -155,16 +155,27 @@ export const BtnGuardar = ({ onClick, children = "Guardar", disabled }) => (
 
 // Contenedor de la sección: encabezado con título + badge, contraer/expandir
 // y entrada/salida animada. El padre lo monta dentro de un AnimatePresence.
-export const SeccionShell = ({ titulo, badge, modo, footer, children }) => {
-  const [abierta, setAbierta] = useState(true);
+// `foco` cambia cuando el usuario pide verla (lupa, Ver, Editar): solo entonces
+// se desplaza; las que abre la consulta automática no mueven la pantalla.
+export const SeccionShell = ({
+  titulo,
+  badge,
+  modo,
+  footer,
+  abierta,
+  onCambiarAbierta,
+  foco,
+  children,
+}) => {
   const ref = useRef(null);
 
   useEffect(() => {
+    if (!foco) return undefined;
     const t = setTimeout(() => {
       ref.current?.scrollIntoView({ behavior: "smooth", block: "start" });
     }, 150);
     return () => clearTimeout(t);
-  }, []);
+  }, [foco]);
 
   return (
     <motion.section
@@ -197,7 +208,7 @@ export const SeccionShell = ({ titulo, badge, modo, footer, children }) => {
           )}
           <button
             type="button"
-            onClick={() => setAbierta((v) => !v)}
+            onClick={() => onCambiarAbierta(!abierta)}
             className="flex items-center gap-1 text-sm text-gray-600 transition-colors hover:text-gray-900"
           >
             <motion.span

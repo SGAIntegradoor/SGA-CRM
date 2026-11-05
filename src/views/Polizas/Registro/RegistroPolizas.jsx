@@ -40,6 +40,97 @@ import { getAsesoresGanadores } from "../../../services/Users/getAsesoresGanador
 import { getAsesores10 } from "../../../services/Users/getAsesores10";
 import { ModalLectorPoliza } from "../../../components/ModalLectorPoliza/ModalLectorPoliza";
 import { MdOutlineDocumentScanner } from "react-icons/md";
+import {
+  capitalizeWords,
+  coincideDocumento,
+} from "../../../utils/utils";
+import { getClientById } from "../../../services/Clientes/getClientById";
+import { getClientEdit } from "../../../services/Clientes/getCliente";
+
+const PERSONA_VACIA = {
+  tipoIdentificacion: "",
+  numeroIdentificacion: "",
+  nombre: "",
+};
+
+const CABEZOTE_INICIAL = {
+  noPoliza: "",
+  noCertificado: "0",
+  aseguradora: "",
+  ramo: "",
+  tipoCertificado: "",
+  fechaInicioVigencia: "",
+  fechaFinVigencia: "",
+  fechaExpedicion: "",
+  fechaRegistro: "",
+  renovable: "Si",
+};
+
+const VEHICULO_INICIAL = {
+  busqueda: "",
+  placa: "",
+  fasecolda: "",
+  valorFasecolda: "",
+  marca: "",
+  modelo: "",
+  linea: "",
+  clase: "",
+};
+
+const GESTION_COMERCIAL_INICIAL = {
+  tecnicoemisor: "",
+  coordinadortecnico: "",
+  analista: "",
+  asesorcomercialinterno: "",
+  asesorfreelance: "",
+  asesorganador: "",
+  asesor10: "",
+  directorcomercial: "",
+  asistente: "",
+  unidadnegocio: "",
+  observaciones: "",
+};
+
+const VALORES_INICIALES = {
+  primaneta: "",
+  asistenciasotros: "",
+  gastosexpedicion: "",
+  iva: "",
+  ivaPorcentaje: "19",
+  ivaManual: false,
+  valortotal: "",
+  formapago: "",
+  financiada: "",
+  nocuotas: "",
+  fechalimite: "",
+  TRM_aviajes: "",
+  primaneta_aviajes: "",
+  valor_asistencia_aviajes: "",
+};
+
+const OTROS_CONCEPTOS_INICIAL = {
+  razon_concepto: "",
+  valor: "",
+};
+
+// Livianos, motos, pesados, pasajeros y colectivos, con sus RCE
+const RAMOS_AUTOS = [1, 7, 8, 14, 15, 24, 25, 26, 27];
+// Cumplimiento y asistencias en viajes
+const RAMOS_NO_RENOVABLES = [6, 18, 30, 44, 45, 46, 47];
+
+// Renovable por defecto según el ramo; en los demás ramos manda lo leído del PDF
+const renovablePorRamo = (ramo, leido = "") => {
+  const id = Number(ramo);
+  if (RAMOS_NO_RENOVABLES.includes(id)) return "No";
+  if (RAMOS_AUTOS.includes(id)) return "Si";
+  return leido || "Si";
+};
+
+// Mismos límites de la búsqueda manual, sin avisos: es la consulta automática
+const documentoConsultable = (rol, tipoIdentificacion, documento) => {
+  if (documento.length < 6) return false;
+  return rol === "Beneficiario" || tipoIdentificacion != "2" || documento.length <= 9;
+};
 
 export const Polizas = ({ setLoading, loading }) => {
   const navigate = useNavigate();
@@ -67,52 +158,37 @@ export const Polizas = ({ setLoading, loading }) => {
   // Estados Tomador, Asegurado, Beneficiario INICIO
   const [beneficiarios, setBeneficiarios] = useState([]);
   const [datosUsuarios, setDatosUsuarios] = useState({
-    Tomador: {
-      tipoIdentificacion: "",
-      numeroIdentificacion: "",
-      nombre: "",
-    },
-    Asegurado: {
-      tipoIdentificacion: "",
-      numeroIdentificacion: "",
-      nombre: "",
-    },
-    Beneficiario: {
-      tipoIdentificacion: "",
-      numeroIdentificacion: "",
-      nombre: "",
-    },
+    Tomador: PERSONA_VACIA,
+    Asegurado: PERSONA_VACIA,
+    Beneficiario: PERSONA_VACIA,
   });
 
   const handleDatosChange = (tipo, campo, valor) => {
+    const dato = campo === "nombre" ? capitalizeWords(valor) : valor;
     setDatosUsuarios((prev) => ({
       ...prev,
       [tipo]: {
         ...prev[tipo],
-        [campo]: valor,
+        [campo]: dato,
       },
+      // "Es el mismo tomador": el asegurado sigue al tomador
+      ...(tipo === "Tomador" && buttonSwitch.Asegurado
+        ? { Asegurado: { ...prev.Asegurado, [campo]: dato } }
+        : {}),
     }));
   };
 
-  // Sección de datos que se despliega debajo de las cards (Ver / Editar)
-  const [seccionPersona, setSeccionPersona] = useState(null);
+  // Secciones de datos que se despliegan debajo de las cards, una por rol
+  const [secciones, setSecciones] = useState({});
+  const tokenSeccionRef = useRef(0);
+  // Documentos guardados desde esta vista: ya no se editan aquí
+  const [documentosGuardados, setDocumentosGuardados] = useState([]);
 
   // Estados Tomador, Asegurado, Beneficiario FIN
 
   // Estados de cabezote de poliza INICIO
 
-  const [cabezotePoliza, setCabezotePoliza] = useState({
-    noPoliza: "",
-    noCertificado: "0",
-    aseguradora: "",
-    ramo: "",
-    tipoCertificado: "",
-    fechaInicioVigencia: "",
-    fechaFinVigencia: "",
-    fechaExpedicion: "",
-    fechaRegistro: "",
-    renovable: "Si",
-  });
+  const [cabezotePoliza, setCabezotePoliza] = useState(CABEZOTE_INICIAL);
 
   const [tiposPoliza, setTiposPoliza] = useState([]);
 
@@ -125,23 +201,18 @@ export const Polizas = ({ setLoading, loading }) => {
         setCabezotePoliza((prev) => ({ ...prev, fechaFinVigencia: fechaFin }));
       }
     }
-    setCabezotePoliza((prev) => ({ ...prev, [name]: value }));
+    setCabezotePoliza((prev) => ({
+      ...prev,
+      [name]: value,
+      ...(name === "ramo" ? { renovable: renovablePorRamo(value) } : {}),
+    }));
   };
 
   // Estados de cabezote de poliza FIN
 
   // Estados de vehiculo
 
-  const [vehiculo, setVehiculo] = useState({
-    busqueda: "",
-    placa: "",
-    fasecolda: "",
-    valorFasecolda: "",
-    marca: "",
-    modelo: "",
-    linea: "",
-    clase: "",
-  });
+  const [vehiculo, setVehiculo] = useState(VEHICULO_INICIAL);
 
   const [marcas, setMarcas] = useState([]);
 
@@ -300,19 +371,9 @@ export const Polizas = ({ setLoading, loading }) => {
   const [asesoresGanadores, setAsesoresGanadores] = useState([]);
   const [asesores10, setAsesores10] = useState([]);
 
-  const [gestionComercial, setGestionComercial] = useState({
-    tecnicoemisor: "",
-    coordinadortecnico: "",
-    analista: "",
-    asesorcomercialinterno: "",
-    asesorfreelance: "",
-    asesorganador: "",
-    asesor10: "",
-    directorcomercial: "",
-    asistente: "",
-    unidadnegocio: "",
-    observaciones: "",
-  });
+  const [gestionComercial, setGestionComercial] = useState(
+    GESTION_COMERCIAL_INICIAL
+  );
 
   useEffect(() => {
     if (gestionComercial.unidadnegocio == "1") {
@@ -441,22 +502,9 @@ export const Polizas = ({ setLoading, loading }) => {
 
   const [financieras, setFinancieras] = useState([]);
 
-  const [valoresPoliza, setValoresPoliza] = useState({
-    primaneta: "",
-    asistenciasotros: "",
-    gastosexpedicion: "",
-    iva: "",
-    ivaPorcentaje: "19",
-    ivaManual: false,
-    valortotal: "",
-    formapago: "",
-    financiada: "",
-    nocuotas: "",
-    fechalimite: "",
-    TRM_aviajes: "",
-    primaneta_aviajes: "",
-    valor_asistencia_aviajes: "",
-  });
+  const [valoresPoliza, setValoresPoliza] = useState(VALORES_INICIALES);
+  // Cada lectura recalcula el total aunque el PDF traiga los mismos valores
+  const [lecturasPdf, setLecturasPdf] = useState(0);
 
   const handleValorTotalChange = (e) => {
     const { value } = e.target;
@@ -570,10 +618,9 @@ export const Polizas = ({ setLoading, loading }) => {
   // Estados de Pagos Poliza INICIO
 
   const [otrosConceptos, setOtrosConceptos] = useState([]);
-  const [otrosConceptosValor, setOtrosConceptosValor] = useState({
-    razon_concepto: "",
-    valor: "",
-  });
+  const [otrosConceptosValor, setOtrosConceptosValor] = useState(
+    OTROS_CONCEPTOS_INICIAL
+  );
 
   const [valoresRecibidos, setValoresRecibidos] = useState([
     {
@@ -754,6 +801,7 @@ export const Polizas = ({ setLoading, loading }) => {
     valoresPoliza.primaneta,
     valoresPoliza.primaneta_aviajes,
     valoresPoliza.TRM_aviajes,
+    lecturasPdf,
   ]);
 
   useEffect(() => {
@@ -997,44 +1045,122 @@ export const Polizas = ({ setLoading, loading }) => {
       }
     }
 
-    setSeccionPersona({
-      rol,
+    // Si el asegurado es el mismo tomador, sus datos están en la sección del tomador
+    const rolSeccion =
+      rol === "Asegurado" &&
+      (buttonSwitch.Asegurado ||
+        documento === String(datosUsuarios.Tomador.numeroIdentificacion).trim())
+        ? "Tomador"
+        : rol;
+    const nueva = crearSeccion(rolSeccion, datosUsuarios[rol], {
       modo,
-      tipoIdentificacion: rol === "Beneficiario" ? "2" : tipoIdentificacion,
-      numeroIdentificacion: documento,
-      nombre,
-      token: Date.now(),
+      abierta: true,
+    });
+    nueva.foco = nueva.token;
+    setSecciones((prev) => {
+      const actual = prev[rolSeccion];
+      return {
+        ...prev,
+        [rolSeccion]:
+          actual?.numeroIdentificacion === documento
+            ? { ...actual, modo, abierta: true, foco: nueva.foco }
+            : nueva,
+      };
     });
   };
 
+  const crearSeccion = (rol, persona, opciones = {}) => {
+    tokenSeccionRef.current += 1;
+    return {
+      rol,
+      modo: "ver",
+      abierta: false,
+      foco: 0,
+      ...opciones,
+      tipoIdentificacion: rol === "Beneficiario" ? "2" : persona.tipoIdentificacion,
+      numeroIdentificacion: String(persona.numeroIdentificacion ?? "").trim(),
+      nombre: persona.nombre,
+      token: tokenSeccionRef.current,
+    };
+  };
+
+  // Al salir del documento se consulta sola: la sección queda contraída y solo
+  // se despliega si la persona no está registrada
+  const consultarPersona = (rol) => {
+    const persona = datosUsuarios[rol];
+    const documento = String(persona.numeroIdentificacion ?? "").trim();
+    if (!documentoConsultable(rol, persona.tipoIdentificacion, documento)) return;
+    if (rol === "Beneficiario" && !buttonSwitch.Beneficiario) return;
+    if (
+      rol === "Asegurado" &&
+      (buttonSwitch.Asegurado ||
+        documento === String(datosUsuarios.Tomador.numeroIdentificacion).trim())
+    ) {
+      return;
+    }
+    const nueva = crearSeccion(rol, persona);
+    setSecciones((prev) =>
+      prev[rol]?.numeroIdentificacion === documento
+        ? prev
+        : { ...prev, [rol]: nueva }
+    );
+  };
+
+  const actualizarSeccion = (rol, cambios) =>
+    setSecciones((prev) =>
+      prev[rol] ? { ...prev, [rol]: { ...prev[rol], ...cambios } } : prev
+    );
+
+  const quitarSeccion = (rol) =>
+    setSecciones((prev) => {
+      const { [rol]: _quitada, ...resto } = prev;
+      return resto;
+    });
+
   // Lo que la sección confirma (cliente encontrado o guardado) vuelve a la card
   const sincronizarPersona = (rol, datos) => {
+    const confirmados =
+      datos.nombre !== undefined
+        ? { ...datos, nombre: capitalizeWords(datos.nombre) }
+        : datos;
     setDatosUsuarios((prev) => ({
       ...prev,
-      [rol]: { ...prev[rol], ...datos },
+      [rol]: { ...prev[rol], ...confirmados },
+      ...(rol === "Tomador" && buttonSwitch.Asegurado
+        ? { Asegurado: { ...prev.Asegurado, ...confirmados } }
+        : {}),
     }));
     if (datos.numeroIdentificacion !== undefined) {
-      setSeccionPersona((prev) =>
-        prev?.rol === rol
-          ? { ...prev, numeroIdentificacion: datos.numeroIdentificacion }
-          : prev
-      );
+      actualizarSeccion(rol, { numeroIdentificacion: datos.numeroIdentificacion });
     }
   };
 
-  // Si cambia el documento de la card o se apaga el beneficiario, la sección
-  // ya no corresponde
+  // Guardada: no desaparece, se contrae y ya no se puede editar
+  const marcarGuardada = (rol, documento) => {
+    setDocumentosGuardados((prev) =>
+      prev.includes(documento) ? prev : [...prev, documento]
+    );
+    actualizarSeccion(rol, { modo: "ver", abierta: false });
+  };
+
+  const documentoGuardado = (rol) =>
+    documentosGuardados.includes(
+      String(datosUsuarios[rol].numeroIdentificacion ?? "").trim()
+    );
+
+  // Si cambia el documento de la card o se activa el switch, la sección de ese
+  // rol ya no corresponde
   useEffect(() => {
-    if (!seccionPersona) return;
-    const { rol, numeroIdentificacion } = seccionPersona;
-    const actual = String(datosUsuarios[rol]?.numeroIdentificacion ?? "").trim();
-    if (
-      actual !== numeroIdentificacion ||
-      (rol === "Beneficiario" && !buttonSwitch.Beneficiario)
-    ) {
-      setSeccionPersona(null);
-    }
-  }, [datosUsuarios, buttonSwitch, seccionPersona]);
+    const sobran = Object.keys(secciones).filter((rol) => {
+      const actual = String(datosUsuarios[rol]?.numeroIdentificacion ?? "").trim();
+      return (
+        actual !== secciones[rol].numeroIdentificacion ||
+        (rol === "Beneficiario" && !buttonSwitch.Beneficiario) ||
+        (rol === "Asegurado" && buttonSwitch.Asegurado)
+      );
+    });
+    sobran.forEach(quitarSeccion);
+  }, [datosUsuarios, buttonSwitch, secciones]);
 
   const INPUT_PLACA_ALLOW = [1, 7, 8, 14, 15, 24, 25, 26, 27, 31];
 
@@ -1135,6 +1261,70 @@ export const Polizas = ({ setLoading, loading }) => {
   };
 
   const sumarDias = (fecha, dias) => sumarAFecha(fecha, { dias }); // YYYY-MM-DD o null
+
+  // La póliza no guarda al cliente: debe estar registrado antes de guardarla.
+  // Devuelve false si el usuario tiene que completar algo.
+  const verificarClientes = async () => {
+    const documentoTomador = String(datosUsuarios.Tomador.numeroIdentificacion).trim();
+    const documentoAsegurado = String(datosUsuarios.Asegurado.numeroIdentificacion).trim();
+    const roles =
+      documentoTomador === documentoAsegurado
+        ? ["Tomador"]
+        : ["Tomador", "Asegurado"];
+
+    for (const rol of roles) {
+      const documento = String(datosUsuarios[rol].numeroIdentificacion).trim();
+      const cliente = await getClientById("x", documento);
+
+      if (cliente?.status !== "Ok") {
+        setLoading(false);
+        await Swal.fire({
+          icon: "error",
+          title: "Error",
+          text: `No fue posible validar el cliente ${documento}. Por favor intente nuevamente.`,
+        });
+        return false;
+      }
+
+      if (
+        cliente.data === "Cliente Nuevo" ||
+        !coincideDocumento(cliente.data, documento)
+      ) {
+        setLoading(false);
+        await Swal.fire({
+          icon: "warning",
+          title: "Cliente sin registrar",
+          text: `El ${rol.toLowerCase()} con documento ${documento} no está registrado como cliente. Complete sus datos y guárdelo antes de guardar la póliza.`,
+        });
+        abrirSeccionPersona(rol, "editar");
+        return false;
+      }
+
+      const detalle = await getClientEdit(cliente.data.id_cliente, "x");
+      const tieneContacto = [
+        ...(detalle?.data?.celulares || []),
+        ...(detalle?.data?.emails || []),
+      ].some((dato) => String(dato || "").trim());
+
+      if (detalle?.status === "Ok" && !tieneContacto) {
+        setLoading(false);
+        const aviso = await Swal.fire({
+          icon: "warning",
+          title: "Cliente sin contacto",
+          text: `El ${rol.toLowerCase()} con documento ${documento} no tiene teléfono ni correo registrados.`,
+          showCancelButton: true,
+          confirmButtonText: "Guardar de todos modos",
+          cancelButtonText: "Completar datos",
+        });
+        if (!aviso.isConfirmed) {
+          abrirSeccionPersona(rol, "editar");
+          return false;
+        }
+        setLoading(true);
+      }
+    }
+    return true;
+  };
 
   const handlerSavePoliza = async () => {
     // Control anti doble-click: el ref es sincrónico, así que bloquea incluso
@@ -1344,6 +1534,12 @@ export const Polizas = ({ setLoading, loading }) => {
       setSaving(false);
     };
 
+    if (!(await verificarClientes())) {
+      setLoading(false);
+      liberarGuarda();
+      return;
+    }
+
     let poliza;
     try {
       poliza = await createPoliza(polizaData);
@@ -1464,8 +1660,39 @@ export const Polizas = ({ setLoading, loading }) => {
       ? ""
       : opciones.find((o) => String(o.value) === String(id))?.value ?? "";
 
-  const tieneDatos = (persona) =>
-    Boolean(persona?.numeroIdentificacion || persona?.nombre);
+  // Solo los campos de la card: nombres y apellidos van aparte a la sección
+  const personaLeida = (persona) =>
+    persona?.numeroIdentificacion || persona?.nombre
+      ? {
+          tipoIdentificacion: persona.tipoIdentificacion,
+          numeroIdentificacion: persona.numeroIdentificacion,
+          nombre: capitalizeWords(persona.nombre),
+        }
+      : PERSONA_VACIA;
+
+  // Una póliza leída no hereda nada de la anterior ni de lo digitado a mano
+  const reiniciarFormulario = () => {
+    setCabezotePoliza((prev) => ({
+      ...CABEZOTE_INICIAL,
+      fechaRegistro: prev.fechaRegistro,
+    }));
+    setVehiculo(VEHICULO_INICIAL);
+    setGestionComercial(GESTION_COMERCIAL_INICIAL);
+    setValoresPoliza(VALORES_INICIALES);
+    setValoresRecibidos([
+      {
+        fecha: "",
+        formaPago: "",
+        valor: "",
+        certificado: CABEZOTE_INICIAL.noCertificado,
+      },
+    ]);
+    setOtrosConceptosValor(OTROS_CONCEPTOS_INICIAL);
+    setNumeroPagos(1);
+    setRegistrarPagos(false);
+    setQuotesFinancieras([]);
+    vehiculoPendienteRef.current = null;
+  };
 
   const aplicarLecturaPdf = async (resultado, archivo) => {
     const { cabezotePoliza: c, datosUsuarios: u, vehiculo: v, valoresPoliza: val } =
@@ -1473,6 +1700,8 @@ export const Polizas = ({ setLoading, loading }) => {
 
     setShowLector(false);
     setPdfLeidoUrl(URL.createObjectURL(archivo));
+    reiniciarFormulario();
+    setLecturasPdf((n) => n + 1);
 
     // Cabezote (directo con setState: handleCabezotePolizaChange pisaría la vigencia)
     const aseguradora = opcionPorId(insurers, c.aseguradora);
@@ -1490,15 +1719,13 @@ export const Polizas = ({ setLoading, loading }) => {
       fechaExpedicion: c.fechaExpedicion || prev.fechaExpedicion,
       fechaInicioVigencia: c.fechaInicioVigencia || prev.fechaInicioVigencia,
       fechaFinVigencia: fechaFin || prev.fechaFinVigencia,
-      renovable: c.renovable || prev.renovable,
+      renovable: renovablePorRamo(ramoLeido, c.renovable),
     }));
 
     // Tomador / Asegurado / Beneficiario
-    const tomador = tieneDatos(u.Tomador) ? u.Tomador : datosUsuarios.Tomador;
-    const asegurado = tieneDatos(u.Asegurado) ? u.Asegurado : datosUsuarios.Asegurado;
-    const beneficiario = tieneDatos(u.Beneficiario)
-      ? u.Beneficiario
-      : datosUsuarios.Beneficiario;
+    const tomador = personaLeida(u.Tomador);
+    const asegurado = personaLeida(u.Asegurado);
+    const beneficiario = personaLeida(u.Beneficiario);
     const nuevosUsuarios = {
       Tomador: tomador,
       Asegurado: asegurado,
@@ -1520,8 +1747,28 @@ export const Polizas = ({ setLoading, loading }) => {
       setButtonSwitch(nuevosSwitch);
     }
 
+    // Consulta automática de cada persona leída: la registrada toma el nombre
+    // bien organizado de la BD y la nueva despliega su formulario
+    const nuevasSecciones = {};
+    ["Tomador", "Asegurado", "Beneficiario"].forEach((rol) => {
+      const persona = nuevosUsuarios[rol];
+      const documento = String(persona.numeroIdentificacion ?? "").trim();
+      if (
+        !documentoConsultable(rol, persona.tipoIdentificacion, documento) ||
+        (rol === "Asegurado" &&
+          documento === String(tomador.numeroIdentificacion).trim())
+      ) {
+        return;
+      }
+      nuevasSecciones[rol] = crearSeccion(rol, persona, {
+        nombres: u[rol]?.nombres,
+        apellidos: u[rol]?.apellidos,
+      });
+    });
+    setSecciones(nuevasSecciones);
+
     // Valores. La financiera NUNCA se toma del PDF (Coomeva es id 0 = default de contado)
-    const ramoFinal = ramoLeido || cabezotePoliza.ramo;
+    const ramoFinal = ramoLeido;
     const formapago = NOT_ALLOWED_FORMA_PAGO_FINAN.includes(Number(ramoFinal))
       ? "2"
       : val.formapago;
@@ -1576,7 +1823,7 @@ export const Polizas = ({ setLoading, loading }) => {
       }
     }
 
-    mostrarResumenLectura(resultado, nuevosSwitch.Beneficiario, formapago);
+    mostrarResumenLectura(resultado, formapago);
   };
 
   const escaparHtml = (texto) =>
@@ -1588,17 +1835,16 @@ export const Polizas = ({ setLoading, loading }) => {
       "'": "&#39;",
     })[ch]);
 
-  const mostrarResumenLectura = (resultado, conBeneficiario, formapago) => {
+  const mostrarResumenLectura = (resultado, formapago) => {
     const lista = (items) =>
       `<ul style="text-align:left;margin:4px 0 12px 18px;list-style:disc">${items
         .map((i) => `<li>${escaparHtml(i)}</li>`)
         .join("")}</ul>`;
 
     const pendientes = [
-      "Validar el tomador y el asegurado con la lupa.",
+      "Registrar las personas que aparezcan como nuevas (su sección queda desplegada).",
       "Completar la Gestión Comercial.",
     ];
-    if (conBeneficiario) pendientes.push("Validar el beneficiario oneroso con la lupa.");
     if (formapago === "1") pendientes.push("Seleccionar la financiera y las cuotas.");
 
     const faltantes = resultado.camposFaltantes || [];
@@ -1704,7 +1950,9 @@ export const Polizas = ({ setLoading, loading }) => {
           placeholderNombre="Nombre del Tomador"
           onVer={() => abrirSeccionPersona("Tomador", "ver")}
           onEditar={() => abrirSeccionPersona("Tomador", "editar")}
-          activo={seccionPersona?.rol === "Tomador"}
+          activo={Boolean(secciones.Tomador?.abierta)}
+          onDocumentoBlur={() => consultarPersona("Tomador")}
+          datosBloqueados={documentoGuardado("Tomador")}
           buttonSwitch={buttonSwitch}
           setButtonSwitch={setButtonSwitch}
           valores={datosUsuarios.Tomador}
@@ -1719,7 +1967,9 @@ export const Polizas = ({ setLoading, loading }) => {
           placeholderNombre="Nombre del Asegurado"
           onVer={() => abrirSeccionPersona("Asegurado", "ver")}
           onEditar={() => abrirSeccionPersona("Asegurado", "editar")}
-          activo={seccionPersona?.rol === "Asegurado"}
+          activo={Boolean(secciones.Asegurado?.abierta)}
+          onDocumentoBlur={() => consultarPersona("Asegurado")}
+          datosBloqueados={documentoGuardado("Asegurado")}
           buttonSwitch={buttonSwitch}
           setButtonSwitch={setButtonSwitch}
           valores={datosUsuarios.Asegurado}
@@ -1734,7 +1984,9 @@ export const Polizas = ({ setLoading, loading }) => {
           placeholderNombre="Nombre del Beneficiario"
           onVer={() => abrirSeccionPersona("Beneficiario", "ver")}
           onEditar={() => abrirSeccionPersona("Beneficiario", "editar")}
-          activo={seccionPersona?.rol === "Beneficiario"}
+          activo={Boolean(secciones.Beneficiario?.abierta)}
+          onDocumentoBlur={() => consultarPersona("Beneficiario")}
+          datosBloqueados={documentoGuardado("Beneficiario")}
           buttonSwitch={buttonSwitch}
           setButtonSwitch={setButtonSwitch}
           valores={datosUsuarios.Beneficiario}
@@ -1748,15 +2000,15 @@ export const Polizas = ({ setLoading, loading }) => {
 
       {/* Seccion 2.1 Datos del tomador/asegurado/beneficiario (Ver / Editar) */}
       <SeccionPersona
-        seccion={seccionPersona}
-        userData={userData}
+        secciones={secciones}
+        documentosGuardados={documentosGuardados}
         beneficiarios={beneficiarios}
         setBeneficiarios={setBeneficiarios}
-        onClose={() => setSeccionPersona(null)}
-        onCambiarModo={(modo) =>
-          setSeccionPersona((prev) => (prev ? { ...prev, modo } : prev))
-        }
+        onClose={quitarSeccion}
+        onCambiarModo={(rol, modo) => actualizarSeccion(rol, { modo })}
+        onCambiarAbierta={(rol, abierta) => actualizarSeccion(rol, { abierta })}
         onSincronizar={sincronizarPersona}
+        onGuardado={marcarGuardada}
       />
       {/* <button onClick={seeBodySF}>Ver cuerpo de la póliza</button> */}
       {/* Seccion 3 Cabezote de Póliza */}

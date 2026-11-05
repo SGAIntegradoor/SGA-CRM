@@ -27,6 +27,9 @@ export const CardUser = ({
   onVer = null,
   onEditar = null,
   activo = false,
+  // Opcionales: consulta al salir del documento y persona que ya no se edita
+  onDocumentoBlur = null,
+  datosBloqueados = false,
 }) => {
   // Efecto para precargar los datos del cliente (solo Tomador)
   useEffect(() => {
@@ -188,7 +191,8 @@ export const CardUser = ({
                 value={valores.tipoIdentificacion ?? ""}
                 onChange={(e) => onChange("tipoIdentificacion", e.target.value)}
                 disabled={
-                  titulo === "Beneficiario" && !buttonSwitch?.Beneficiario
+                  datosBloqueados ||
+                  (titulo === "Beneficiario" && !buttonSwitch?.Beneficiario)
                     ? true
                     : isDisabled
                     ? true
@@ -229,6 +233,7 @@ export const CardUser = ({
                   }
                   onChange("numeroIdentificacion", e.target.value);
                 }}
+                onBlur={onDocumentoBlur ?? undefined}
                 disabled={
                   titulo === "Beneficiario" && !buttonSwitch?.Beneficiario
                     ? true
@@ -297,7 +302,8 @@ export const CardUser = ({
                 value={valores.nombre ?? ""}
                 onChange={(e) => onChange("nombre", e.target.value)}
                 disabled={
-                  titulo === "Beneficiario" && !buttonSwitch?.Beneficiario
+                  datosBloqueados ||
+                  (titulo === "Beneficiario" && !buttonSwitch?.Beneficiario)
                     ? true
                     : isDisabled
                     ? true

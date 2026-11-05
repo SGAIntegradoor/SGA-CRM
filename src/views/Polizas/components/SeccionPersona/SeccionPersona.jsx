@@ -2,45 +2,52 @@ import { AnimatePresence } from "framer-motion";
 import { FormCliente } from "./FormCliente";
 import { FormBeneficiario } from "./FormBeneficiario";
 
+const ORDEN_ROLES = ["Tomador", "Asegurado", "Beneficiario"];
+
 /**
- * Sección de datos del Tomador / Asegurado / Beneficiario Oneroso que se
- * despliega debajo de las cards (reemplaza ModalCliente y ModalOneroso en el
- * registro de pólizas).
+ * Secciones de datos del Tomador / Asegurado / Beneficiario Oneroso que se
+ * despliegan debajo de las cards (reemplazan ModalCliente y ModalOneroso en el
+ * registro de pólizas). Hay máximo una por rol y se contraen sin desmontarse.
  *
- * seccion = { rol, modo: "ver" | "editar", tipoIdentificacion,
- *             numeroIdentificacion, nombre, token }
- * `token` cambia en cada apertura para volver a consultar.
+ * secciones = { [rol]: { rol, modo: "ver" | "editar", tipoIdentificacion,
+ *               numeroIdentificacion, nombre, nombres, apellidos, token,
+ *               abierta, foco } }
+ * `token` cambia cada vez que se crea para volver a consultar.
+ * `documentosGuardados`: guardados desde esta vista, ya no se pueden editar.
  */
 export const SeccionPersona = ({
-  seccion,
-  userData,
+  secciones,
+  documentosGuardados,
   beneficiarios,
   setBeneficiarios,
   onClose,
   onCambiarModo,
+  onCambiarAbierta,
   onSincronizar,
+  onGuardado,
 }) => (
-  <AnimatePresence mode="wait">
-    {seccion &&
-      (seccion.rol === "Beneficiario" ? (
+  <AnimatePresence>
+    {ORDEN_ROLES.filter((rol) => secciones[rol]).map((rol) => {
+      const seccion = secciones[rol];
+      const props = {
+        seccion,
+        cerrado: documentosGuardados.includes(seccion.numeroIdentificacion),
+        onClose: () => onClose(rol),
+        onCambiarModo: (modo) => onCambiarModo(rol, modo),
+        onCambiarAbierta: (abierta) => onCambiarAbierta(rol, abierta),
+        onSincronizar: (datos) => onSincronizar(rol, datos),
+        onGuardado: (documento) => onGuardado(rol, documento),
+      };
+      return rol === "Beneficiario" ? (
         <FormBeneficiario
           key={`Beneficiario-${seccion.token}`}
-          seccion={seccion}
+          {...props}
           beneficiarios={beneficiarios}
           setBeneficiarios={setBeneficiarios}
-          onClose={onClose}
-          onCambiarModo={onCambiarModo}
-          onSincronizar={(datos) => onSincronizar(seccion.rol, datos)}
         />
       ) : (
-        <FormCliente
-          key={`${seccion.rol}-${seccion.token}`}
-          seccion={seccion}
-          userData={userData}
-          onClose={onClose}
-          onCambiarModo={onCambiarModo}
-          onSincronizar={(datos) => onSincronizar(seccion.rol, datos)}
-        />
-      ))}
+        <FormCliente key={`${rol}-${seccion.token}`} {...props} />
+      );
+    })}
   </AnimatePresence>
 );
