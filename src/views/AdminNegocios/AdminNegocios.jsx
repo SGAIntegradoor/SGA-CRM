@@ -228,6 +228,8 @@ export const AdminNegocios = ({ loading, setLoading, isCollapsed }) => {
 
   // === carga de usuarios filtrados por cargos incluidos ===
   const INCLUDED_CARGOS = [
+    "Gerente",
+    "Gerente General",
     "Director Comercial",
     "Analista Comercial",
     "Asistente Comercial",

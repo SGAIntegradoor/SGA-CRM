@@ -24,6 +24,7 @@ export const getLiquidacionesToQuery = async (sendData) => {
 
     const mappingCargos = {
       "Director Comercial": "Director Comercial",
+      "Gerente General": "Gerente General",
       "Analista Comercial": "Analista Comercial",
       "Asistente Comercial": "Asistente Comercial",
       "Analista Tecnica": "Analista Tecnica",
@@ -37,6 +38,7 @@ export const getLiquidacionesToQuery = async (sendData) => {
     const objResponse = {
       "Analista Comercial": null,
       "Director Comercial": null,
+      "Gerente General": null,
       "Asistente Comercial": null,
       "Analista Tecnica": null,
       "Asesor Comercial": null,

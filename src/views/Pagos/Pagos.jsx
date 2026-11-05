@@ -93,6 +93,8 @@ export const Pagos = ({ loading, setLoading, isCollapsed }) => {
 
   // Cargos que SÍ se deben incluir en el selector
   const INCLUDED_CARGOS = [
+    "Gerente",
+    "Gerente General",
     "Director Comercial",
     "Analista Comercial",
     "Asistente Comercial",
@@ -116,19 +118,22 @@ export const Pagos = ({ loading, setLoading, isCollapsed }) => {
   // Cargos internos permitidos por unidad de negocio
   const CARGOS_POR_UNIDAD = {
     freelance: [
+      "Gerente", "Gerente General",
       "Director Comercial", "Analista Comercial", "Asistente Comercial",
       "Asistente Tecnico", "Asistente Tecnico Emision",
       "Analista Tecnico", "Coordinador Tecnico Emision",
     ],
     ganador: [
+      "Gerente", "Gerente General",
       "Asistente Tecnico", "Asistente Tecnico Emision",
       "Asesor Comercial Interno", "Analista Tecnico", "Coordinador Tecnico Emision",
     ],
     asesor10: [
+      "Gerente", "Gerente General",
       "Asistente Tecnico", "Asistente Tecnico Emision",
       "Asesor Comercial Interno", "Analista Tecnico", "Coordinador Tecnico Emision",
     ],
-    directo: ["Asesor Comercial Interno"],
+    directo: ["Gerente", "Gerente General", "Asesor Comercial Interno"],
   };
 
   // Tipo de unidad de negocio seleccionada (basado en id_unidad: 1=Freelance, 2=Negocio Directo, 3=Asesor 10, 4=Asesor Ganador)
