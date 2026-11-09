@@ -551,6 +551,7 @@ export const getPolizas = async (dataFilters) => {
         asesor_freelance: nombreFreelance,
         asesor_10: poliza.asesor_10 || "N/A",
         asesor_ganador: poliza.asesor_ganador || "N/A",
+        gerente_general: poliza.nombre_gerente_general?.trim() || "N/A",
 
         prima_sin_iva_asistencia: formatCOP(base),
 

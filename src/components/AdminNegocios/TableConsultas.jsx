@@ -397,7 +397,7 @@ export const TableConsultas = ({
               />
             );
           }
-          if (col.field === "nombre_asesor_ganador") {
+          if (col.field === "nombre_asesor_ganador" || col.field === "nombre_gerente_general") {
             return (
               <Column
                 key={col.field}
