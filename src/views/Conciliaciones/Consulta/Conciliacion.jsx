@@ -193,6 +193,7 @@ export const Conciliacion = ({ setLoading, loading }) => {
     { field: "asesor_freelance", header: "Asesor Freelance" },
     { field: "asesor_ganador", header: "Asesor Ganador" },
     { field: "asesor_10", header: "Asesor 10" },
+    { field: "gerente_general", header: "Gerente General" },
     { field: "unidad_negocio", header: "Unidad de negocio" },
     { field: "forma_pago", header: "Forma de pago" },
     { field: "financiera", header: "Financiera" },

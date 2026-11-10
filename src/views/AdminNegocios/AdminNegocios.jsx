@@ -166,6 +166,7 @@ export const AdminNegocios = ({ loading, setLoading, isCollapsed }) => {
     { field: "nombre_unidad_negocio", header: "Unidad de Negocio" },
     { field: "nombre_asesor_ganador", header: "Asesor Ganador" },
     { field: "nombre_asesor_10", header: "Asesor 10" },
+    { field: "nombre_gerente_general", header: "Gerente General" },
     { field: "forma_pago_desc", header: "Forma de Pago" },
     { field: "nombre_financiera", header: "Financiera" },
     { field: "no_cuotas", header: "Cuotas" },
@@ -199,6 +200,7 @@ export const AdminNegocios = ({ loading, setLoading, isCollapsed }) => {
     { field: "nombre_unidad_negocio", header: "Unidad de Negocio" },
     { field: "nombre_asesor_ganador", header: "Asesor Ganador" },
     { field: "nombre_asesor_10", header: "Asesor 10" },
+    { field: "nombre_gerente_general", header: "Gerente General" },
     { field: "forma_pago_desc", header: "Forma de Pago" },
     { field: "nombre_financiera", header: "Financiera" },
     { field: "no_cuotas", header: "Cuotas" },
@@ -228,6 +230,8 @@ export const AdminNegocios = ({ loading, setLoading, isCollapsed }) => {
 
   // === carga de usuarios filtrados por cargos incluidos ===
   const INCLUDED_CARGOS = [
+    "Gerente",
+    "Gerente General",
     "Director Comercial",
     "Analista Comercial",
     "Asistente Comercial",

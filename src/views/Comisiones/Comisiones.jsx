@@ -131,7 +131,8 @@ export const Comisiones = ({ setLoading, loading }) => {
       formStates.usuario !== "67038128" &&
       formStates.usuario !== "66830224" &&
       formStates.usuario !== "1109662966" &&
-      formStates.usuario !== "1192918480" 
+      formStates.usuario !== "1192918480" &&
+      formStates.usuario !== "94537693" 
       // formStates.usuario !== "1109187804" 
 
     ) {
@@ -389,6 +390,7 @@ export const Comisiones = ({ setLoading, loading }) => {
     { field: "estado_cartera", header: "Estado Cartera" },
     { field: "estado_conciliacion", header: "Estado Conciliación" },
     { field: "analista_comercial", header: "Analista" },
+    { field: "gerente_general", header: "Gerente General" },
     { field: "porcentaje_comision_decimal", header: "% Comisión" },
     { field: "valor_comision", header: "Valor Comisión" },
     { field: "estado_liquidacion", header: "Estado Liquidación" },
@@ -426,6 +428,7 @@ export const Comisiones = ({ setLoading, loading }) => {
     { field: "estado_cartera", header: "Estado Cartera" },
     { field: "estado_conciliacion", header: "Estado Conciliación" },
     { field: "analista_comercial", header: "Analista" },
+    { field: "gerente_general", header: "Gerente General" },
     { field: "porcentaje_comision_decimal", header: "% Comisión" },
     { field: "valor_comision", header: "Valor Comisión" },
     { field: "estado_liquidacion", header: "Estado Liquidación" },

@@ -256,6 +256,10 @@ export const getConciliacionPolizas = async (filters) => {
         queryRow.nombre_asesor_10,
         row.nombre_asesor_10,
       ]),
+      gerente_general: pickFirstValue([
+        queryRow.nombre_gerente_general,
+        row.nombre_gerente_general,
+      ]),
       unidad_negocio: pickFirstValue([
         row.unidad_negocio,
         queryRow.nombre_unidad_negocio,

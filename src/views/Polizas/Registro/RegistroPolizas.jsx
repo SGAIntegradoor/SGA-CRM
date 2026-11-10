@@ -24,6 +24,7 @@ import { getAnalistaByFreelance } from "../../../services/Users/getAnalistaByFre
 import { getTecnicos } from "../../../services/Users/getTecnicoEmisores";
 import { getCoordinadores } from "../../../services/Users/getCoordinadores";
 import { getDirectores } from "../../../services/Users/getDirectores";
+import { getGerentes } from "../../../services/Users/getGerentes";
 import { getAsistentes } from "../../../services/Users/getAsistentes";
 import { getUnidadesNegocio } from "../../../services/Polizas/getUnidadNegocio";
 import { getOtrosConceptos } from "../../../services/Polizas/getOtrosConceptos";
@@ -86,6 +87,7 @@ const GESTION_COMERCIAL_INICIAL = {
   asesorganador: "",
   asesor10: "",
   directorcomercial: "",
+  gerentegeneral: "",
   asistente: "",
   unidadnegocio: "",
   observaciones: "",
@@ -368,6 +370,7 @@ export const Polizas = ({ setLoading, loading }) => {
   const [asistentes, setAsistentes] = useState([]);
   const [coordinadores, setCoordinadores] = useState([]);
   const [directoresComerciales, setDirectoresComerciales] = useState([]);
+  const [gerentes, setGerentes] = useState([]);
   const [asesoresGanadores, setAsesoresGanadores] = useState([]);
   const [asesores10, setAsesores10] = useState([]);
 
@@ -735,6 +738,15 @@ export const Polizas = ({ setLoading, loading }) => {
         setLoading(false);
       });
 
+    handlerLoadGerentes()
+      .then(() => {
+        // setLoading(false);
+      })
+      .catch((error) => {
+        console.error("Error loading gerentes:", error);
+        setLoading(false);
+      });
+
     handlerLoadAsistentes()
       .then(() => {
         // setLoading(false);
@@ -876,6 +888,16 @@ export const Polizas = ({ setLoading, loading }) => {
     // This is a placeholder for the actual implementation
     const directores = await getDirectores();
     setDirectoresComerciales(directores);
+  };
+
+  // El gerente va en todas las pólizas: queda preseleccionado desde que carga el catálogo
+  const handlerLoadGerentes = async () => {
+    const lista = await getGerentes();
+    setGerentes(lista);
+    setGestionComercial((prev) => ({
+      ...prev,
+      gerentegeneral: prev.gerentegeneral || lista[0]?.value || "",
+    }));
   };
 
   const handlerLoadAsistentes = async () => {
@@ -1383,6 +1405,7 @@ export const Polizas = ({ setLoading, loading }) => {
       let fieldsToCheck = {
         1: {
           tecnicoemisor: "Técnico Emisor",
+          gerentegeneral: "Gerente General",
           coordinadortecnico: "Coordinador Técnico",
           analista: "Analista",
           asesorfreelance: "Asesor Freelance",
@@ -1391,17 +1414,20 @@ export const Polizas = ({ setLoading, loading }) => {
         },
         2: {
           tecnicoemisor: "Técnico Emisor",
+          gerentegeneral: "Gerente General",
           coordinadortecnico: "Coordinador Técnico",
           asesorcomercialinterno: "Asesor Comercial Interno",
         },
         3: {
           tecnicoemisor: "Técnico Emisor",
+          gerentegeneral: "Gerente General",
           coordinadortecnico: "Coordinador Técnico",
           asesorcomercialinterno: "Asesor Comercial Interno",
           asesor10: "Asesor 10",
         },
         4: {
           tecnicoemisor: "Técnico Emisor",
+          gerentegeneral: "Gerente General",
           coordinadortecnico: "Coordinador Técnico",
           asesorcomercialinterno: "Asesor Comercial Interno",
           asesorganador: "Asesor Ganador",
@@ -1677,7 +1703,11 @@ export const Polizas = ({ setLoading, loading }) => {
       fechaRegistro: prev.fechaRegistro,
     }));
     setVehiculo(VEHICULO_INICIAL);
-    setGestionComercial(GESTION_COMERCIAL_INICIAL);
+    // El gerente no depende de la póliza: conserva el preseleccionado
+    setGestionComercial((prev) => ({
+      ...GESTION_COMERCIAL_INICIAL,
+      gerentegeneral: prev.gerentegeneral,
+    }));
     setValoresPoliza(VALORES_INICIALES);
     setValoresRecibidos([
       {
@@ -2674,37 +2704,54 @@ export const Polizas = ({ setLoading, loading }) => {
               )}
             </div>
           </div>
-          {gestionComercial.unidadnegocio != "3" &&
-          gestionComercial.unidadnegocio != "4" ? (
-            <>
-              <div className="flex flex-row gap-4 mt-2">
-                <div className="flex flex-col w-[165px]">
-                  <label htmlFor="coordinadortecnico">
-                    Coordinador Tecnico
-                  </label>
-                  <Select
-                    name="coordinadortecnico"
-                    id="coordinadortecnico"
-                    options={coordinadores || []}
-                    placeholder=""
-                    styles={customStyles}
-                    value={coordinadores.find(
-                      (opt) => opt.value === gestionComercial.coordinadortecnico
-                    ) || ""}
-                    onChange={(selectedOption, meta) => {
-                      const value = selectedOption ? selectedOption.value : "";
-                      handleGestionComercialChange({
-                        target: { name: meta.name, value },
-                      });
-                    }}
-                    isClearable
-                  />
-                </div>
+          <div className="flex flex-row gap-4 mt-2">
+            {gestionComercial.unidadnegocio != "3" &&
+            gestionComercial.unidadnegocio != "4" ? (
+              <div className="flex flex-col w-[165px]">
+                <label htmlFor="coordinadortecnico">
+                  Coordinador Tecnico
+                </label>
+                <Select
+                  name="coordinadortecnico"
+                  id="coordinadortecnico"
+                  options={coordinadores || []}
+                  placeholder=""
+                  styles={customStyles}
+                  value={coordinadores.find(
+                    (opt) => opt.value === gestionComercial.coordinadortecnico
+                  ) || ""}
+                  onChange={(selectedOption, meta) => {
+                    const value = selectedOption ? selectedOption.value : "";
+                    handleGestionComercialChange({
+                      target: { name: meta.name, value },
+                    });
+                  }}
+                  isClearable
+                />
               </div>
-            </>
-          ) : (
-            ""
-          )}
+            ) : (
+              ""
+            )}
+            <div className="flex flex-col w-[165px]">
+              <label htmlFor="gerentegeneral">Gerente General</label>
+              <Select
+                name="gerentegeneral"
+                id="gerentegeneral"
+                options={gerentes}
+                placeholder=""
+                styles={customStyles}
+                value={gerentes.find(
+                  (opt) => opt.value === gestionComercial.gerentegeneral
+                ) || ""}
+                onChange={(selectedOption, meta) => {
+                  const value = selectedOption ? selectedOption.value : "";
+                  handleGestionComercialChange({
+                    target: { name: meta.name, value },
+                  });
+                }}
+              />
+            </div>
+          </div>
 
           <div className="flex flex-col gap-1 w-full mt-[96px]">
             <textarea
