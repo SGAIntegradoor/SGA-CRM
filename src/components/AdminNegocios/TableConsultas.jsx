@@ -69,6 +69,8 @@ export const TableConsultas = ({
       "numero_documento_tomador",
       "numero_documento_asegurado", 
       "numero_documento_beneficiario",
+      "telefono_tomador",
+      "telefono_asegurado",
     ];
     
     // Helper para determinar si un valor debe ser texto o número
@@ -294,6 +296,13 @@ export const TableConsultas = ({
         }
       >
         {headers.map((col) => {
+          // contacto principal del cliente: N/A si no está registrado en clientes_crm
+          const contactFields = [
+            "correo_tomador",
+            "telefono_tomador",
+            "correo_asegurado",
+            "telefono_asegurado",
+          ];
           // columnas que quieres en formato pesos
           const moneyFields = [
             "asistencias_otros_poliza",
@@ -412,7 +421,7 @@ export const TableConsultas = ({
               />
             );
           }
-          if (col.field === "placa_veh_poliza") {
+          if (col.field === "placa_veh_poliza" || contactFields.includes(col.field)) {
             return (
               <Column
                 key={col.field}
